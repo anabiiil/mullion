@@ -1,3 +1,4 @@
 dist/*.exe
 *.exe
 .DS_Store
+.claude/

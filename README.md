@@ -12,16 +12,19 @@ terminal.
 
 ## Install
 
-`mullion` is a command-line tool — you run it from a terminal, not by
-double-clicking. Copy `mullion.exe` anywhere (e.g. `Downloads`), open **CMD** or
-**PowerShell** there, and run:
+**[⬇ Download `mullion.exe` from the latest release](https://github.com/anabiiil/mullion/releases/latest)** —
+one file, nothing else to install. (This repository is the source code;
+the ready-to-run exe lives on the Releases page.)
+
+Then **double-click it** and confirm `Run setup now?` — or run it from a
+terminal:
 
 ```
-cd %USERPROFILE%\Downloads
 mullion.exe setup
 ```
 
-In PowerShell, prefix it with `.\` — `.\mullion.exe setup`.
+> Windows SmartScreen may warn about the new unsigned exe on first run —
+> click **More info → Run anyway**.
 
 One command sets up the whole stack: it creates `C:\Mullion`,
 downloads Caddy, copies `mullion.exe` into `C:\Mullion\bin`, adds the right folders
