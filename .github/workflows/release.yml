@@ -25,11 +25,7 @@ jobs:
 
       - name: Package
         shell: pwsh
-        run: |
-          New-Item -ItemType Directory dist | Out-Null
-          Copy-Item mullion.exe dist/
-          Copy-Item dist/README.md dist/ -ErrorAction SilentlyContinue
-          Compress-Archive -Path mullion.exe -DestinationPath "mullion-${{ github.ref_name }}-windows-amd64.zip"
+        run: Compress-Archive -Path mullion.exe -DestinationPath "mullion-${{ github.ref_name }}-windows-amd64.zip"
 
       - name: Create release
         uses: softprops/action-gh-release@v2
