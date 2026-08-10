@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go version *)",
+      "PowerShell(ls \"$env:USERPROFILE\\\\.pm\" -Recurse -Depth 1 | Select-Object FullName, LinkType, Target | Format-Table -AutoSize | Out-String -Width 250)",
+      "PowerShell(php -v; \\(Get-Command php -ErrorAction SilentlyContinue\\).Source)",
+      "PowerShell($m = [Environment]::GetEnvironmentVariable\\('Path','Machine'\\); $u = [Environment]::GetEnvironmentVariable\\('Path','User'\\); \"=== MACHINE ===\"; $m -split ';' | Where-Object {$_}; \"=== USER ===\"; $u -split ';' | Where-Object {$_})",
+      "PowerShell(Get-Content \"$env:USERPROFILE\\\\.pm\\\\config.json\"; \"\"; Get-Content \"$env:USERPROFILE\\\\.pm\\\\sites.json\"; \"\"; Get-Content \"$env:USERPROFILE\\\\.pm\\\\Caddyfile\")",
+      "PowerShell(ls \"$env:USERPROFILE\\\\.pm\\\\logs\"; ls \"$env:USERPROFILE\\\\.pm\\\\pids\"; Get-NetTCPConnection -State Listen -OwningProcess 1568 -ErrorAction SilentlyContinue | Select-Object LocalAddress,LocalPort)",
+      "PowerShell(& \"$env:USERPROFILE\\\\.pm\\\\bin\\\\caddy.exe\" validate --config \"$env:USERPROFILE\\\\.pm\\\\Caddyfile\")",
+      "PowerShell(Set-Location \"$env:USERPROFILE\\\\.pm\"; & \".\\\\bin\\\\caddy.exe\" start --config \".\\\\Caddyfile\" --adapter caddyfile; \"EXIT: $LASTEXITCODE\"; Start-Sleep -Seconds 2; Get-Process caddy -ErrorAction SilentlyContinue | Select-Object Name,Id; Get-NetTCPConnection -State Listen | Where-Object {$_.LocalPort -in 80,443,2019} | Select-Object LocalAddress,LocalPort,OwningProcess)",
+      "PowerShell(go version)",
+      "PowerShell($candidates = @\\(\"C:\\\\Program Files\\\\Go\\\\bin\\\\go.exe\",\"C:\\\\Go\\\\bin\\\\go.exe\",\"$env:LOCALAPPDATA\\\\Programs\\\\Go\\\\bin\\\\go.exe\",\"$env:USERPROFILE\\\\go\\\\bin\\\\go.exe\",\"$env:USERPROFILE\\\\scoop\\\\apps\\\\go\\\\current\\\\bin\\\\go.exe\"\\); $candidates | Where-Object { Test-Path $_ })",
+      "PowerShell($sp = \"C:\\\\Users\\\\anabi\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-anabi-Downloads-Pacakge-2-Pacakge\\\\23b8e91f-8e5f-481e-8907-a7c90f289ee1\\\\scratchpad\"; New-Item -ItemType Directory -Force \"$sp\\\\go-dl\" | Out-Null; curl.exe -L -sS -o \"$sp\\\\go-dl\\\\go.zip\" \"https://go.dev/dl/go1.25.3.windows-amd64.zip\"; \"downloaded: $\\(\\(Get-Item \"$sp\\\\go-dl\\\\go.zip\"\\).Length\\) bytes\"; Expand-Archive -Path \"$sp\\\\go-dl\\\\go.zip\" -DestinationPath \"$sp\\\\go-dl\" -Force; & \"$sp\\\\go-dl\\\\go\\\\bin\\\\go.exe\" version)",
+      "Bash(sleep 20; cat \"/c/Users/anabi/AppData/Local/Temp/claude/C--Users-anabi-Downloads-Pacakge-2-Pacakge/23b8e91f-8e5f-481e-8907-a7c90f289ee1/tasks/b2btghn44.output\" 2>/dev/null)",
+      "Bash(break)",
+      "PowerShell($go = \"C:\\\\Users\\\\anabi\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-anabi-Downloads-Pacakge-2-Pacakge\\\\23b8e91f-8e5f-481e-8907-a7c90f289ee1\\\\scratchpad\\\\go-dl\\\\go\\\\bin\\\\go.exe\"; Set-Location \"C:\\\\Users\\\\anabi\\\\Downloads\\\\Pacakge 2\\\\Pacakge\"; & $go vet ./...; if \\($?\\) { & $go test ./... })",
+      "PowerShell($go = \"C:\\\\Users\\\\anabi\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-anabi-Downloads-Pacakge-2-Pacakge\\\\23b8e91f-8e5f-481e-8907-a7c90f289ee1\\\\scratchpad\\\\go-dl\\\\go\\\\bin\\\\go.exe\"; Set-Location \"C:\\\\Users\\\\anabi\\\\Downloads\\\\Pacakge 2\\\\Pacakge\"; & $go vet ./...; if \\($?\\) { & $go test ./... }; if \\($?\\) { & $go build -trimpath -ldflags \"-s -w\" -o dist\\\\pm.exe .; \"BUILD OK: $\\(\\(Get-Item dist\\\\pm.exe\\).Length\\) bytes\" })",
+      "PowerShell(Copy-Item -Force \"C:\\\\Users\\\\anabi\\\\Downloads\\\\Pacakge 2\\\\Pacakge\\\\dist\\\\pm.exe\" \"$env:USERPROFILE\\\\.pm\\\\bin\\\\pm.exe\"; & \"$env:USERPROFILE\\\\.pm\\\\bin\\\\pm.exe\" stop; \"\"; & \"$env:USERPROFILE\\\\.pm\\\\bin\\\\pm.exe\" start)",
+      "PowerShell(& \"$env:USERPROFILE\\\\.pm\\\\bin\\\\pm.exe\" links; \"\"; & \"$env:USERPROFILE\\\\.pm\\\\bin\\\\pm.exe\" status; \"\"; Get-Content \"$env:USERPROFILE\\\\.pm\\\\sites.json\")",
+      "PowerShell(Select-String -Path C:\\\\Windows\\\\System32\\\\drivers\\\\etc\\\\hosts -Pattern \"test\" | ForEach-Object Line)"
+    ]
+  }
+}
