@@ -5,6 +5,7 @@
 package tray
 
 import (
+	"os"
 	"fmt"
 	"runtime"
 	"syscall"
@@ -65,6 +66,7 @@ var (
 	setForeground    = user32.NewProc("SetForegroundWindow")
 	getCursorPos     = user32.NewProc("GetCursorPos")
 	shellNotifyIcon  = shell32.NewProc("Shell_NotifyIconW")
+	extractIconEx    = shell32.NewProc("ExtractIconExW")
 )
 
 type wndClassEx struct {
@@ -146,8 +148,7 @@ func Run(h Handlers) error {
 		return fmt.Errorf("creating the tray window: %v", err)
 	}
 
-	// Icon resource #1 is the one goversioninfo embeds into the exe.
-	icon, _, _ := loadIcon.Call(hInst, 1)
+	icon := ownIcon(hInst)
 
 	nid := notifyIconData{
 		Size:            uint32(unsafe.Sizeof(notifyIconData{})),
@@ -176,6 +177,28 @@ func Run(h Handlers) error {
 		translateMessage.Call(uintptr(unsafe.Pointer(&m)))
 		dispatchMessage.Call(uintptr(unsafe.Pointer(&m)))
 	}
+}
+
+// ownIcon pulls the small icon straight out of this exe file — resource
+// IDs vary with the tooling, so extracting by file is the reliable way.
+func ownIcon(hInst uintptr) uintptr {
+	if exe, err := os.Executable(); err == nil {
+		if p, err := syscall.UTF16PtrFromString(exe); err == nil {
+			var small syscall.Handle
+			extractIconEx.Call(uintptr(unsafe.Pointer(p)), 0, 0,
+				uintptr(unsafe.Pointer(&small)), 1)
+			if small != 0 {
+				return uintptr(small)
+			}
+		}
+	}
+	// Fall back to whatever icon resource the module exposes.
+	if icon, _, _ := loadIcon.Call(hInst, 1); icon != 0 {
+		return icon
+	}
+	const idiApplication = 32512
+	icon, _, _ := loadIcon.Call(0, idiApplication)
+	return icon
 }
 
 func wndProc(hwnd syscall.Handle, message uint32, wParam, lParam uintptr) uintptr {
