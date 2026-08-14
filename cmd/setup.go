@@ -23,6 +23,7 @@ import (
 	"pm/internal/proc"
 	"pm/internal/shortcut"
 	"pm/internal/vcredist"
+	"pm/internal/version"
 )
 
 var setupPause bool
@@ -268,6 +269,10 @@ func doSetup(cmd *cobra.Command, wantAutostart bool, dbChoice string) error {
 				return err
 			}
 			dbLines += "  heidisql   `mullion heidisql` or the panel's HeidiSQL button\n"
+		}
+
+		if err := os.WriteFile(a.Paths.VersionFile(), []byte(version.Number), 0o644); err != nil {
+			fmt.Println("note:", err)
 		}
 
 		// Put the tray icon up right away (also the sign-in behavior).

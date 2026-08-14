@@ -9,6 +9,7 @@ import (
 
 	"pm/internal/app"
 	"pm/internal/term"
+	"pm/internal/version"
 )
 
 var rootCmd = &cobra.Command{
@@ -21,6 +22,7 @@ projects on .test domains through Caddy, and secure them with trusted
 local HTTPS certificates.`,
 	SilenceUsage:  true,
 	SilenceErrors: true,
+	Version:       version.Number,
 }
 
 func Execute() {

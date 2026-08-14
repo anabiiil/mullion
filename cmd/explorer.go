@@ -22,8 +22,10 @@ func maybeRunExplorerWizard() bool {
 	}
 
 	// Already set up -> behave like a desktop app: open the panel, and
-	// hide our console so only the panel window shows.
+	// hide our console so only the panel window shows. A newer exe than
+	// the installed one upgrades the install first (visibly).
 	if a, err := app.New(); err == nil && a.State.Config.GlobalPHP != "" {
+		selfUpdateIfNeeded(a)
 		console.HideWindow()
 		if err := ui.Run(context.Background()); err != nil {
 			console.ShowWindow()

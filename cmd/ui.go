@@ -3,6 +3,7 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 
+	"pm/internal/app"
 	"pm/internal/ui"
 )
 
@@ -13,6 +14,9 @@ var uiCmd = &cobra.Command{
 status, PHP versions, MySQL, and the linked sites — all clickable.
 Double-clicking mullion.exe opens the same panel once setup has been run.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if a, err := app.New(); err == nil && a.State.Config.GlobalPHP != "" {
+			selfUpdateIfNeeded(a)
+		}
 		return ui.Run(cmd.Context())
 	},
 }
