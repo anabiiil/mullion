@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 
 	"github.com/spf13/cobra"
 
@@ -41,7 +40,7 @@ autostart is enabled.`,
 				if err == nil {
 					host = "phpmyadmin." + a.State.Config.TLD
 				}
-				_ = exec.Command("cmd", "/c", "start", "", "https://"+host).Start()
+				_ = proc.Quiet("cmd", "/c", "start", "", "https://"+host).Start()
 			},
 		})
 		if err == tray.ErrAlreadyRunning {
@@ -79,7 +78,7 @@ func stopServices() {
 // spawnSelf runs another mullion command as its own hidden-console
 // process, so the tray's message loop never blocks.
 func spawnSelf(exe string, args ...string) {
-	cmd := exec.Command(exe, args...)
+	cmd := proc.Quiet(exe, args...)
 	proc.DetachHiddenConsole(cmd)
 	if err := cmd.Start(); err != nil {
 		fmt.Fprintln(os.Stderr, "tray:", err)

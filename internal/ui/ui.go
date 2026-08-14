@@ -30,6 +30,7 @@ import (
 	"pm/internal/mysql"
 	"pm/internal/phpver"
 	"pm/internal/pmdir"
+	"pm/internal/proc"
 )
 
 //go:embed index.html
@@ -91,7 +92,7 @@ func Run(ctx context.Context) error {
 		// The default browser can't do app windows (Firefox etc.):
 		// open a normal tab in it and exit once the page stops polling.
 		fmt.Println("Control panel:", url)
-		_ = exec.Command("cmd", "/c", "start", "", url).Start()
+		_ = proc.Quiet("cmd", "/c", "start", "", url).Start()
 		for {
 			select {
 			case <-ctx.Done():
@@ -120,7 +121,7 @@ var chromiumBrowsers = map[string]bool{
 
 // defaultBrowser resolves the exe the user's https links open with.
 func defaultBrowser() (string, bool) {
-	out, _ := exec.Command("powershell", "-NoProfile", "-Command",
+	out, _ := proc.Quiet("powershell", "-NoProfile", "-Command",
 		`$p = (Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\Shell\Associations\UrlAssociations\https\UserChoice' -ErrorAction SilentlyContinue).ProgId; if ($p) { (Get-ItemProperty ("Registry::HKEY_CLASSES_ROOT\" + $p + "\shell\open\command") -ErrorAction SilentlyContinue).'(default)' }`).Output()
 	cmdline := strings.TrimSpace(string(out))
 	if cmdline == "" {
@@ -157,7 +158,7 @@ func openAppWindow(url string) (<-chan struct{}, error) {
 	// process delegates to the old one and exits — which looks like
 	// "nothing opened". Clear any old instance first.
 	profile := strings.ReplaceAll(paths.Home+`\ui-profile`, "'", "''")
-	_ = exec.Command("powershell", "-NoProfile", "-Command", fmt.Sprintf(
+	_ = proc.Quiet("powershell", "-NoProfile", "-Command", fmt.Sprintf(
 		`Get-CimInstance Win32_Process | Where-Object { ('msedge.exe','chrome.exe','brave.exe','vivaldi.exe','opera.exe','chromium.exe') -contains $_.Name -and $_.CommandLine -like '*%s*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }`,
 		profile)).Run()
 
@@ -326,6 +327,19 @@ func newMux(token string) *http.ServeMux {
 			return nil, err
 		}
 		return phpver.ListExtensions(a.Paths, in.Version)
+	})
+	api("/api/php/ext/get", func(a *app.App, r *http.Request) (any, error) {
+		var in struct {
+			Version string
+			Name    string
+		}
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		if err := phpver.InstallPeclExtension(r.Context(), a.Paths, in.Version, in.Name); err != nil {
+			return nil, err
+		}
+		return nil, a.RestartPhp(in.Version)
 	})
 	api("/api/php/ext/set", func(a *app.App, r *http.Request) (any, error) {
 		var in struct {

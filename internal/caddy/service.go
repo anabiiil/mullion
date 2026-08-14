@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -59,7 +58,7 @@ func Start(paths pmdir.Paths) error {
 	}
 	defer logFile.Close()
 
-	cmd := exec.Command(paths.CaddyExe(), "run",
+	cmd := proc.Quiet(paths.CaddyExe(), "run",
 		"--config", paths.Caddyfile(), "--adapter", "caddyfile")
 	cmd.Dir = paths.Home
 	cmd.Stdout = logFile
@@ -90,7 +89,7 @@ func Reload(paths pmdir.Paths) error {
 	if !Running() {
 		return nil
 	}
-	cmd := exec.Command(paths.CaddyExe(), "reload",
+	cmd := proc.Quiet(paths.CaddyExe(), "reload",
 		"--config", paths.Caddyfile(), "--adapter", "caddyfile")
 	cmd.Dir = paths.Home
 	if out, err := cmd.CombinedOutput(); err != nil {
@@ -106,7 +105,7 @@ func Stop(paths pmdir.Paths) error {
 		killByPidFile(paths)
 		return nil
 	}
-	cmd := exec.Command(paths.CaddyExe(), "stop")
+	cmd := proc.Quiet(paths.CaddyExe(), "stop")
 	cmd.Dir = paths.Home
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("caddy stop: %v: %s", err, out)
@@ -133,7 +132,7 @@ func killByPidFile(paths pmdir.Paths) {
 // TrustCA asks Caddy to install its local root CA into the system trust
 // store so browsers accept the generated certificates (triggers UAC once).
 func TrustCA(paths pmdir.Paths) error {
-	cmd := exec.Command(paths.CaddyExe(), "trust")
+	cmd := proc.Quiet(paths.CaddyExe(), "trust")
 	cmd.Dir = paths.Home
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("caddy trust: %v: %s", err, out)

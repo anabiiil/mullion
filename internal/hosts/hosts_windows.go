@@ -5,7 +5,7 @@ package hosts
 import (
 	"fmt"
 	"os"
-	"os/exec"
+	"pm/internal/proc"
 	"path/filepath"
 	"strings"
 )
@@ -45,7 +45,7 @@ func writeElevated(path, content string) error {
 		`Start-Process -Verb RunAs -Wait -WindowStyle Hidden powershell -ArgumentList '-NoProfile','-Command',%s`,
 		psQuote(inner),
 	)
-	cmd := exec.Command("powershell", "-NoProfile", "-Command", ps)
+	cmd := proc.Quiet("powershell", "-NoProfile", "-Command", ps)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("elevated hosts update failed (UAC declined?): %v: %s", err, out)
 	}

@@ -287,10 +287,10 @@ func EnsureInitialized(paths pmdir.Paths, version string) error {
 	fmt.Printf("Initializing the %s data directory...\n", Label(version))
 	var cmd *exec.Cmd
 	if IsMaria(version) {
-		cmd = exec.Command(binExe(paths, version, "mariadb-install-db.exe", "mysql_install_db.exe"),
+		cmd = proc.Quiet(binExe(paths, version, "mariadb-install-db.exe", "mysql_install_db.exe"),
 			"--datadir="+paths.MysqlDataDir())
 	} else {
-		cmd = exec.Command(serverExe(paths, version),
+		cmd = proc.Quiet(serverExe(paths, version),
 			"--no-defaults", "--initialize-insecure",
 			"--basedir="+paths.MysqlVersionDir(version),
 			"--datadir="+paths.MysqlDataDir())
@@ -323,7 +323,7 @@ func Start(paths pmdir.Paths, version string) error {
 	if !IsMaria(version) {
 		args = append(args, "--no-monitor")
 	}
-	cmd := exec.Command(serverExe(paths, version), args...)
+	cmd := proc.Quiet(serverExe(paths, version), args...)
 	cmd.Dir = paths.MysqlVersionDir(version)
 	cmd.Stdout = logFile
 	cmd.Stderr = logFile
@@ -359,7 +359,7 @@ func Stop(paths pmdir.Paths, version string) error {
 		return nil
 	}
 	admin := binExe(paths, version, "mysqladmin.exe", "mariadb-admin.exe")
-	cmd := exec.Command(admin, "--user=root", "--host=127.0.0.1",
+	cmd := proc.Quiet(admin, "--user=root", "--host=127.0.0.1",
 		fmt.Sprintf("--port=%d", Port), "shutdown")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		killByPidFile(paths)
@@ -426,7 +426,7 @@ func writeIni(paths pmdir.Paths, version string) error {
 // UserDatabases lists the databases on the running server, minus the
 // system schemas that must not be copied between versions.
 func UserDatabases(paths pmdir.Paths, version string) ([]string, error) {
-	out, err := exec.Command(clientExe(paths, version),
+	out, err := proc.Quiet(clientExe(paths, version),
 		"--user=root", "--host=127.0.0.1", fmt.Sprintf("--port=%d", Port),
 		"-N", "-e", "SHOW DATABASES").Output()
 	if err != nil {
@@ -458,7 +458,7 @@ func DumpAll(paths pmdir.Paths, version string, dbs []string, outFile string) er
 	}
 	args = append(args, dbs...)
 	dump := binExe(paths, version, "mysqldump.exe", "mariadb-dump.exe")
-	cmd := exec.Command(dump, args...)
+	cmd := proc.Quiet(dump, args...)
 
 	done := make(chan struct{})
 	go func() {
@@ -577,7 +577,7 @@ func RestoreFile(paths pmdir.Paths, version, file string) error {
 		}
 	}()
 
-	cmd := exec.Command(clientExe(paths, version),
+	cmd := proc.Quiet(clientExe(paths, version),
 		"--user=root", "--host=127.0.0.1", fmt.Sprintf("--port=%d", Port),
 		"--max-allowed-packet=512M")
 	cmd.Stdin = pr

@@ -283,6 +283,17 @@
             <select id="ext-version" class="mono"></select>
             <button id="btn-ext">Manage</button>
             <span id="ext-hint" class="muted"></span>
+            <span class="spacer"></span>
+            <input type="text" id="ext-new" list="ext-known" placeholder="get from PECL: redis, xdebug…" size="20" class="mono">
+            <datalist id="ext-known">
+              <option value="redis"></option>
+              <option value="xdebug"></option>
+              <option value="imagick"></option>
+              <option value="mongodb"></option>
+              <option value="apcu"></option>
+              <option value="memcache"></option>
+            </datalist>
+            <button id="btn-ext-get">Get</button>
           </div>
           <div id="ext-panel" class="ext-grid" style="display:none"></div>
         </div>
@@ -526,6 +537,23 @@ $('btn-ext').onclick = () => {
 };
 $('ext-version').onchange = () => {
   if ($('ext-panel').style.display !== 'none') loadExts();
+};
+$('btn-ext-get').onclick = async () => {
+  const name = $('ext-new').value.trim();
+  const version = $('ext-version').value;
+  if (!name) return toast('Type an extension name first — e.g. redis or xdebug');
+  $('busy-label').textContent = 'Installing ' + name + ' for PHP ' + version + '… (finding the matching build)';
+  $('busy').classList.add('show');
+  try {
+    await api('/api/php/ext/get', { version, name });
+    $('ext-new').value = '';
+    toast(name + ' installed and enabled for PHP ' + version);
+    if ($('ext-panel').style.display !== 'none') loadExts();
+  } catch (e) {
+    toast('Error: ' + e.message);
+  } finally {
+    $('busy').classList.remove('show');
+  }
 };
 $('btn-mysql-switch').onclick = () => {
   const v = $('mysql-new').value.trim();

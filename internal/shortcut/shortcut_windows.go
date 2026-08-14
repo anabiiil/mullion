@@ -7,7 +7,7 @@ package shortcut
 
 import (
 	"fmt"
-	"os/exec"
+	"pm/internal/proc"
 	"path/filepath"
 	"strings"
 
@@ -27,7 +27,7 @@ $s.IconLocation = %s
 $s.Description = 'Mullion - local dev server for Windows'
 $s.Save()`,
 		psQuote(exe), psQuote(paths.BinDir()), psQuote(exe+",0"))
-	if out, err := exec.Command("powershell", "-NoProfile", "-Command", script).CombinedOutput(); err != nil {
+	if out, err := proc.Quiet("powershell", "-NoProfile", "-Command", script).CombinedOutput(); err != nil {
 		return fmt.Errorf("creating desktop shortcut: %v: %s", err, out)
 	}
 	return nil
@@ -36,7 +36,7 @@ $s.Save()`,
 // RemoveDesktop deletes the shortcut (no-op when absent).
 func RemoveDesktop() error {
 	script := `$lnk = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Mullion.lnk'; if (Test-Path $lnk) { Remove-Item $lnk -Force }`
-	if out, err := exec.Command("powershell", "-NoProfile", "-Command", script).CombinedOutput(); err != nil {
+	if out, err := proc.Quiet("powershell", "-NoProfile", "-Command", script).CombinedOutput(); err != nil {
 		return fmt.Errorf("removing desktop shortcut: %v: %s", err, out)
 	}
 	return nil

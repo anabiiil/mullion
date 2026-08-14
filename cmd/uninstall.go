@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -157,7 +156,7 @@ func doUninstall(a *app.App, wantBackup bool) error {
 		if pid == os.Getpid() {
 			continue
 		}
-		_ = exec.Command("taskkill", "/F", "/PID", fmt.Sprint(pid)).Run()
+		_ = proc.Quiet("taskkill", "/F", "/PID", fmt.Sprint(pid)).Run()
 	}
 
 	// 3. Hosts entries, trust store, autostart, PATH.
@@ -165,7 +164,7 @@ func doUninstall(a *app.App, wantBackup bool) error {
 		fmt.Println("note: could not clean the hosts file -", err)
 	}
 	if _, err := os.Stat(a.Paths.CaddyExe()); err == nil {
-		if out, err := exec.Command(a.Paths.CaddyExe(), "untrust").CombinedOutput(); err != nil {
+		if out, err := proc.Quiet(a.Paths.CaddyExe(), "untrust").CombinedOutput(); err != nil {
 			fmt.Println("note: could not remove the root certificate -", strings.TrimSpace(string(out)))
 		}
 	}
@@ -222,7 +221,7 @@ for ($i = 0; $i -lt 120; $i++) {
 Start-Sleep -Seconds 1
 Remove-Item -Recurse -Force $dir -ErrorAction SilentlyContinue`,
 			strings.ReplaceAll(a.Paths.Home, "'", "''"))
-		cmd := exec.Command("powershell", "-NoProfile", "-WindowStyle", "Hidden", "-Command", script)
+		cmd := proc.Quiet("powershell", "-NoProfile", "-WindowStyle", "Hidden", "-Command", script)
 		proc.DetachHiddenConsole(cmd)
 		if err := cmd.Start(); err != nil {
 			return fmt.Errorf("scheduling removal of %s: %w", a.Paths.Home, err)
@@ -243,7 +242,7 @@ func processesUnder(dir, image string) []int {
 	script := fmt.Sprintf(
 		`Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -like '%s' } | ForEach-Object { "$($_.ProcessId) $($_.Name)" }`,
 		pattern)
-	out, err := exec.Command("powershell", "-NoProfile", "-Command", script).Output()
+	out, err := proc.Quiet("powershell", "-NoProfile", "-Command", script).Output()
 	if err != nil {
 		return nil
 	}

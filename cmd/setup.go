@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -21,6 +20,7 @@ import (
 	"pm/internal/heidisql"
 	"pm/internal/mysql"
 	"pm/internal/phpver"
+	"pm/internal/proc"
 	"pm/internal/shortcut"
 	"pm/internal/vcredist"
 )
@@ -129,7 +129,7 @@ func doSetup(cmd *cobra.Command, wantAutostart bool, dbChoice string) error {
 					// this is an upgrade: replace it.
 					for _, pid := range processesUnder(a.Paths.Home, "mullion.exe") {
 						if pid != os.Getpid() {
-							_ = exec.Command("taskkill", "/F", "/PID", fmt.Sprint(pid)).Run()
+							_ = proc.Quiet("taskkill", "/F", "/PID", fmt.Sprint(pid)).Run()
 						}
 					}
 					time.Sleep(time.Second)

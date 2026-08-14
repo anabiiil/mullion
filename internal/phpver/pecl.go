@@ -6,7 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
+	"pm/internal/proc"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -57,25 +57,36 @@ func InstallPeclExtension(ctx context.Context, paths pmdir.Paths, version, name 
 	}
 	defer os.RemoveAll(staging)
 
-	dll := "php_" + name + ".dll"
-	src := ""
-	filepath.WalkDir(staging, func(p string, d os.DirEntry, err error) error {
-		if err == nil && !d.IsDir() && strings.EqualFold(d.Name(), dll) {
-			src = p
+	// The extension DLL goes into ext\. Everything else the archive
+	// ships (imagick bundles the whole ImageMagick runtime — CORE_RL_*
+	// and friends) must sit next to php.exe or the extension fails to
+	// load with a misleading "module could not be found".
+	extDll := "php_" + name + ".dll"
+	found := false
+	deps := 0
+	werr := filepath.WalkDir(staging, func(p string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.EqualFold(filepath.Ext(d.Name()), ".dll") {
+			return nil
 		}
-		return nil
+		data, err := os.ReadFile(p)
+		if err != nil {
+			return err
+		}
+		if strings.EqualFold(d.Name(), extDll) {
+			found = true
+			return os.WriteFile(filepath.Join(paths.PhpVersionDir(version), "ext", extDll), data, 0o755)
+		}
+		deps++
+		return os.WriteFile(filepath.Join(paths.PhpVersionDir(version), d.Name()), data, 0o755)
 	})
-	if src == "" {
-		return fmt.Errorf("the downloaded archive has no %s in it", dll)
+	if werr != nil {
+		return werr
 	}
-
-	dest := filepath.Join(paths.PhpVersionDir(version), "ext", dll)
-	data, err := os.ReadFile(src)
-	if err != nil {
-		return err
+	if !found {
+		return fmt.Errorf("the downloaded archive has no %s in it", extDll)
 	}
-	if err := os.WriteFile(dest, data, 0o755); err != nil {
-		return err
+	if deps > 0 {
+		fmt.Printf("Placed %d support DLL(s) next to php.exe.\n", deps)
 	}
 
 	return SetExtension(paths, version, name, true)
@@ -84,7 +95,7 @@ func InstallPeclExtension(ctx context.Context, paths pmdir.Paths, version, name 
 // detectABI asks the installed php.exe about its build flavor.
 func detectABI(paths pmdir.Paths, version string) (abi, error) {
 	php := filepath.Join(paths.PhpVersionDir(version), "php.exe")
-	out, err := exec.Command(php, "-i").Output()
+	out, err := proc.Quiet(php, "-i").Output()
 	if err != nil {
 		return abi{}, fmt.Errorf("running php -i for PHP %s: %w", version, err)
 	}

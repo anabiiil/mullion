@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 	"net"
-	"os/exec"
+	"pm/internal/proc"
 	"strconv"
 	"strings"
 	"time"
@@ -88,7 +88,7 @@ func portOwner(port int) (int, string) {
 	script := fmt.Sprintf(
 		`$p = (Get-NetTCPConnection -State Listen -LocalPort %d -ErrorAction SilentlyContinue | Select-Object -First 1).OwningProcess; if ($p) { "$p " + (Get-Process -Id $p -ErrorAction SilentlyContinue).Name }`,
 		port)
-	out, err := exec.Command("powershell", "-NoProfile", "-Command", script).Output()
+	out, err := proc.Quiet("powershell", "-NoProfile", "-Command", script).Output()
 	if err != nil {
 		return 0, ""
 	}
@@ -118,5 +118,5 @@ if ($p) {
   $par = Get-Process -Id $parentId -ErrorAction SilentlyContinue
   if ($par -and $par.Name -eq $p.Name) { Stop-Process -Id $parentId -Force -ErrorAction SilentlyContinue }
 }`, pid, pid, pid)
-	_ = exec.Command("powershell", "-NoProfile", "-Command", script).Run()
+	_ = proc.Quiet("powershell", "-NoProfile", "-Command", script).Run()
 }

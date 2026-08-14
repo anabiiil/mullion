@@ -43,6 +43,10 @@ func ListExtensions(paths pmdir.Paths, version string) ([]Ext, error) {
 	return out, nil
 }
 
+// zendExtensions must be loaded with `zend_extension=` — a plain
+// `extension=` line makes them warn (xdebug) or fail to load.
+var zendExtensions = map[string]bool{"opcache": true, "xdebug": true}
+
 // SetExtension enables or disables one extension in the version's
 // php.ini. Enabling uncomments an existing line when there is one (the
 // stock php.ini ships them commented) and appends one otherwise;
@@ -60,7 +64,7 @@ func SetExtension(paths pmdir.Paths, version, name string, enable bool) error {
 	}
 
 	key := "extension"
-	if name == "opcache" {
+	if zendExtensions[name] {
 		key = "zend_extension"
 	}
 
