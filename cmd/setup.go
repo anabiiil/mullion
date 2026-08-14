@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -124,7 +125,19 @@ func doSetup(cmd *cobra.Command, wantAutostart bool, dbChoice string) error {
 			}
 			if !sameFile(exe, dest) {
 				if err := copyFile(exe, dest); err != nil {
-					fmt.Println("note: could not copy mullion into", a.Paths.BinDir(), "-", err)
+					// An older Mullion (tray, panel) is running from bin —
+					// this is an upgrade: replace it.
+					for _, pid := range processesUnder(a.Paths.Home, "mullion.exe") {
+						if pid != os.Getpid() {
+							_ = exec.Command("taskkill", "/F", "/PID", fmt.Sprint(pid)).Run()
+						}
+					}
+					time.Sleep(time.Second)
+					if err := copyFile(exe, dest); err != nil {
+						fmt.Println("note: could not copy mullion into", a.Paths.BinDir(), "-", err)
+					} else {
+						fmt.Println("Updated the installed mullion.exe.")
+					}
 				}
 			}
 		}
@@ -181,6 +194,8 @@ func doSetup(cmd *cobra.Command, wantAutostart bool, dbChoice string) error {
 				return err
 			}
 			fmt.Printf("PHP %s is now the system default.\n", latest.Version)
+		} else {
+			fmt.Printf("PHP %s already installed — keeping it.\n", a.State.Config.GlobalPHP)
 		}
 		if err := a.State.Save(); err != nil {
 			return err
@@ -227,6 +242,8 @@ func doSetup(cmd *cobra.Command, wantAutostart bool, dbChoice string) error {
 				}
 			}
 			fmt.Printf("MySQL %s is running on 127.0.0.1:%d (user `root`, empty password).\n", v, mysql.Port)
+		} else {
+			fmt.Printf("%s already installed — your databases are untouched.\n", mysql.Label(a.State.Config.MySQL))
 		}
 
 		// Database manager(s), per the user's choice. phpMyAdmin's step
@@ -251,6 +268,15 @@ func doSetup(cmd *cobra.Command, wantAutostart bool, dbChoice string) error {
 				return err
 			}
 			dbLines += "  heidisql   `mullion heidisql` or the panel's HeidiSQL button\n"
+		}
+
+		// Put the tray icon up right away (also the sign-in behavior).
+		if exe, err := os.Executable(); err == nil {
+			trayExe := filepath.Join(a.Paths.BinDir(), "mullion.exe")
+			if _, statErr := os.Stat(trayExe); statErr != nil {
+				trayExe = exe
+			}
+			spawnSelf(trayExe, "tray")
 		}
 
 		fmt.Printf(`

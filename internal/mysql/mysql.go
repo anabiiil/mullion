@@ -5,6 +5,7 @@
 package mysql
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -17,12 +18,14 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"pm/internal/archive"
 	"pm/internal/download"
 	"pm/internal/pmdir"
 	"pm/internal/proc"
+	"pm/internal/term"
 )
 
 // Port is fixed: local dev tools (phpMyAdmin included) expect the default.
@@ -404,6 +407,9 @@ func writeIni(paths pmdir.Paths, version string) error {
 		"datadir=" + paths.MysqlDataDir(),
 		"port=" + strconv.Itoa(Port),
 		"bind-address=127.0.0.1",
+		// Large rows (blobs) in real projects blow past the 64MB default
+		// and abort imports halfway through.
+		"max_allowed_packet=512M",
 		"log-error=" + filepath.Join(paths.LogsDir(), "mysql.err"),
 	}
 	if !IsMaria(version) {
@@ -441,18 +447,48 @@ func UserDatabases(paths pmdir.Paths, version string) ([]string, error) {
 }
 
 // DumpAll writes the given databases from the running server into
-// outFile using the version's own mysqldump.
+// outFile using the version's own mysqldump, showing the exported size
+// grow while it runs.
 func DumpAll(paths pmdir.Paths, version string, dbs []string, outFile string) error {
 	args := []string{
 		"--user=root", "--host=127.0.0.1", fmt.Sprintf("--port=%d", Port),
 		"--single-transaction", "--routines", "--events", "--triggers",
+		"--max-allowed-packet=512M",
 		"--result-file=" + outFile, "--databases",
 	}
 	args = append(args, dbs...)
 	dump := binExe(paths, version, "mysqldump.exe", "mariadb-dump.exe")
-	if out, err := exec.Command(dump, args...).CombinedOutput(); err != nil {
+	cmd := exec.Command(dump, args...)
+
+	done := make(chan struct{})
+	go func() {
+		label := filepath.Base(outFile)
+		tick := time.NewTicker(400 * time.Millisecond)
+		defer tick.Stop()
+		for {
+			select {
+			case <-done:
+				return
+			case <-tick.C:
+				if info, err := os.Stat(outFile); err == nil {
+					fmt.Printf("\r  exporting %s  %.1f MB%s", label,
+						float64(info.Size())/1e6, term.ClearLine())
+				}
+			}
+		}
+	}()
+	out, err := cmd.CombinedOutput()
+	close(done)
+	if err != nil {
+		fmt.Println()
 		return fmt.Errorf("mysqldump: %v: %s", err, out)
 	}
+	size := int64(0)
+	if info, statErr := os.Stat(outFile); statErr == nil {
+		size = info.Size()
+	}
+	fmt.Printf("\r  %s %s  %.1f MB%s\n", term.Green("✓"), filepath.Base(outFile),
+		float64(size)/1e6, term.ClearLine())
 	return nil
 }
 
@@ -464,11 +500,13 @@ func BackupTo(paths pmdir.Paths, version string, dbs []string, dir string) error
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	for _, db := range dbs {
+	for i, db := range dbs {
+		fmt.Printf("database %d of %d: %s\n", i+1, len(dbs), db)
 		if err := DumpAll(paths, version, []string{db}, filepath.Join(dir, db+".sql")); err != nil {
 			return err
 		}
 	}
+	fmt.Println("combined file:")
 	return DumpAll(paths, version, dbs, filepath.Join(dir, "all-databases.sql"))
 }
 
@@ -476,39 +514,81 @@ var uca1400AiCi = regexp.MustCompile(`\butf8mb4_uca1400(?:_nopad)?_ai_ci\b`)
 var uca1400AsCs = regexp.MustCompile(`\butf8mb4_uca1400(?:_nopad)?_as_cs\b`)
 var uca1400Rest = regexp.MustCompile(`\b[a-z0-9]+_uca1400[a-z_]*\b`)
 
-// RestoreFile replays a dump file into the running server. Dumps taken
-// from MariaDB use uca1400 collations MySQL has never heard of — when
-// the target is MySQL they are mapped to their 0900 equivalents first.
+// RestoreFile replays a dump file into the running server, streaming it
+// line by line (a multi-GB dump must never be loaded into memory) with
+// a progress bar. Dumps taken from MariaDB use uca1400 collations MySQL
+// has never heard of — when the target is MySQL each line is mapped to
+// the 0900 equivalents on the fly.
 func RestoreFile(paths pmdir.Paths, version, file string) error {
-	if !IsMaria(version) {
-		data, err := os.ReadFile(file)
-		if err != nil {
-			return err
-		}
-		if strings.Contains(string(data), "uca1400") {
-			s := uca1400AiCi.ReplaceAllString(string(data), "utf8mb4_0900_ai_ci")
-			s = uca1400AsCs.ReplaceAllString(s, "utf8mb4_0900_as_cs")
-			s = uca1400Rest.ReplaceAllString(s, "utf8mb4_general_ci")
-			tmp := file + ".mysql-compat.sql"
-			if err := os.WriteFile(tmp, []byte(s), 0o644); err != nil {
-				return err
-			}
-			defer os.Remove(tmp)
-			file = tmp
-		}
-	}
-
 	f, err := os.Open(file)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
+	total := int64(0)
+	if info, err := f.Stat(); err == nil {
+		total = info.Size()
+	}
+
+	sanitize := !IsMaria(version)
+	var fed atomic.Int64
+	pr, pw := io.Pipe()
+	go func() {
+		br := bufio.NewReaderSize(f, 1<<20)
+		for {
+			line, readErr := br.ReadString('\n')
+			if len(line) > 0 {
+				fed.Add(int64(len(line)))
+				if sanitize && strings.Contains(line, "uca1400") {
+					line = uca1400AiCi.ReplaceAllString(line, "utf8mb4_0900_ai_ci")
+					line = uca1400AsCs.ReplaceAllString(line, "utf8mb4_0900_as_cs")
+					line = uca1400Rest.ReplaceAllString(line, "utf8mb4_general_ci")
+				}
+				if _, werr := io.WriteString(pw, line); werr != nil {
+					return // client died; CombinedOutput reports why
+				}
+			}
+			if readErr != nil {
+				pw.Close()
+				return
+			}
+		}
+	}()
+
+	done := make(chan struct{})
+	go func() {
+		label := filepath.Base(file)
+		tick := time.NewTicker(400 * time.Millisecond)
+		defer tick.Stop()
+		for {
+			select {
+			case <-done:
+				return
+			case <-tick.C:
+				cur := fed.Load()
+				if total > 0 {
+					pct := cur * 100 / total
+					fmt.Printf("\r  importing %s  %3d%%  %.1f / %.1f MB%s", label,
+						pct, float64(cur)/1e6, float64(total)/1e6, term.ClearLine())
+				} else {
+					fmt.Printf("\r  importing %s  %.1f MB%s", label, float64(cur)/1e6, term.ClearLine())
+				}
+			}
+		}
+	}()
+
 	cmd := exec.Command(clientExe(paths, version),
-		"--user=root", "--host=127.0.0.1", fmt.Sprintf("--port=%d", Port))
-	cmd.Stdin = f
-	if out, err := cmd.CombinedOutput(); err != nil {
+		"--user=root", "--host=127.0.0.1", fmt.Sprintf("--port=%d", Port),
+		"--max-allowed-packet=512M")
+	cmd.Stdin = pr
+	out, err := cmd.CombinedOutput()
+	close(done)
+	if err != nil {
+		fmt.Println()
 		return fmt.Errorf("restoring dump: %v: %s", err, out)
 	}
+	fmt.Printf("\r  %s %s  %.1f MB imported%s\n", term.Green("✓"), filepath.Base(file),
+		float64(fed.Load())/1e6, term.ClearLine())
 	return nil
 }
 

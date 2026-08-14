@@ -55,6 +55,28 @@ var phpExtDisableCmd = &cobra.Command{
 	RunE:  func(cmd *cobra.Command, args []string) error { return setExt(args, false) },
 }
 
+var phpExtGetCmd = &cobra.Command{
+	Use:     "get <name> [version]",
+	Aliases: []string{"add"},
+	Short:   "Download a PECL extension the build doesn't ship (redis, xdebug, imagick, ...) and enable it",
+	Args:    cobra.RangeArgs(1, 2),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		a := mustApp()
+		version, err := extTargetVersion(a, args, 1)
+		if err != nil {
+			return err
+		}
+		if err := phpver.InstallPeclExtension(cmd.Context(), a.Paths, version, args[0]); err != nil {
+			return err
+		}
+		if err := a.RestartPhp(version); err != nil {
+			return err
+		}
+		fmt.Printf("%s installed and enabled for PHP %s.\n", args[0], version)
+		return nil
+	},
+}
+
 func setExt(args []string, enable bool) error {
 	a := mustApp()
 	version, err := extTargetVersion(a, args, 1)
@@ -93,6 +115,6 @@ func extTargetVersion(a *app.App, args []string, idx int) (string, error) {
 }
 
 func init() {
-	phpExtCmd.AddCommand(phpExtListCmd, phpExtEnableCmd, phpExtDisableCmd)
+	phpExtCmd.AddCommand(phpExtListCmd, phpExtEnableCmd, phpExtDisableCmd, phpExtGetCmd)
 	phpCmd.AddCommand(phpExtCmd)
 }

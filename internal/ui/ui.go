@@ -35,6 +35,13 @@ import (
 //go:embed index.html
 var indexHTML []byte
 
+// Served as a real PNG favicon: Chromium app windows take their
+// taskbar icon from it — an SVG data-URI icon gets ignored and the
+// window shows the browser's own icon instead.
+//
+//go:embed favicon.png
+var faviconPNG []byte
+
 // Run serves the control panel and blocks until its window is closed
 // (or ctx is cancelled when no app window could be opened).
 func Run(ctx context.Context) error {
@@ -218,6 +225,10 @@ func newMux(token string) *http.ServeMux {
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Write(indexHTML)
+	})
+	mux.HandleFunc("/favicon.png", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "image/png")
+		w.Write(faviconPNG)
 	})
 
 	api := func(path string, h func(a *app.App, r *http.Request) (any, error)) {

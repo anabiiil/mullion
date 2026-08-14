@@ -22,14 +22,15 @@ func scriptPath() (string, error) {
 		"Microsoft", "Windows", "Start Menu", "Programs", "Startup", "mullion-autostart.vbs"), nil
 }
 
-// Enable registers `mullion start` to run at sign-in.
+// Enable registers `mullion tray` to run at sign-in: it starts the
+// services AND keeps the notification-area icon alive.
 func Enable(paths pmdir.Paths) error {
 	p, err := scriptPath()
 	if err != nil {
 		return err
 	}
 	exe := filepath.Join(paths.BinDir(), "mullion.exe")
-	script := fmt.Sprintf("CreateObject(\"WScript.Shell\").Run \"\"\"%s\"\" start\", 0, False\r\n", exe)
+	script := fmt.Sprintf("CreateObject(\"WScript.Shell\").Run \"\"\"%s\"\" tray\", 0, False\r\n", exe)
 	return os.WriteFile(p, []byte(script), 0o644)
 }
 

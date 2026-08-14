@@ -70,6 +70,7 @@ regular desktop window (or run `mullion ui` from a terminal). From the panel you
 | `mullion autostart` | Shows whether Mullion starts automatically at sign-in. |
 | `mullion autostart on` | Services start automatically when you sign in to Windows. |
 | `mullion autostart off` | Disables autostart. |
+| `mullion tray` | Puts a Mullion icon in the notification area (next to the clock): double-click opens the dashboard; right-click has Start/Stop, phpMyAdmin, Quit. Runs automatically at sign-in and after setup. |
 | `mullion uninstall` | Removes Mullion completely — services, PHP, MySQL, phpMyAdmin, Composer, hosts/PATH entries, certificate, autostart. First offers to back your databases up to `C:\Mullion-Backups\<date>\` — one `.sql` per database plus `all-databases.sql` (backups survive the uninstall). **Project folders are never touched.** |
 
 ### Managing PHP versions
@@ -84,6 +85,7 @@ regular desktop window (or run `mullion ui` from a terminal). From the panel you
 | `mullion php ext list [v]` | Lists a version's extensions (`[x]` = enabled); defaults to the global version. |
 | `mullion php ext enable soap [v]` | Enables an extension (e.g. `soap`, `intl`, `ldap`) and restarts that version's php-cgi so sites pick it up immediately. |
 | `mullion php ext disable soap [v]` | Disables an extension. Also available in the control panel: PHP card → **Extensions → Manage**. |
+| `mullion php ext get redis [v]` | Downloads a **PECL** extension the stock build doesn't ship (redis, xdebug, imagick, ...), matched to the exact PHP build, and enables it. |
 
 ### A different PHP version per project
 
