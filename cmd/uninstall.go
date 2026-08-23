@@ -18,6 +18,7 @@ import (
 	"pm/internal/fcgi"
 	"pm/internal/hosts"
 	"pm/internal/mysql"
+	"pm/internal/pmdir"
 	"pm/internal/proc"
 	"pm/internal/shortcut"
 )
@@ -115,7 +116,7 @@ func doUninstall(a *app.App, wantBackup bool) error {
 		v := a.State.Config.MySQL
 		// Port 3306 answering while no Mullion mysqld runs means another
 		// stack (Laragon?) owns it — dumping would export THEIR data.
-		if mysql.Running() && len(processesUnder(a.Paths.Home, "mysqld.exe")) == 0 {
+		if mysql.Running() && len(processesUnder(a.Paths.Home, pmdir.ExeName("mysqld"))) == 0 {
 			return fmt.Errorf("another MySQL server (Laragon/XAMPP?) is on port 3306 — stop it and re-run, or pass --no-backup")
 		}
 		if !mysql.Running() {
@@ -148,15 +149,16 @@ func doUninstall(a *app.App, wantBackup bool) error {
 	fmt.Println("Stopping services...")
 	_ = caddy.Stop(a.Paths)
 	_ = fcgi.StopAll(a.Paths)
-	if v := a.State.Config.MySQL; v != "" && len(processesUnder(a.Paths.Home, "mysqld.exe")) > 0 {
+	if v := a.State.Config.MySQL; v != "" && len(processesUnder(a.Paths.Home, pmdir.ExeName("mysqld"))) > 0 {
 		_ = mysql.Stop(a.Paths, v)
 	}
 	for _, pid := range processesUnder(a.Paths.Home, "") {
-		// Never kill ourselves — this very process runs from bin\mullion.exe.
+		// Never kill ourselves — this very process may run from the
+		// installed bin directory.
 		if pid == os.Getpid() {
 			continue
 		}
-		_ = proc.Quiet("taskkill", "/F", "/PID", fmt.Sprint(pid)).Run()
+		killProcess(pid)
 	}
 
 	// 3. Hosts entries, trust store, autostart, PATH.
@@ -206,61 +208,19 @@ func doUninstall(a *app.App, wantBackup bool) error {
 	if resolved, err := filepath.EvalSymlinks(exe); err == nil {
 		exe = resolved
 	}
-	if !strings.HasPrefix(strings.ToLower(exe), strings.ToLower(a.Paths.Home)+`\`) {
+	if !strings.HasPrefix(strings.ToLower(exe), strings.ToLower(a.Paths.Home)+string(os.PathSeparator)) {
 		if err := os.RemoveAll(a.Paths.Home); err != nil {
 			return err
 		}
 	} else {
-		script := fmt.Sprintf(`
-$dir = '%s'
-for ($i = 0; $i -lt 120; $i++) {
-  $running = Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -like ($dir + '\*') }
-  if (-not $running) { break }
-  Start-Sleep -Seconds 1
-}
-Start-Sleep -Seconds 1
-Remove-Item -Recurse -Force $dir -ErrorAction SilentlyContinue`,
-			strings.ReplaceAll(a.Paths.Home, "'", "''"))
-		cmd := proc.Quiet("powershell", "-NoProfile", "-WindowStyle", "Hidden", "-Command", script)
-		proc.DetachHiddenConsole(cmd)
-		if err := cmd.Start(); err != nil {
-			return fmt.Errorf("scheduling removal of %s: %w", a.Paths.Home, err)
+		if err := scheduleHomeRemoval(a.Paths.Home); err != nil {
+			return err
 		}
-		_ = cmd.Process.Release()
 		fmt.Println("(the bin folder removes itself moments after the last Mullion window closes)")
 	}
 
 	fmt.Println("\nMullion has been removed. Your project folders were not touched.")
 	return nil
-}
-
-// processesUnder lists PIDs of running processes whose executable lives
-// under dir (optionally restricted to one image name). This is how the
-// uninstall distinguishes Mullion's servers from Laragon's.
-func processesUnder(dir, image string) []int {
-	pattern := strings.ReplaceAll(dir, "'", "''") + `\*`
-	script := fmt.Sprintf(
-		`Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -like '%s' } | ForEach-Object { "$($_.ProcessId) $($_.Name)" }`,
-		pattern)
-	out, err := proc.Quiet("powershell", "-NoProfile", "-Command", script).Output()
-	if err != nil {
-		return nil
-	}
-	var pids []int
-	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
-		fields := strings.Fields(strings.TrimSpace(line))
-		if len(fields) < 2 {
-			continue
-		}
-		if image != "" && !strings.EqualFold(fields[1], image) {
-			continue
-		}
-		var pid int
-		if _, err := fmt.Sscan(fields[0], &pid); err == nil && pid > 0 {
-			pids = append(pids, pid)
-		}
-	}
-	return pids
 }
 
 func askYesNo(question string, def bool) bool {

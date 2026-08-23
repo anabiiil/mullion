@@ -4,12 +4,13 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
 	"pm/internal/app"
 	"pm/internal/autostart"
-	"pm/internal/proc"
+	"pm/internal/pmdir"
 	"pm/internal/shortcut"
 	"pm/internal/version"
 )
@@ -41,13 +42,13 @@ func selfUpdateIfNeeded(a *app.App) {
 	if resolved, err := filepath.EvalSymlinks(exe); err == nil {
 		exe = resolved
 	}
-	dest := filepath.Join(a.Paths.BinDir(), "mullion.exe")
+	dest := filepath.Join(a.Paths.BinDir(), pmdir.ExeName("mullion"))
 
 	// Replace the installed copy unless we ARE the installed copy.
 	if !sameFile(exe, dest) {
-		for _, pid := range processesUnder(a.Paths.Home, "mullion.exe") {
+		for _, pid := range processesUnder(a.Paths.Home, pmdir.ExeName("mullion")) {
 			if pid != os.Getpid() {
-				_ = proc.Quiet("taskkill", "/F", "/PID", fmt.Sprint(pid)).Run()
+				killProcess(pid)
 			}
 		}
 		time.Sleep(time.Second)
@@ -66,6 +67,8 @@ func selfUpdateIfNeeded(a *app.App) {
 	_ = os.WriteFile(a.Paths.VersionFile(), []byte(version.Number), 0o644)
 
 	// Bring the tray up on the new version (no-op if already running).
-	spawnSelf(dest, "tray")
+	if runtime.GOOS == "windows" {
+		spawnSelf(dest, "tray")
+	}
 	fmt.Printf("Mullion is now v%s.\n", version.Number)
 }

@@ -245,7 +245,7 @@
     </nav>
 
     <div class="side-foot">
-      <label class="toggle"><span class="switch"><input type="checkbox" id="autostart"><i></i></span> Start with Windows</label>
+      <label class="toggle"><span class="switch"><input type="checkbox" id="autostart"><i></i></span> <span id="autostart-label">Start at sign-in</span></label>
       <span class="ver">Mullion v1.1</span>
     </div>
   </aside>
@@ -316,7 +316,7 @@
               <option value="8.0"></option>
             </datalist>
             <button id="btn-mysql-switch">Switch</button>
-            <span class="muted">databases migrate automatically — backed up to C:\Mullion-Backups first</span>
+            <span class="muted">databases migrate automatically — backed up <span id="backups-dir"></span>first</span>
           </div>
         </div>
       </section>
@@ -333,7 +333,7 @@
             <tbody id="sites-body"></tbody>
           </table>
           <div class="row" style="margin-top:16px">
-            <input type="text" id="link-path" placeholder="C:\code\myapp — full project path" style="flex:1; min-width:240px" class="mono">
+            <input type="text" id="link-path" placeholder="full project path" style="flex:1; min-width:240px" class="mono">
             <input type="text" id="link-name" placeholder="name (optional)" size="13" class="mono">
             <button id="btn-link" class="primary">Link</button>
           </div>
@@ -397,6 +397,9 @@ function render() {
   $('autostart').checked = s.autostart;
   $('btn-pma').style.display = s.sites.some(x => x.name === 'phpmyadmin') ? '' : 'none';
   $('btn-heidi').style.display = s.heidisql ? '' : 'none';
+  $('autostart-label').textContent = s.windows ? 'Start with Windows' : 'Start at login';
+  if (s.backupsDir) $('backups-dir').textContent = 'to ' + s.backupsDir + ' ';
+  $('link-path').placeholder = (s.windows ? 'C:\\code\\myapp' : s.homeDir + '/code/myapp') + ' — full project path';
 
   const warn = $('shadow-warn');
   if (s.phpShadow) {

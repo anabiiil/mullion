@@ -8,7 +8,7 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  build-windows:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,10 +27,128 @@ jobs:
         shell: pwsh
         run: Compress-Archive -Path mullion.exe -DestinationPath "mullion-${{ github.ref_name }}-windows-amd64.zip"
 
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: |
+            mullion.exe
+            mullion-*.zip
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+
+      - name: Test
+        run: go test ./...
+
+      - name: Build (arm64 + amd64)
+        run: |
+          GOARCH=arm64 go build -trimpath -o mullion-arm64 .
+          GOARCH=amd64 go build -trimpath -o mullion-amd64 .
+
+      - name: Package
+        run: |
+          mkdir -p pkg-arm64 pkg-amd64
+          cp mullion-arm64 pkg-arm64/mullion
+          cp mullion-amd64 pkg-amd64/mullion
+          tar -czf "mullion-${{ github.ref_name }}-darwin-arm64.tar.gz" -C pkg-arm64 mullion
+          tar -czf "mullion-${{ github.ref_name }}-darwin-amd64.tar.gz" -C pkg-amd64 mullion
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: mullion-*.tar.gz
+
+  release:
+    needs: [build-windows, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             mullion.exe
-            mullion-${{ github.ref_name }}-windows-amd64.zip
+            mullion-*.zip
+            mullion-*.tar.gz
           generate_release_notes: true
+
+  homebrew-tap:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos
+
+      - name: Update the tap formula
+        env:
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if [ -z "$TAP_TOKEN" ]; then
+            echo "HOMEBREW_TAP_TOKEN secret not set — skipping the Homebrew tap update."
+            exit 0
+          fi
+          VERSION="${TAG#v}"
+          ARM_SHA=$(sha256sum "mullion-${TAG}-darwin-arm64.tar.gz" | cut -d' ' -f1)
+          AMD_SHA=$(sha256sum "mullion-${TAG}-darwin-amd64.tar.gz" | cut -d' ' -f1)
+          sed -e "s/@TAG@/${TAG}/g" \
+              -e "s/@VERSION@/${VERSION}/g" \
+              -e "s/@ARM_SHA@/${ARM_SHA}/g" \
+              -e "s/@AMD_SHA@/${AMD_SHA}/g" \
+              packaging/homebrew/mullion.rb.tmpl > mullion.rb
+          git clone "https://x-access-token:${TAP_TOKEN}@github.com/anabiiil/homebrew-tap.git" tap
+          mkdir -p tap/Formula
+          cp mullion.rb tap/Formula/mullion.rb
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/mullion.rb
+          git diff --cached --quiet || git commit -m "mullion ${TAG}"
+          git push
+
+  scoop-bucket:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows
+
+      - name: Update the bucket manifest
+        env:
+          BUCKET_TOKEN: ${{ secrets.SCOOP_BUCKET_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if [ -z "$BUCKET_TOKEN" ]; then
+            echo "SCOOP_BUCKET_TOKEN secret not set — skipping the Scoop bucket update."
+            exit 0
+          fi
+          VERSION="${TAG#v}"
+          SHA=$(sha256sum "mullion-${TAG}-windows-amd64.zip" | cut -d' ' -f1)
+          sed -e "s/@TAG@/${TAG}/g" \
+              -e "s/@VERSION@/${VERSION}/g" \
+              -e "s/@SHA@/${SHA}/g" \
+              packaging/scoop/mullion.json.tmpl > mullion.json
+          git clone "https://x-access-token:${BUCKET_TOKEN}@github.com/anabiiil/scoop-bucket.git" bucket
+          mkdir -p bucket/bucket
+          cp mullion.json bucket/bucket/mullion.json
+          cd bucket
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add bucket/mullion.json
+          git diff --cached --quiet || git commit -m "mullion ${TAG}"
+          git push

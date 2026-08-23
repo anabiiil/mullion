@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"runtime"
 
 	"github.com/spf13/cobra"
 
@@ -12,9 +13,18 @@ import (
 	"pm/internal/term"
 )
 
+// fcgiLabel names the per-version FastCGI worker in status output.
+var fcgiLabel = map[string]string{"windows": "php-cgi"}[runtime.GOOS]
+
+func init() {
+	if fcgiLabel == "" {
+		fcgiLabel = "php-fpm"
+	}
+}
+
 var startCmd = &cobra.Command{
 	Use:   "start",
-	Short: "Start Caddy and the php-cgi processes for all sites",
+	Short: "Start Caddy and the PHP FastCGI workers for all sites",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		a := mustApp()
 		if err := caddy.EnsureInstalled(cmd.Context(), a.Paths); err != nil {
@@ -38,7 +48,7 @@ var startCmd = &cobra.Command{
 
 var stopCmd = &cobra.Command{
 	Use:   "stop",
-	Short: "Stop Caddy and all php-cgi processes",
+	Short: "Stop Caddy and all PHP FastCGI workers",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		a := mustApp()
 		if err := caddy.Stop(a.Paths); err != nil {
@@ -96,7 +106,7 @@ var statusCmd = &cobra.Command{
 			if len(fcgi.RunningVersions([]string{v})) == 1 {
 				state = term.Green("running")
 			}
-			fmt.Printf("php-cgi:  %-10s port %d  %s\n", v, port, state)
+			fmt.Printf("%-9s %-10s port %d  %s\n", fcgiLabel+":", v, port, state)
 		}
 
 		if v := a.State.Config.MySQL; v != "" {

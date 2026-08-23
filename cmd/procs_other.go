@@ -1,0 +1,108 @@
+//go:build !windows
+
+package cmd
+
+import (
+	"fmt"
+	"os/exec"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"syscall"
+	"time"
+)
+
+// portOwner resolves which process listens on the port.
+func portOwner(port int) (int, string) {
+	out, err := exec.Command("lsof", "-nP", "-iTCP:"+strconv.Itoa(port), "-sTCP:LISTEN", "-Fpc").Output()
+	if err != nil {
+		return 0, ""
+	}
+	pid, name := 0, "unknown"
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		switch {
+		case strings.HasPrefix(line, "p") && pid == 0:
+			pid, _ = strconv.Atoi(line[1:])
+		case strings.HasPrefix(line, "c") && pid != 0:
+			name = line[1:]
+			return pid, name
+		}
+	}
+	return pid, name
+}
+
+// killWithParent stops the process: TERM first, KILL if it lingers.
+// (The Windows implementation also stops a same-name parent — the
+// mysqld monitor pattern — which doesn't exist on Unix.)
+func killWithParent(pid int) {
+	_ = syscall.Kill(pid, syscall.SIGTERM)
+	for i := 0; i < 20; i++ {
+		if syscall.Kill(pid, 0) != nil {
+			return
+		}
+		time.Sleep(250 * time.Millisecond)
+	}
+	_ = syscall.Kill(pid, syscall.SIGKILL)
+}
+
+// processesUnder lists PIDs of running processes whose executable lives
+// under dir (optionally restricted to one image name). This is how the
+// uninstall distinguishes Mullion's servers from someone else's.
+func processesUnder(dir, image string) []int {
+	// On macOS `ps -o comm` prints the full executable path.
+	out, err := exec.Command("ps", "-axo", "pid=,comm=").Output()
+	if err != nil {
+		return nil
+	}
+	prefix := filepath.Clean(dir) + string(filepath.Separator)
+	var pids []int
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		fields := strings.Fields(strings.TrimSpace(line))
+		if len(fields) < 2 {
+			continue
+		}
+		exe := strings.Join(fields[1:], " ")
+		if !strings.HasPrefix(exe, prefix) {
+			continue
+		}
+		if image != "" && !strings.EqualFold(filepath.Base(exe), image) {
+			continue
+		}
+		if pid, err := strconv.Atoi(fields[0]); err == nil && pid > 0 {
+			pids = append(pids, pid)
+		}
+	}
+	return pids
+}
+
+// killProcess force-stops one process by pid.
+func killProcess(pid int) {
+	_ = syscall.Kill(pid, syscall.SIGKILL)
+}
+
+// openURL opens a web page in the default browser.
+func openURL(url string) {
+	opener := "open" // macOS
+	if _, err := exec.LookPath(opener); err != nil {
+		opener = "xdg-open"
+	}
+	_ = exec.Command(opener, url).Start()
+}
+
+// scheduleHomeRemoval starts a detached helper that deletes the install
+// directory once every Mullion process has exited — this very process
+// still runs from bin, so it cannot delete it itself.
+func scheduleHomeRemoval(home string) error {
+	// The [f]irst-char class keeps pgrep -f from matching the helper's
+	// own command line (which contains the pattern itself).
+	pattern := "[" + home[:1] + "]" + home[1:] + "/"
+	script := fmt.Sprintf(`for i in $(seq 1 120); do pgrep -f %q >/dev/null || break; sleep 1; done; sleep 1; rm -rf %q`,
+		pattern, home)
+	cmd := exec.Command("/bin/sh", "-c", script)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("scheduling removal of %s: %w", home, err)
+	}
+	_ = cmd.Process.Release()
+	return nil
+}

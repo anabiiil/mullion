@@ -16,6 +16,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -30,8 +31,6 @@ import (
 
 // Port is fixed: local dev tools (phpMyAdmin included) expect the default.
 const Port = 3306
-
-var versionRe = regexp.MustCompile(`mysql-(\d+)\.(\d+)\.(\d+)-winx64\.zip`)
 
 // MariaDB installs are versioned as "mariadb-<x.y.z>" so one config
 // field and one directory layout cover both flavors.
@@ -49,19 +48,21 @@ func Label(version string) string {
 }
 
 // binExe finds a tool in the version's bin dir, accepting both the
-// MySQL and the MariaDB name for it.
+// MySQL and the MariaDB name for it (with or without .exe).
 func binExe(paths pmdir.Paths, version string, names ...string) string {
 	for _, n := range names {
-		p := filepath.Join(paths.MysqlVersionDir(version), "bin", n)
-		if _, err := os.Stat(p); err == nil {
-			return p
+		for _, cand := range []string{n, n + ".exe"} {
+			p := filepath.Join(paths.MysqlVersionDir(version), "bin", cand)
+			if _, err := os.Stat(p); err == nil {
+				return p
+			}
 		}
 	}
-	return filepath.Join(paths.MysqlVersionDir(version), "bin", names[0])
+	return filepath.Join(paths.MysqlVersionDir(version), "bin", pmdir.ExeName(names[0]))
 }
 
 func serverExe(paths pmdir.Paths, version string) string {
-	return binExe(paths, version, "mysqld.exe", "mariadbd.exe")
+	return binExe(paths, version, "mysqld", "mariadbd")
 }
 
 // MariaLatest resolves the newest stable MariaDB via the official REST
@@ -156,32 +157,32 @@ func DefaultVersion(ctx context.Context) (string, error) {
 // Latest scrapes dev.mysql.com's download page for the newest Windows
 // x64 zip release overall (innovation branch included).
 func Latest(ctx context.Context) (string, error) {
-	body, err := fetchPage(ctx, "https://dev.mysql.com/downloads/mysql/")
+	body, err := fetchPage(ctx, "https://dev.mysql.com/downloads/mysql/"+downloadPageQuery)
 	if err != nil {
 		return "", err
 	}
 	if v := newestOnPage(body, ""); v != "" {
 		return v, nil
 	}
-	return "", fmt.Errorf("could not find a Windows zip release on the MySQL download page; pass a version explicitly: mullion mysql install 8.4.11")
+	return "", fmt.Errorf("could not find a downloadable release on the MySQL download page; pass a version explicitly: mullion mysql install 8.4.11")
 }
 
 // LatestSeries resolves the newest release of one branch, e.g. "8.4".
 func LatestSeries(ctx context.Context, series string) (string, error) {
 	// Each branch has its own download page; fall back to the generic one.
-	if body, err := fetchPage(ctx, "https://dev.mysql.com/downloads/mysql/"+series+".html"); err == nil {
+	if body, err := fetchPage(ctx, "https://dev.mysql.com/downloads/mysql/"+series+".html"+downloadPageQuery); err == nil {
 		if v := newestOnPage(body, series+"."); v != "" {
 			return v, nil
 		}
 	}
-	body, err := fetchPage(ctx, "https://dev.mysql.com/downloads/mysql/")
+	body, err := fetchPage(ctx, "https://dev.mysql.com/downloads/mysql/"+downloadPageQuery)
 	if err != nil {
 		return "", err
 	}
 	if v := newestOnPage(body, series+"."); v != "" {
 		return v, nil
 	}
-	return "", fmt.Errorf("could not find a MySQL %s release for Windows; pass a full version explicitly", series)
+	return "", fmt.Errorf("could not find a downloadable MySQL %s release; pass a full version explicitly", series)
 }
 
 func fetchPage(ctx context.Context, url string) (string, error) {
@@ -216,52 +217,42 @@ func newestOnPage(body, prefix string) string {
 	return best
 }
 
-// zipURLs returns the download candidates for a version: the current
-// release CDN first, then the archive (where superseded releases move).
-// MariaDB's archive hosts every release at a stable path.
-func zipURLs(version string) []string {
-	if IsMaria(version) {
-		v := strings.TrimPrefix(version, mariaPrefix)
-		return []string{
-			fmt.Sprintf("https://archive.mariadb.org/mariadb-%s/winx64-packages/mariadb-%s-winx64.zip", v, v),
-		}
-	}
-	series := version[:strings.LastIndex(version, ".")]
-	name := fmt.Sprintf("mysql-%s-winx64.zip", version)
-	return []string{
-		fmt.Sprintf("https://dev.mysql.com/get/Downloads/MySQL-%s/%s", series, name),
-		fmt.Sprintf("https://downloads.mysql.com/archives/get/p/23/file/%s", name),
-	}
-}
-
-// Install downloads and unpacks a release into C:\Mullion\mysql\<version>.
+// Install downloads and unpacks a release into the versions directory.
 // It is a no-op if the version is already installed.
 func Install(ctx context.Context, paths pmdir.Paths, version string) error {
 	if _, err := os.Stat(serverExe(paths, version)); err == nil {
 		return nil
 	}
+	if err := flavorSupported(version); err != nil {
+		return err
+	}
 
+	fmt.Printf("Downloading %s...\n", Label(version))
 	var lastErr error
-	for _, url := range zipURLs(version) {
-		zipPath := filepath.Join(paths.TmpDir(), filepath.Base(url))
-		fmt.Printf("Downloading %s...\n", Label(version))
-		if lastErr = download.ToFile(ctx, url, zipPath); lastErr != nil {
+	for _, url := range downloadURLs(version) {
+		archivePath := filepath.Join(paths.TmpDir(), filepath.Base(url))
+		if lastErr = download.ToFile(ctx, url, archivePath); lastErr != nil {
 			continue
 		}
-		defer os.Remove(zipPath)
+		defer os.Remove(archivePath)
 
-		// The zip wraps everything in a <flavor>-<v>-winx64/ directory:
-		// extract to a staging dir, then move that directory into place.
+		// The archive wraps everything in a <flavor>-<v>-<platform>/
+		// directory: extract to a staging dir, then move that directory
+		// into place.
 		staging := filepath.Join(paths.TmpDir(), "mysql-extract")
 		os.RemoveAll(staging)
-		if err := archive.ExtractZip(zipPath, staging); err != nil {
-			return fmt.Errorf("extracting %s: %w", zipPath, err)
+		var err error
+		if strings.HasSuffix(url, ".zip") {
+			err = archive.ExtractZip(archivePath, staging)
+		} else {
+			err = archive.ExtractTarGz(archivePath, staging)
 		}
-		inner := filepath.Join(staging, strings.TrimSuffix(filepath.Base(url), ".zip"))
-		if _, err := os.Stat(filepath.Join(inner, "bin", "mysqld.exe")); err != nil {
-			if _, err2 := os.Stat(filepath.Join(inner, "bin", "mariadbd.exe")); err2 != nil {
-				return fmt.Errorf("unexpected archive layout: %w", err)
-			}
+		if err != nil {
+			return fmt.Errorf("extracting %s: %w", archivePath, err)
+		}
+		inner, err := findServerDir(staging)
+		if err != nil {
+			return err
 		}
 		if err := os.MkdirAll(paths.MysqlDir(), 0o755); err != nil {
 			return err
@@ -273,6 +264,28 @@ func Install(ctx context.Context, paths pmdir.Paths, version string) error {
 		return nil
 	}
 	return fmt.Errorf("downloading %s: %w", Label(version), lastErr)
+}
+
+// findServerDir locates the extracted directory that holds bin/mysqld
+// (or bin/mariadbd) — more robust than predicting the archive's
+// top-level directory name.
+func findServerDir(staging string) (string, error) {
+	candidates := []string{staging}
+	if entries, err := os.ReadDir(staging); err == nil {
+		for _, e := range entries {
+			if e.IsDir() {
+				candidates = append(candidates, filepath.Join(staging, e.Name()))
+			}
+		}
+	}
+	for _, dir := range candidates {
+		for _, name := range []string{"mysqld", "mysqld.exe", "mariadbd", "mariadbd.exe"} {
+			if _, err := os.Stat(filepath.Join(dir, "bin", name)); err == nil {
+				return dir, nil
+			}
+		}
+	}
+	return "", fmt.Errorf("unexpected archive layout: no bin/mysqld under %s", staging)
 }
 
 // EnsureInitialized creates the data directory (root user, no password)
@@ -287,7 +300,7 @@ func EnsureInitialized(paths pmdir.Paths, version string) error {
 	fmt.Printf("Initializing the %s data directory...\n", Label(version))
 	var cmd *exec.Cmd
 	if IsMaria(version) {
-		cmd = proc.Quiet(binExe(paths, version, "mariadb-install-db.exe", "mysql_install_db.exe"),
+		cmd = proc.Quiet(binExe(paths, version, "mariadb-install-db", "mysql_install_db"),
 			"--datadir="+paths.MysqlDataDir())
 	} else {
 		cmd = proc.Quiet(serverExe(paths, version),
@@ -320,7 +333,7 @@ func Start(paths pmdir.Paths, version string) error {
 	// the server down, and the pid we record wouldn't be the server's.
 	// MariaDB has no monitor process (and no such flag).
 	args := []string{"--defaults-file=" + paths.MysqlIni()}
-	if !IsMaria(version) {
+	if runtime.GOOS == "windows" && !IsMaria(version) {
 		args = append(args, "--no-monitor")
 	}
 	cmd := proc.Quiet(serverExe(paths, version), args...)
@@ -358,7 +371,7 @@ func Stop(paths pmdir.Paths, version string) error {
 		killByPidFile(paths)
 		return nil
 	}
-	admin := binExe(paths, version, "mysqladmin.exe", "mariadb-admin.exe")
+	admin := binExe(paths, version, "mysqladmin", "mariadb-admin")
 	cmd := proc.Quiet(admin, "--user=root", "--host=127.0.0.1",
 		fmt.Sprintf("--port=%d", Port), "shutdown")
 	if out, err := cmd.CombinedOutput(); err != nil {
@@ -416,7 +429,15 @@ func writeIni(paths pmdir.Paths, version string) error {
 		// Unknown to MariaDB — it refuses to start on unknown options.
 		lines = append(lines, "mysqlx=OFF")
 	}
-	content := strings.Join(append(lines, ""), "\r\n")
+	newline := "\n"
+	if runtime.GOOS == "windows" {
+		newline = "\r\n"
+	} else {
+		// The default socket path, so clients connecting to `localhost`
+		// (which means the socket on Unix) find the server too.
+		lines = append(lines, "socket=/tmp/mysql.sock")
+	}
+	content := strings.Join(append(lines, ""), newline)
 	if err := os.MkdirAll(paths.MysqlDir(), 0o755); err != nil {
 		return err
 	}
@@ -457,7 +478,7 @@ func DumpAll(paths pmdir.Paths, version string, dbs []string, outFile string) er
 		"--result-file=" + outFile, "--databases",
 	}
 	args = append(args, dbs...)
-	dump := binExe(paths, version, "mysqldump.exe", "mariadb-dump.exe")
+	dump := binExe(paths, version, "mysqldump", "mariadb-dump")
 	cmd := proc.Quiet(dump, args...)
 
 	done := make(chan struct{})
@@ -599,7 +620,7 @@ func DataInitialized(paths pmdir.Paths) bool {
 }
 
 func clientExe(paths pmdir.Paths, version string) string {
-	return binExe(paths, version, "mysql.exe", "mariadb.exe")
+	return binExe(paths, version, "mysql", "mariadb")
 }
 
 // compare orders two full versions like "8.4.6" numerically.

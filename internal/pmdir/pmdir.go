@@ -60,3 +60,6 @@ func (p Paths) EnsureLayout() error {
 	}
 	return nil
 }
+
+// ExeName appends the platform's executable suffix (".exe" on Windows).
+func ExeName(base string) string { return exeName(base) }

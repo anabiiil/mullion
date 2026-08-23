@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"runtime"
 
 	"github.com/spf13/cobra"
 
@@ -22,11 +23,15 @@ var phpAvailableCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Println("Current releases on windows.php.net:")
+		fmt.Println("Current releases on " + phpver.Source + ":")
 		for _, r := range releases {
 			fmt.Printf("  %s\n", r.Version)
 		}
-		fmt.Println("\nOlder (end-of-life) versions can also be installed by number, e.g.: mullion php install 7.4")
+		if runtime.GOOS == "windows" {
+			fmt.Println("\nOlder (end-of-life) versions can also be installed by number, e.g.: mullion php install 7.4")
+		} else {
+			fmt.Println("\nOlder patch releases (PHP 8.0 and newer) can also be installed by number, e.g.: mullion php install 8.1")
+		}
 		return nil
 	},
 }

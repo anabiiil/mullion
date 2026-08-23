@@ -1,3 +1,5 @@
+//go:build windows
+
 package phpver
 
 import (
@@ -6,8 +8,8 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"pm/internal/proc"
 	"path/filepath"
+	"pm/internal/proc"
 	"regexp"
 	"sort"
 	"strings"

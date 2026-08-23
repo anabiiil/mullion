@@ -3,9 +3,6 @@ package cmd
 import (
 	"fmt"
 	"net"
-	"pm/internal/proc"
-	"strconv"
-	"strings"
 	"time"
 
 	"pm/internal/app"
@@ -81,42 +78,4 @@ func portBusy(port int) bool {
 	}
 	conn.Close()
 	return true
-}
-
-// portOwner resolves which process listens on the port.
-func portOwner(port int) (int, string) {
-	script := fmt.Sprintf(
-		`$p = (Get-NetTCPConnection -State Listen -LocalPort %d -ErrorAction SilentlyContinue | Select-Object -First 1).OwningProcess; if ($p) { "$p " + (Get-Process -Id $p -ErrorAction SilentlyContinue).Name }`,
-		port)
-	out, err := proc.Quiet("powershell", "-NoProfile", "-Command", script).Output()
-	if err != nil {
-		return 0, ""
-	}
-	fields := strings.Fields(strings.TrimSpace(string(out)))
-	if len(fields) == 0 {
-		return 0, ""
-	}
-	pid, err := strconv.Atoi(fields[0])
-	if err != nil {
-		return 0, ""
-	}
-	name := "unknown"
-	if len(fields) > 1 {
-		name = fields[1] + ".exe"
-	}
-	return pid, name
-}
-
-// killWithParent stops the process, and — for supervisor architectures
-// like mysqld's monitor — also its parent when it's the same executable.
-func killWithParent(pid int) {
-	script := fmt.Sprintf(`
-$p = Get-Process -Id %d -ErrorAction SilentlyContinue
-if ($p) {
-  $parentId = (Get-CimInstance Win32_Process -Filter "ProcessId=%d").ParentProcessId
-  Stop-Process -Id %d -Force -ErrorAction SilentlyContinue
-  $par = Get-Process -Id $parentId -ErrorAction SilentlyContinue
-  if ($par -and $par.Name -eq $p.Name) { Stop-Process -Id $parentId -Force -ErrorAction SilentlyContinue }
-}`, pid, pid, pid)
-	_ = proc.Quiet("powershell", "-NoProfile", "-Command", script).Run()
 }

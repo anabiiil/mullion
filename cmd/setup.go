@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -20,13 +21,40 @@ import (
 	"pm/internal/heidisql"
 	"pm/internal/mysql"
 	"pm/internal/phpver"
-	"pm/internal/proc"
+	"pm/internal/pmdir"
 	"pm/internal/shortcut"
 	"pm/internal/vcredist"
 	"pm/internal/version"
 )
 
 var setupPause bool
+
+// signInPhrase names the OS's login moment in questions and messages.
+var signInPhrase = map[string]string{"windows": "sign in to Windows", "darwin": "log in to your Mac"}[runtime.GOOS]
+
+func init() {
+	if signInPhrase == "" {
+		signInPhrase = "log in"
+	}
+}
+
+// exampleProjectDir is the sample path in setup's final message.
+func exampleProjectDir() string {
+	if runtime.GOOS == "windows" {
+		return `C:\code\myapp`
+	}
+	if home, err := os.UserHomeDir(); err == nil {
+		return filepath.Join(home, "code", "myapp")
+	}
+	return "~/code/myapp"
+}
+
+func panelHint() string {
+	if runtime.GOOS == "windows" {
+		return " — or just double-click mullion.exe"
+	}
+	return ""
+}
 
 var setupCmd = &cobra.Command{
 	Use:   "setup",
@@ -78,19 +106,26 @@ func runSetup(cmd *cobra.Command) error {
 	wantAutostart := true
 	dbChoice := "phpmyadmin"
 	if console.Interactive() {
-		wantAutostart = askYesNo("Start Mullion automatically when you sign in to Windows?", true)
+		wantAutostart = askYesNo("Start Mullion automatically when you "+signInPhrase+"?", true)
 
 		fmt.Println("Which database manager do you want?")
 		fmt.Println("  [1] phpMyAdmin  (in the browser, at https://phpmyadmin.test)")
-		fmt.Println("  [2] HeidiSQL    (desktop app)")
-		fmt.Println("  [3] both")
-		fmt.Println("  [4] none")
+		if runtime.GOOS == "windows" {
+			fmt.Println("  [2] HeidiSQL    (desktop app)")
+			fmt.Println("  [3] both")
+			fmt.Println("  [4] none")
+		} else {
+			fmt.Println("  [2] none")
+		}
 		console.FlushInput()
 		fmt.Print("Choice [1]: ")
 		answer, _ := bufio.NewReader(os.Stdin).ReadString('\n')
 		switch strings.TrimSpace(answer) {
 		case "2":
 			dbChoice = "heidisql"
+			if runtime.GOOS != "windows" {
+				dbChoice = "none"
+			}
 		case "3":
 			dbChoice = "both"
 		case "4":
@@ -120,7 +155,7 @@ func doSetup(cmd *cobra.Command, wantAutostart bool, dbChoice string) error {
 		// autostart still work when the downloaded file was renamed by the
 		// browser (e.g. "mullion (1).exe").
 		if exe, err := os.Executable(); err == nil {
-			dest := filepath.Join(a.Paths.BinDir(), "mullion.exe")
+			dest := filepath.Join(a.Paths.BinDir(), pmdir.ExeName("mullion"))
 			if resolved, err := filepath.EvalSymlinks(exe); err == nil {
 				exe = resolved
 			}
@@ -128,16 +163,16 @@ func doSetup(cmd *cobra.Command, wantAutostart bool, dbChoice string) error {
 				if err := copyFile(exe, dest); err != nil {
 					// An older Mullion (tray, panel) is running from bin —
 					// this is an upgrade: replace it.
-					for _, pid := range processesUnder(a.Paths.Home, "mullion.exe") {
+					for _, pid := range processesUnder(a.Paths.Home, pmdir.ExeName("mullion")) {
 						if pid != os.Getpid() {
-							_ = proc.Quiet("taskkill", "/F", "/PID", fmt.Sprint(pid)).Run()
+							killProcess(pid)
 						}
 					}
 					time.Sleep(time.Second)
 					if err := copyFile(exe, dest); err != nil {
 						fmt.Println("note: could not copy mullion into", a.Paths.BinDir(), "-", err)
 					} else {
-						fmt.Println("Updated the installed mullion.exe.")
+						fmt.Println("Updated the installed mullion binary.")
 					}
 				}
 			}
@@ -174,7 +209,7 @@ func doSetup(cmd *cobra.Command, wantAutostart bool, dbChoice string) error {
 			if err := autostart.Enable(a.Paths); err != nil {
 				fmt.Println("note: could not enable autostart -", err)
 			} else {
-				fmt.Println("Mullion will start automatically when you sign in to Windows (turn off with `mullion autostart off`).")
+				fmt.Println("Mullion will start automatically when you " + signInPhrase + " (turn off with `mullion autostart off`).")
 			}
 		}
 
@@ -185,7 +220,7 @@ func doSetup(cmd *cobra.Command, wantAutostart bool, dbChoice string) error {
 				return err
 			}
 			if len(releases) == 0 {
-				return fmt.Errorf("no PHP releases found on windows.php.net")
+				return fmt.Errorf("no PHP releases found on %s", phpver.Source)
 			}
 			latest := releases[len(releases)-1]
 			if _, err := phpver.Install(cmd.Context(), a.Paths, latest); err != nil {
@@ -276,12 +311,15 @@ func doSetup(cmd *cobra.Command, wantAutostart bool, dbChoice string) error {
 		}
 
 		// Put the tray icon up right away (also the sign-in behavior).
-		if exe, err := os.Executable(); err == nil {
-			trayExe := filepath.Join(a.Paths.BinDir(), "mullion.exe")
-			if _, statErr := os.Stat(trayExe); statErr != nil {
-				trayExe = exe
+		// macOS has no tray icon (yet); the LaunchAgent covers sign-in.
+		if runtime.GOOS == "windows" {
+			if exe, err := os.Executable(); err == nil {
+				trayExe := filepath.Join(a.Paths.BinDir(), pmdir.ExeName("mullion"))
+				if _, statErr := os.Stat(trayExe); statErr != nil {
+					trayExe = exe
+				}
+				spawnSelf(trayExe, "tray")
 			}
-			spawnSelf(trayExe, "tray")
 		}
 
 		fmt.Printf(`
@@ -290,12 +328,12 @@ Done! Your stack is running:
   composer   latest (`+"`composer -V`"+` in any NEW terminal)
   mysql      %s on 127.0.0.1:%d (user root, empty password)
 %sServe a project:
-  cd C:\code\myapp
+  cd %s
   mullion link                serve it at http://myapp.%s
   mullion secure              upgrade it to https
 
-Control panel: run `+"`mullion ui`"+` — or just double-click mullion.exe.
-`, a.State.Config.GlobalPHP, a.State.Config.MySQL, mysql.Port, dbLines+"\n", a.State.Config.TLD)
+Control panel: run `+"`mullion ui`"+`%s.
+`, a.State.Config.GlobalPHP, a.State.Config.MySQL, mysql.Port, dbLines+"\n", exampleProjectDir(), a.State.Config.TLD, panelHint())
 		return nil
 	}
 }

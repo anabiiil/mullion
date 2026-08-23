@@ -14,8 +14,8 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:   "mullion",
-	Short: "PHP version manager & local dev server for Windows",
-	Long: `Mullion — a local PHP development environment for Windows.
+	Short: "PHP version manager & local dev server",
+	Long: `Mullion — a local PHP development environment for Windows and macOS.
 
 Install and switch PHP versions system-wide or per project, serve local
 projects on .test domains through Caddy, and secure them with trusted

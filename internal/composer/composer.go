@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"pm/internal/download"
 	"pm/internal/pmdir"
@@ -43,6 +44,13 @@ func Install(ctx context.Context, paths pmdir.Paths, version string) error {
 // through the `current` junction directly (not through PATH), so it
 // works even in terminals opened before setup.
 func writeShim(paths pmdir.Paths) error {
-	shim := "@echo off\r\n\"%~dp0..\\php\\current\\php.exe\" \"%~dp0composer.phar\" %*\r\n"
-	return os.WriteFile(filepath.Join(paths.BinDir(), "composer.bat"), []byte(shim), 0o755)
+	if runtime.GOOS == "windows" {
+		shim := "@echo off\r\n\"%~dp0..\\php\\current\\php.exe\" \"%~dp0composer.phar\" %*\r\n"
+		return os.WriteFile(filepath.Join(paths.BinDir(), "composer.bat"), []byte(shim), 0o755)
+	}
+	shim := `#!/bin/sh
+dir="$(cd "$(dirname "$0")" && pwd)"
+exec "$dir/../php/current/php" -c "$dir/../php/current/php.ini" "$dir/composer.phar" "$@"
+`
+	return os.WriteFile(filepath.Join(paths.BinDir(), "composer"), []byte(shim), 0o755)
 }

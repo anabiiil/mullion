@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -33,11 +32,6 @@ func Ensure(paths pmdir.Paths, version string) error {
 		return nil
 	}
 
-	exe := filepath.Join(paths.PhpVersionDir(version), phpver.PhpCgiName)
-	if _, err := os.Stat(exe); err != nil {
-		return fmt.Errorf("php-cgi not found for %s: %w", version, err)
-	}
-
 	logPath := filepath.Join(paths.LogsDir(), fmt.Sprintf("php-%s.log", version))
 	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 	if err != nil {
@@ -45,17 +39,16 @@ func Ensure(paths pmdir.Paths, version string) error {
 	}
 	defer logFile.Close()
 
-	cmd := exec.Command(exe, "-b", fmt.Sprintf("127.0.0.1:%d", port))
+	cmd, err := workerCmd(paths, version, port)
+	if err != nil {
+		return err
+	}
 	cmd.Dir = paths.PhpVersionDir(version)
 	cmd.Stdout = logFile
 	cmd.Stderr = logFile
-	cmd.Env = append(os.Environ(),
-		// Never recycle the worker: keeps the single process alive forever.
-		"PHP_FCGI_MAX_REQUESTS=0",
-	)
 	proc.Detach(cmd)
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("starting php-cgi %s: %w", version, err)
+		return fmt.Errorf("starting the PHP %s FastCGI worker: %w", version, err)
 	}
 	pid := cmd.Process.Pid
 	// Detach: the process must outlive us.
@@ -72,7 +65,7 @@ func Ensure(paths pmdir.Paths, version string) error {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	return fmt.Errorf("php-cgi %s did not start listening on port %d (see %s)", version, port, logPath)
+	return fmt.Errorf("the PHP %s FastCGI worker did not start listening on port %d (see %s)", version, port, logPath)
 }
 
 // StopVersion kills the php-cgi process serving one version's branch
@@ -82,9 +75,7 @@ func StopVersion(paths pmdir.Paths, version string) error {
 	path := pidFile(paths, version)
 	if data, err := os.ReadFile(path); err == nil {
 		if pid, err := strconv.Atoi(strings.TrimSpace(string(data))); err == nil {
-			if p, err := os.FindProcess(pid); err == nil {
-				_ = p.Kill()
-			}
+			killWorker(pid)
 		}
 		_ = os.Remove(path)
 	}
@@ -114,9 +105,7 @@ func StopAll(paths pmdir.Paths) error {
 		data, err := os.ReadFile(path)
 		if err == nil {
 			if pid, err := strconv.Atoi(strings.TrimSpace(string(data))); err == nil {
-				if p, err := os.FindProcess(pid); err == nil {
-					_ = p.Kill()
-				}
+				killWorker(pid)
 			}
 		}
 		if err := os.Remove(path); err != nil && firstErr == nil {

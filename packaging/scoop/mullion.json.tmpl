@@ -1,0 +1,24 @@
+{
+    "version": "@VERSION@",
+    "description": "PHP version manager & local dev server (Caddy, MySQL, .test domains, HTTPS)",
+    "homepage": "https://github.com/anabiiil/mullion",
+    "license": "MIT",
+    "architecture": {
+        "64bit": {
+            "url": "https://github.com/anabiiil/mullion/releases/download/@TAG@/mullion-@TAG@-windows-amd64.zip",
+            "hash": "@SHA@"
+        }
+    },
+    "bin": "mullion.exe",
+    "notes": "Set up the full stack (Caddy, latest PHP, Composer, MySQL, phpMyAdmin) with: mullion setup",
+    "checkver": {
+        "github": "https://github.com/anabiiil/mullion"
+    },
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/anabiiil/mullion/releases/download/v$version/mullion-v$version-windows-amd64.zip"
+            }
+        }
+    }
+}

@@ -40,7 +40,7 @@ autostart is enabled.`,
 				if err == nil {
 					host = "phpmyadmin." + a.State.Config.TLD
 				}
-				_ = proc.Quiet("cmd", "/c", "start", "", "https://"+host).Start()
+				openURL("https://" + host)
 			},
 		})
 		if err == tray.ErrAlreadyRunning {

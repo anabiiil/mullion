@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -23,8 +24,12 @@ func EnsureInstalled(ctx context.Context, paths pmdir.Paths) error {
 		return nil
 	}
 	fmt.Println("Downloading Caddy...")
-	url := "https://caddyserver.com/api/download?os=windows&arch=amd64"
-	return download.ToFile(ctx, url, paths.CaddyExe())
+	url := fmt.Sprintf("https://caddyserver.com/api/download?os=%s&arch=%s", runtime.GOOS, runtime.GOARCH)
+	if err := download.ToFile(ctx, url, paths.CaddyExe()); err != nil {
+		return err
+	}
+	// download.ToFile writes through a temp file that loses the exec bit.
+	return os.Chmod(paths.CaddyExe(), 0o755)
 }
 
 // Running reports whether the Caddy admin API is answering.
@@ -130,12 +135,29 @@ func killByPidFile(paths pmdir.Paths) {
 }
 
 // TrustCA asks Caddy to install its local root CA into the system trust
-// store so browsers accept the generated certificates (triggers UAC once).
+// store so browsers accept the generated certificates. On Windows this
+// triggers one UAC prompt; on macOS it runs sudo, so the terminal may
+// ask for your password.
 func TrustCA(paths pmdir.Paths) error {
 	cmd := proc.Quiet(paths.CaddyExe(), "trust")
 	cmd.Dir = paths.Home
+	if runtime.GOOS != "windows" && stdinIsTerminal() {
+		fmt.Println("Installing the local root certificate — you may be asked for your password.")
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("caddy trust: %w", err)
+		}
+		return nil
+	}
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("caddy trust: %v: %s", err, out)
 	}
 	return nil
+}
+
+func stdinIsTerminal() bool {
+	info, err := os.Stdin.Stat()
+	return err == nil && info.Mode()&os.ModeCharDevice != 0
 }

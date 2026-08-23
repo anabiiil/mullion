@@ -11,7 +11,7 @@ import (
 
 var autostartCmd = &cobra.Command{
 	Use:   "autostart [on|off]",
-	Short: "Start Mullion automatically when you sign in to Windows",
+	Short: "Start Mullion automatically when you sign in",
 	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		a := mustApp()
@@ -28,7 +28,7 @@ var autostartCmd = &cobra.Command{
 			if err := autostart.Enable(a.Paths); err != nil {
 				return err
 			}
-			fmt.Println("Mullion will start automatically when you sign in to Windows.")
+			fmt.Println("Mullion will start automatically when you " + signInPhrase + ".")
 		case "off":
 			if err := autostart.Disable(); err != nil {
 				return err

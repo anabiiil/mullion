@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"runtime"
 
 	"github.com/spf13/cobra"
 
@@ -15,6 +16,9 @@ var heidisqlCmd = &cobra.Command{
 first use — preconfigured with a session for the local MySQL server
 (127.0.0.1, root, no password) — and opens it.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if runtime.GOOS != "windows" {
+			return fmt.Errorf("HeidiSQL is a Windows desktop app — use phpMyAdmin (https://phpmyadmin.<tld>), or a native client like TablePlus or Sequel Ace")
+		}
 		a := mustApp()
 		if !heidisql.Installed(a.Paths) {
 			if err := heidisql.Install(cmd.Context(), a.Paths); err != nil {

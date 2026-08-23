@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"runtime"
 
 	"github.com/spf13/cobra"
 
@@ -30,7 +31,21 @@ var useCmd = &cobra.Command{
 		}
 		fmt.Printf("System PHP is now %s (`php -v` in any new terminal)\n", full)
 		if shadow := a.PhpShadow(); shadow != "" {
-			fmt.Printf(`
+			fmt.Print(shadowWarning(shadow))
+		}
+		return nil
+	},
+}
+
+func init() {
+	rootCmd.AddCommand(useCmd)
+}
+
+// shadowWarning explains a foreign php beating Mullion's on the PATH,
+// with platform-appropriate directions.
+func shadowWarning(shadow string) string {
+	if runtime.GOOS == "windows" {
+		return fmt.Sprintf(`
 WARNING: 'php' currently resolves to
   %s
 which shadows the version Mullion just activated. Another PHP install sits
@@ -39,11 +54,12 @@ searches before the user PATH where Mullion lives. Remove that directory from
 the system Path (Settings > System > About > Advanced system settings >
 Environment Variables), then open a new terminal.
 `, shadow)
-		}
-		return nil
-	},
-}
-
-func init() {
-	rootCmd.AddCommand(useCmd)
+	}
+	return fmt.Sprintf(`
+WARNING: 'php' currently resolves to
+  %s
+which shadows the version Mullion just activated. Another PHP install
+(Homebrew?) sits earlier on your PATH. Open a NEW terminal so Mullion's
+PATH entry takes effect, or remove the other php from your PATH.
+`, shadow)
 }

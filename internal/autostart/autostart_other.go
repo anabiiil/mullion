@@ -1,4 +1,4 @@
-//go:build !windows
+//go:build !windows && !darwin
 
 package autostart
 
@@ -9,7 +9,7 @@ import (
 )
 
 func Enable(paths pmdir.Paths) error {
-	return fmt.Errorf("autostart is only supported on Windows")
+	return fmt.Errorf("autostart is only supported on Windows and macOS")
 }
 
 func Disable() error { return nil }
