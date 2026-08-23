@@ -15,6 +15,11 @@ trap 'rm -rf "$TMP"' EXIT
 
 seed() { # seed <repo> <readme-content-file>
   repo="$1"; readme="$2"
+  # Already seeded (has commits)? Skip so re-runs are safe.
+  if git ls-remote --exit-code "https://github.com/$OWNER/$repo.git" HEAD >/dev/null 2>&1; then
+    echo "$repo already has content — skipping."
+    return 0
+  fi
   dir="$TMP/$repo"
   mkdir -p "$dir"
   cp "$readme" "$dir/README.md"
