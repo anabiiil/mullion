@@ -3,9 +3,19 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag, e.g. v1.2.0 (created if it does not exist)"
+        required: true
 
 permissions:
   contents: write
+
+# One resolved tag for both trigger styles: the pushed tag, or the
+# manual run's input.
+env:
+  TAG: ${{ inputs.tag || github.ref_name }}
 
 jobs:
   build-windows:
@@ -25,7 +35,7 @@ jobs:
 
       - name: Package
         shell: pwsh
-        run: Compress-Archive -Path mullion.exe -DestinationPath "mullion-${{ github.ref_name }}-windows-amd64.zip"
+        run: Compress-Archive -Path mullion.exe -DestinationPath "mullion-$env:TAG-windows-amd64.zip"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -56,8 +66,8 @@ jobs:
           mkdir -p pkg-arm64 pkg-amd64
           cp mullion-arm64 pkg-arm64/mullion
           cp mullion-amd64 pkg-amd64/mullion
-          tar -czf "mullion-${{ github.ref_name }}-darwin-arm64.tar.gz" -C pkg-arm64 mullion
-          tar -czf "mullion-${{ github.ref_name }}-darwin-amd64.tar.gz" -C pkg-amd64 mullion
+          tar -czf "mullion-${TAG}-darwin-arm64.tar.gz" -C pkg-arm64 mullion
+          tar -czf "mullion-${TAG}-darwin-amd64.tar.gz" -C pkg-amd64 mullion
 
       - uses: actions/upload-artifact@v4
         with:
@@ -75,6 +85,7 @@ jobs:
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.TAG }}
           files: |
             mullion.exe
             mullion-*.zip
@@ -94,7 +105,6 @@ jobs:
       - name: Update the tap formula
         env:
           TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-          TAG: ${{ github.ref_name }}
         run: |
           if [ -z "$TAP_TOKEN" ]; then
             echo "HOMEBREW_TAP_TOKEN secret not set — skipping the Homebrew tap update."
@@ -131,7 +141,6 @@ jobs:
       - name: Update the bucket manifest
         env:
           BUCKET_TOKEN: ${{ secrets.SCOOP_BUCKET_TOKEN }}
-          TAG: ${{ github.ref_name }}
         run: |
           if [ -z "$BUCKET_TOKEN" ]; then
             echo "SCOOP_BUCKET_TOKEN secret not set — skipping the Scoop bucket update."
