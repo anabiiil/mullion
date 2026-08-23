@@ -42,11 +42,10 @@ With [Homebrew](https://brew.sh):
 
 ```bash
 brew tap anabiiil/tap
+brew trust anabiiil/tap   # newer brew versions require this once for third-party taps
 brew install mullion
 mullion setup
 ```
-
-(or in one line: `brew install anabiiil/tap/mullion`)
 
 Or without Homebrew, one command downloads the right binary and runs setup:
 
