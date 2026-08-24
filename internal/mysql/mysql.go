@@ -246,7 +246,14 @@ func Install(ctx context.Context, paths pmdir.Paths, version string) error {
 	for _, url := range downloadURLs(version) {
 		archivePath := filepath.Join(paths.TmpDir(), filepath.Base(url))
 		if lastErr = download.ToFile(ctx, url, archivePath); lastErr != nil {
-			continue
+			// Only an HTTP miss means "try the next candidate name".
+			// A local failure (disk full, connection died mid-file)
+			// would fail them all — surface it immediately instead of
+			// re-downloading gigabytes.
+			if strings.Contains(lastErr.Error(), "HTTP 4") || strings.Contains(lastErr.Error(), "HTTP 5") {
+				continue
+			}
+			return fmt.Errorf("downloading %s: %w", Label(version), lastErr)
 		}
 		defer os.Remove(archivePath)
 
