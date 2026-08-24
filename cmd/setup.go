@@ -303,6 +303,8 @@ func doSetup(cmd *cobra.Command, wantAutostart bool, dbChoice string) error {
 					fmt.Println("note:", err)
 				} else if err := mysql.Start(a.Paths, a.State.Config.MySQL); err != nil {
 					fmt.Println("note:", err)
+				} else {
+					restorePendingDump(a)
 				}
 			}
 		}
@@ -382,13 +384,27 @@ func importFromExistingMysql(a *app.App, version string) string {
 
 	dump := ""
 	if console.Interactive() && askYesNo("Import its databases into Mullion?", true) {
-		// Mullion's client tools work against whatever answers on 3306;
-		// dev stacks almost always run root with an empty password.
+		// Dev stacks usually run root with an empty password — but when
+		// that server has one, ASK for it instead of skipping the import.
+		savedPassword := mysql.RootPassword
+		mysql.RootPassword = ""
 		dbs, err := mysql.UserDatabases(a.Paths, version)
+		for attempt := 0; err != nil && attempt < 3; attempt++ {
+			fmt.Println("That server rejected the passwordless root login.")
+			console.FlushInput()
+			fmt.Print("Its root password (Enter to skip the import): ")
+			line, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+			pw := strings.TrimRight(line, "\r\n")
+			if pw == "" {
+				break
+			}
+			mysql.RootPassword = pw
+			dbs, err = mysql.UserDatabases(a.Paths, version)
+		}
 		switch {
 		case err != nil:
-			fmt.Println("warning: could not read that server's databases (password-protected root?) — skipping the import.")
-			fmt.Println("You can export from it manually later and load the file with `mullion mysql restore`.")
+			fmt.Println("warning: could not read that server's databases — skipping the import.")
+			fmt.Println("Its data files stay untouched on disk; export manually later and load with `mullion mysql restore`.")
 		case len(dbs) == 0:
 			fmt.Println("It has no user databases — nothing to import.")
 		default:
@@ -401,6 +417,7 @@ func importFromExistingMysql(a *app.App, version string) string {
 				dump = filepath.Join(dir, "all-databases.sql")
 			}
 		}
+		mysql.RootPassword = savedPassword
 	}
 
 	stop := true
