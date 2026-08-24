@@ -49,6 +49,7 @@ func TestGenerateEmpty(t *testing.T) {
 func TestGenerateKinds(t *testing.T) {
 	sites := []SiteConf{
 		{Host: "app.test", Kind: "node", ProxyPort: 5173},
+		{Host: "vapp.test", Kind: "node", ProxyPort: 5199, RewriteHost: true},
 		{Host: "down.test", Kind: "node", ProxyPort: 0},
 		{Host: "app-build.test", Kind: "static", Root: "/x/dist", Secure: true},
 		{Host: "blog.test", Root: "/y", FcgiPort: 9084},
@@ -56,6 +57,8 @@ func TestGenerateKinds(t *testing.T) {
 	out := Generate(sites, "/logs")
 	for _, want := range []string{
 		"reverse_proxy localhost:5173",
+		"reverse_proxy localhost:5199 {",
+		"header_up Host {upstream_hostport}",
 		"respond ",
 		`root * "/x/dist"`,
 		"try_files {path} /index.html",
