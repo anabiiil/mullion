@@ -518,7 +518,19 @@ func newMux(token string) *http.ServeMux {
 		}
 		site.DevPaused = false
 		site.Mode = "dev"
-		return nil, a.Apply()
+		if err := a.Apply(); err != nil {
+			return nil, err
+		}
+		// Apply reports dev-server startup problems only on stdout —
+		// which a background panel process cannot show. Verify and
+		// surface the reason here instead of leaving a dead domain.
+		if devserver.Running(a.Paths, site.Name) == 0 {
+			if _, err := a.NodeVersionDirFor(*site); err != nil {
+				return nil, err
+			}
+			return nil, fmt.Errorf("the dev server did not come up — last log lines:\n%s", devserver.LogTail(a.Paths, site.Name))
+		}
+		return nil, nil
 	})
 	api("/api/dev/stop", func(a *app.App, r *http.Request) (any, error) {
 		var in struct{ Name string }
