@@ -95,7 +95,13 @@ func (a *App) WriteCaddyfile(devPorts map[string]int) error {
 		}
 		switch s.Kind {
 		case "node":
+			if s.Mode == "build" {
+				conf.Kind = "static"
+				conf.Root = filepath.Join(s.Path, s.BuildDir)
+				break
+			}
 			conf.ProxyPort = devPorts[s.Name]
+			conf.Paused = s.DevPaused
 		case "static":
 			conf.Root = filepath.Join(s.Path, s.BuildDir)
 		default: // php
@@ -141,7 +147,7 @@ func (a *App) NodeVersionDirFor(s config.Site) (string, error) {
 func (a *App) EnsureDevServers() map[string]int {
 	ports := map[string]int{}
 	for _, s := range a.State.Sites {
-		if s.Kind != "node" {
+		if s.Kind != "node" || s.Mode == "build" || s.DevPaused {
 			continue
 		}
 		nodeDir, err := a.NodeVersionDirFor(s)

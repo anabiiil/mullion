@@ -16,6 +16,7 @@ type SiteConf struct {
 	Root      string // absolute document root (php and static sites)
 	FcgiPort  int    // FastCGI port for this site's PHP version
 	ProxyPort int    // dev-server port for node sites (0 = not running)
+	Paused    bool   // the user stopped this dev server on purpose
 	Secure    bool
 }
 
@@ -44,6 +45,8 @@ func Generate(sites []SiteConf, logsDir string) string {
 				// localhost (not 127.0.0.1): dev servers often listen on
 				// ::1 only, and dialing localhost covers both families.
 				b.WriteString(fmt.Sprintf("\treverse_proxy localhost:%d\n", s.ProxyPort))
+			} else if s.Paused {
+				b.WriteString("\trespond \"This site's dev server is paused — start it from the Mullion panel or with `mullion dev start`.\" 503\n")
 			} else {
 				b.WriteString("\trespond \"The dev server for this site is not running — run `mullion start` (or open the Mullion panel).\" 503\n")
 			}

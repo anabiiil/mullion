@@ -463,6 +463,61 @@ func newMux(token string) *http.ServeMux {
 		}
 		return nil, a.ActivateNode(full)
 	})
+	api("/api/sites/mode", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Name, Mode string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		site := a.State.FindSite(in.Name)
+		if site == nil {
+			return nil, fmt.Errorf("no site named %q", in.Name)
+		}
+		if site.Kind != "node" {
+			return nil, fmt.Errorf("%s is not a frontend site", in.Name)
+		}
+		switch in.Mode {
+		case "build":
+			buildDir, err := app.ResolveBuildDir(site.Path, site.BuildDir)
+			if err != nil {
+				return nil, err
+			}
+			site.BuildDir = buildDir
+			site.Mode = "build"
+			devserver.Stop(a.Paths, site.Name)
+		case "dev":
+			site.Mode = "dev"
+			site.DevPaused = false
+		default:
+			return nil, fmt.Errorf("invalid mode %q", in.Mode)
+		}
+		return nil, a.Apply()
+	})
+	api("/api/dev/start", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Name string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		site := a.State.FindSite(in.Name)
+		if site == nil || site.Kind != "node" {
+			return nil, fmt.Errorf("no frontend site named %q", in.Name)
+		}
+		site.DevPaused = false
+		site.Mode = "dev"
+		return nil, a.Apply()
+	})
+	api("/api/dev/stop", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Name string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		site := a.State.FindSite(in.Name)
+		if site == nil || site.Kind != "node" {
+			return nil, fmt.Errorf("no frontend site named %q", in.Name)
+		}
+		site.DevPaused = true
+		devserver.Stop(a.Paths, site.Name)
+		return nil, a.Apply()
+	})
 	api("/api/sites/node", func(a *app.App, r *http.Request) (any, error) {
 		var in struct{ Name, Version string }
 		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
@@ -558,16 +613,18 @@ func getState(a *app.App, r *http.Request) (any, error) {
 	}
 
 	type site struct {
-		Name     string `json:"name"`
-		Host     string `json:"host"`
-		Path     string `json:"path"`
-		Kind     string `json:"kind"`
-		PHP      string `json:"php"`
-		Node     string `json:"node"`
-		BuildDir string `json:"buildDir"`
-		DevPort  int    `json:"devPort"`
-		Secure   bool   `json:"secure"`
-		URL      string `json:"url"`
+		Name      string `json:"name"`
+		Host      string `json:"host"`
+		Path      string `json:"path"`
+		Kind      string `json:"kind"`
+		PHP       string `json:"php"`
+		Node      string `json:"node"`
+		BuildDir  string `json:"buildDir"`
+		DevPort   int    `json:"devPort"`
+		Mode      string `json:"mode"`
+		DevPaused bool   `json:"devPaused"`
+		Secure    bool   `json:"secure"`
+		URL       string `json:"url"`
 	}
 	sites := make([]site, 0, len(a.State.Sites))
 	for _, s := range a.State.Sites {
@@ -583,17 +640,23 @@ func getState(a *app.App, r *http.Request) (any, error) {
 		if kind == "node" {
 			devPort = devserver.Running(a.Paths, s.Name)
 		}
+		mode := s.Mode
+		if kind == "node" && mode == "" {
+			mode = "dev"
+		}
 		sites = append(sites, site{
-			Name:     s.Name,
-			Host:     a.State.Host(s),
-			Path:     s.Path,
-			Kind:     kind,
-			PHP:      s.PHP,
-			Node:     s.Node,
-			BuildDir: s.BuildDir,
-			DevPort:  devPort,
-			Secure:   s.Secure,
-			URL:      scheme + "://" + a.State.Host(s),
+			Name:      s.Name,
+			Host:      a.State.Host(s),
+			Path:      s.Path,
+			Kind:      kind,
+			PHP:       s.PHP,
+			Node:      s.Node,
+			BuildDir:  s.BuildDir,
+			DevPort:   devPort,
+			Mode:      mode,
+			DevPaused: s.DevPaused,
+			Secure:    s.Secure,
+			URL:       scheme + "://" + a.State.Host(s),
 		})
 	}
 
