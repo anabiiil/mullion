@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"path/filepath"
 	"runtime"
 
 	"github.com/spf13/cobra"
@@ -48,7 +49,12 @@ var startCmd = &cobra.Command{
 			case site.Mode == "build":
 				fmt.Printf("dev:      %-14s serving the production build (%s/)\n", a.State.Host(site), site.BuildDir)
 			case devserver.Running(a.Paths, site.Name) > 0:
-				fmt.Printf("dev:      %-14s port %d  %s\n", a.State.Host(site), devserver.Running(a.Paths, site.Name), term.Green("running"))
+				nodeLabel := ""
+				if dir, err := a.NodeVersionDirFor(site); err == nil {
+					nodeLabel = "  node " + filepath.Base(dir)
+				}
+				fmt.Printf("dev:      %-14s port %d  %s%s\n", a.State.Host(site),
+					devserver.Running(a.Paths, site.Name), term.Green("running"), nodeLabel)
 			case site.DevPaused:
 				fmt.Printf("dev:      %-14s %s (start with `mullion dev start %s`)\n", a.State.Host(site), term.Yellow("paused"), site.Name)
 			default:
