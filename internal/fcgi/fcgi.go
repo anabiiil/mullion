@@ -58,14 +58,17 @@ func Ensure(paths pmdir.Paths, version string) error {
 		return err
 	}
 
-	// Give it a moment and confirm the port came up.
-	for i := 0; i < 20; i++ {
+	// Confirm the port came up. Generous window: the very first launch
+	// of a freshly downloaded binary can take several seconds on macOS
+	// (Gatekeeper assesses it before letting it run).
+	for i := 0; i < 150; i++ {
 		if portListening(port) {
 			return nil
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	return fmt.Errorf("the PHP %s FastCGI worker did not start listening on port %d (see %s)", version, port, logPath)
+	return fmt.Errorf("the PHP %s FastCGI worker did not start listening on port %d\n%s(full logs: %s)",
+		version, port, logExcerpt(paths, version, logPath), logPath)
 }
 
 // StopVersion kills the php-cgi process serving one version's branch
@@ -133,4 +136,27 @@ func portListening(port int) bool {
 	}
 	conn.Close()
 	return true
+}
+
+// logExcerpt pulls the last lines of the worker's logs into an error
+// message, so a startup failure explains itself without a log hunt.
+func logExcerpt(paths pmdir.Paths, version, logPath string) string {
+	var out strings.Builder
+	paths2 := []string{logPath}
+	if sel, err := phpver.ParseSelector(version); err == nil {
+		paths2 = append(paths2, filepath.Join(paths.LogsDir(),
+			fmt.Sprintf("php-fpm-%d.%d.log", sel.Major, sel.Minor)))
+	}
+	for _, p := range paths2 {
+		data, err := os.ReadFile(p)
+		if err != nil || len(data) == 0 {
+			continue
+		}
+		lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+		if len(lines) > 5 {
+			lines = lines[len(lines)-5:]
+		}
+		out.WriteString("  " + strings.Join(lines, "\n  ") + "\n")
+	}
+	return out.String()
 }

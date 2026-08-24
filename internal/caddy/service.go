@@ -94,6 +94,11 @@ func Reload(paths pmdir.Paths) error {
 	if !Running() {
 		return nil
 	}
+	// Port 2019 answering while our caddy was never downloaded means a
+	// FOREIGN caddy owns the admin port — nothing of ours to reload.
+	if _, err := os.Stat(paths.CaddyExe()); err != nil {
+		return nil
+	}
 	cmd := proc.Quiet(paths.CaddyExe(), "reload",
 		"--config", paths.Caddyfile(), "--adapter", "caddyfile")
 	cmd.Dir = paths.Home
@@ -107,6 +112,13 @@ func Reload(paths pmdir.Paths) error {
 func Stop(paths pmdir.Paths) error {
 	defer os.Remove(pidFile(paths))
 	if !Running() {
+		killByPidFile(paths)
+		return nil
+	}
+	// The admin port answering while our caddy was never downloaded
+	// means a FOREIGN caddy owns it — `caddy stop` would shut THAT one
+	// down. Only fall back to our own recorded pid (if any).
+	if _, err := os.Stat(paths.CaddyExe()); err != nil {
 		killByPidFile(paths)
 		return nil
 	}
