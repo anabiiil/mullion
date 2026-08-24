@@ -52,17 +52,8 @@ func Ensure(paths pmdir.Paths, site config.Site, host, nodeDir string) (int, err
 	if err != nil {
 		return 0, err
 	}
-	// pnpm/yarn ship as corepack shims that only exist after
-	// `corepack enable` — run it once per Node version when needed.
-	if pm != "npm" {
-		if _, statErr := os.Stat(nodever.Tool(nodeDir, pm)); statErr != nil {
-			enable := proc.Quiet(nodever.Tool(nodeDir, "corepack"), "enable")
-			enable.Env = append(os.Environ(),
-				"PATH="+nodever.BinDir(nodeDir)+string(os.PathListSeparator)+os.Getenv("PATH"))
-			if out, err := enable.CombinedOutput(); err != nil {
-				return 0, fmt.Errorf("this project uses %s, and `corepack enable` failed: %v: %s", pm, err, out)
-			}
-		}
+	if err := ensurePM(nodeDir, pm); err != nil {
+		return 0, err
 	}
 
 	logFile, err := os.OpenFile(logFilePath(paths, site.Name),
@@ -251,4 +242,85 @@ func portListening(port int) bool {
 		}
 	}
 	return false
+}
+
+// ensurePM makes the project's package manager runnable: pnpm/yarn ship
+// as corepack shims that only exist after `corepack enable`.
+func ensurePM(nodeDir, pm string) error {
+	if pm == "npm" {
+		return nil
+	}
+	if _, err := os.Stat(nodever.Tool(nodeDir, pm)); err == nil {
+		return nil
+	}
+	enable := proc.Quiet(nodever.Tool(nodeDir, "corepack"), "enable")
+	enable.Env = append(os.Environ(),
+		"PATH="+nodever.BinDir(nodeDir)+string(os.PathListSeparator)+os.Getenv("PATH"))
+	if out, err := enable.CombinedOutput(); err != nil {
+		return fmt.Errorf("this project uses %s, and `corepack enable` failed: %v: %s", pm, err, out)
+	}
+	return nil
+}
+
+// RunBuild produces the project's production build (`npm run build`,
+// pnpm/yarn detected from the lockfile) with the right Node version —
+// installing dependencies first when needed. Output is appended to the
+// build log; err carries its tail on failure.
+func RunBuild(paths pmdir.Paths, dir, nodeDir string) error {
+	pm := "npm"
+	if _, e := os.Stat(filepath.Join(dir, "pnpm-lock.yaml")); e == nil {
+		pm = "pnpm"
+	} else if _, e := os.Stat(filepath.Join(dir, "yarn.lock")); e == nil {
+		pm = "yarn"
+	}
+	data, err := os.ReadFile(filepath.Join(dir, "package.json"))
+	if err != nil {
+		return fmt.Errorf("%s has no package.json", dir)
+	}
+	var pkg struct {
+		Scripts map[string]string `json:"scripts"`
+	}
+	if err := json.Unmarshal(data, &pkg); err != nil {
+		return fmt.Errorf("parsing package.json in %s: %w", dir, err)
+	}
+	if _, ok := pkg.Scripts["build"]; !ok {
+		return fmt.Errorf("package.json in %s has no build script", dir)
+	}
+	if err := ensurePM(nodeDir, pm); err != nil {
+		return err
+	}
+
+	logPath := filepath.Join(paths.LogsDir(), "build-"+filepath.Base(dir)+".log")
+	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	if err != nil {
+		return err
+	}
+	defer logFile.Close()
+	fmt.Fprintf(logFile, "\n---- %s: mullion running `%s run build` (node %s) ----\n",
+		time.Now().Format(time.RFC3339), pm, filepath.Base(nodeDir))
+
+	env := append(os.Environ(),
+		"PATH="+nodever.BinDir(nodeDir)+string(os.PathListSeparator)+os.Getenv("PATH"))
+	if _, statErr := os.Stat(filepath.Join(dir, "node_modules")); statErr != nil {
+		fmt.Printf("Installing dependencies (%s install)...\n", pm)
+		install := proc.Quiet(nodever.Tool(nodeDir, pm), "install")
+		install.Dir = dir
+		install.Env = env
+		install.Stdout = logFile
+		install.Stderr = logFile
+		if err := install.Run(); err != nil {
+			return fmt.Errorf("%s install failed:\n%s(full log: %s)", pm, logTail(logPath), logPath)
+		}
+	}
+
+	fmt.Printf("Building the project (%s run build, node %s)...\n", pm, filepath.Base(nodeDir))
+	build := proc.Quiet(nodever.Tool(nodeDir, pm), "run", "build")
+	build.Dir = dir
+	build.Env = env
+	build.Stdout = logFile
+	build.Stderr = logFile
+	if err := build.Run(); err != nil {
+		return fmt.Errorf("the build failed:\n%s(full log: %s)", logTail(logPath), logPath)
+	}
+	return nil
 }

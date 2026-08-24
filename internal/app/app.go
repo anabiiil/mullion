@@ -389,3 +389,21 @@ func usesVite(dir string) bool {
 	}
 	return false
 }
+
+// EnsureBuildOutput returns the directory holding the project's
+// production build, RUNNING the build first (with the right Node) when
+// none exists yet — switching a domain to build mode should never ask
+// the user to go build things by hand.
+func (a *App) EnsureBuildOutput(path, override string) (string, error) {
+	if dir, err := ResolveBuildDir(path, override); err == nil {
+		return dir, nil
+	}
+	nodeDir, err := a.NodeVersionDirFor(config.Site{Path: path})
+	if err != nil {
+		return "", err
+	}
+	if err := devserver.RunBuild(a.Paths, path, nodeDir); err != nil {
+		return "", err
+	}
+	return ResolveBuildDir(path, override)
+}

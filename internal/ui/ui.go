@@ -492,7 +492,7 @@ func newMux(token string) *http.ServeMux {
 		}
 		switch in.Mode {
 		case "build":
-			buildDir, err := app.ResolveBuildDir(site.Path, site.BuildDir)
+			buildDir, err := a.EnsureBuildOutput(site.Path, site.BuildDir)
 			if err != nil {
 				return nil, err
 			}

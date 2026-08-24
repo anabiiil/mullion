@@ -566,7 +566,7 @@ function render() {
     act('Switching Node version…', '/api/sites/node',
         { name: el.dataset.nodever, version: el.value }, 'Done'));
   tb.querySelectorAll('[data-mode]').forEach(el => el.onchange = () =>
-    act(el.value === 'build' ? 'Switching the domain to the production build…' : 'Switching the domain to the dev server…',
+    act(el.value === 'build' ? 'Switching to the production build… (builds the project first if needed — can take a minute)' : 'Switching the domain to the dev server…',
         '/api/sites/mode', { name: el.dataset.mode, mode: el.value }, 'Done'));
   tb.querySelectorAll('[data-devstart]').forEach(el => el.onclick = () =>
     act('Starting the dev server… (first start can take a minute)', '/api/dev/start',

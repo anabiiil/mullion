@@ -47,7 +47,7 @@ compare the deployed state against the current dev version.`,
 		switch {
 		case linkBuild:
 			kind = "static"
-			buildDir, err = app.ResolveBuildDir(dir, linkBuildDir)
+			buildDir, err = a.EnsureBuildOutput(dir, linkBuildDir)
 			if err != nil {
 				return err
 			}

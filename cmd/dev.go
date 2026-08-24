@@ -99,7 +99,7 @@ Great for checking what's actually deployed, or freeing resources.`,
 			return err
 		}
 		if mode == "build" {
-			buildDir, err := app.ResolveBuildDir(site.Path, site.BuildDir)
+			buildDir, err := a.EnsureBuildOutput(site.Path, site.BuildDir)
 			if err != nil {
 				return err
 			}
