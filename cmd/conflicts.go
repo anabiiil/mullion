@@ -61,7 +61,7 @@ func findPortConflicts(a *app.App) []portConflict {
 			continue
 		}
 		if pid, name := portOwner(port); pid > 0 {
-			out = append(out, portConflict{port, pid, name})
+			out = append(out, portConflict{Port: port, PID: pid, Name: name})
 		}
 	}
 	return out
