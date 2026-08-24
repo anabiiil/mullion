@@ -435,6 +435,34 @@ func newMux(token string) *http.ServeMux {
 		}
 		return nil, a.Apply()
 	})
+	api("/api/node/install", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Version string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		rel, err := nodever.Resolve(r.Context(), in.Version)
+		if err != nil {
+			return nil, err
+		}
+		if _, err := nodever.Install(r.Context(), a.Paths, rel); err != nil {
+			return nil, err
+		}
+		if a.State.Config.GlobalNode == "" {
+			return rel.Version, a.ActivateNode(rel.Version)
+		}
+		return rel.Version, nil
+	})
+	api("/api/node/use", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Version string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		full, err := nodever.FindInstalled(a.Paths, in.Version)
+		if err != nil {
+			return nil, err
+		}
+		return nil, a.ActivateNode(full)
+	})
 	api("/api/sites/node", func(a *app.App, r *http.Request) (any, error) {
 		var in struct{ Name, Version string }
 		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
