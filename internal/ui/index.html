@@ -524,10 +524,24 @@ function render() {
       const nopts = ['<option value="">.nvmrc / default (' + (s.globalNode || '—') + ')</option>']
         .concat(s.nodeInstalled.map(v =>
           `<option value="${v}" ${site.node === v ? 'selected' : ''}>${v}</option>`)).join('');
-      const dev = site.devPort
-        ? `<span class="badge on" title="dev server port">:${site.devPort}</span>`
-        : '<span class="badge off" title="starts on demand">dev off</span>';
-      runtimeCell = `<select data-nodever="${site.name}" class="mono">${nopts}</select> ${dev}`;
+      const modeSel = `<select data-mode="${site.name}" class="mono" title="what this domain serves">
+        <option value="dev" ${site.mode !== 'build' ? 'selected' : ''}>dev</option>
+        <option value="build" ${site.mode === 'build' ? 'selected' : ''}>build</option>
+      </select>`;
+      let status, action = '';
+      if (site.mode === 'build') {
+        status = `<span class="badge" title="serving ${site.buildDir}/">${site.buildDir}/</span>`;
+      } else if (site.devPort) {
+        status = `<span class="badge on" title="dev server port">:${site.devPort}</span>`;
+        action = `<button data-devstop="${site.name}" title="stop the dev server (frees RAM/CPU); the domain shows a hint until started again">Stop</button>`;
+      } else if (site.devPaused) {
+        status = '<span class="badge off">paused</span>';
+        action = `<button data-devstart="${site.name}">Start</button>`;
+      } else {
+        status = '<span class="badge off">down</span>';
+        action = `<button data-devstart="${site.name}">Start</button>`;
+      }
+      runtimeCell = `${modeSel} <select data-nodever="${site.name}" class="mono">${nopts}</select> ${status} ${action}`;
     } else if (site.kind === 'static') {
       runtimeCell = `<span class="muted mono">${site.buildDir}/ (build)</span>`;
     } else {
@@ -551,6 +565,15 @@ function render() {
   tb.querySelectorAll('[data-nodever]').forEach(el => el.onchange = () =>
     act('Switching Node version…', '/api/sites/node',
         { name: el.dataset.nodever, version: el.value }, 'Done'));
+  tb.querySelectorAll('[data-mode]').forEach(el => el.onchange = () =>
+    act(el.value === 'build' ? 'Switching the domain to the production build…' : 'Switching the domain to the dev server…',
+        '/api/sites/mode', { name: el.dataset.mode, mode: el.value }, 'Done'));
+  tb.querySelectorAll('[data-devstart]').forEach(el => el.onclick = () =>
+    act('Starting the dev server… (first start can take a minute)', '/api/dev/start',
+        { name: el.dataset.devstart }, 'Started'));
+  tb.querySelectorAll('[data-devstop]').forEach(el => el.onclick = () =>
+    act('Stopping the dev server…', '/api/dev/stop',
+        { name: el.dataset.devstop }, 'Stopped — it stays stopped until you start it'));
   tb.querySelectorAll('[data-secure]').forEach(el => el.onchange = () =>
     act(el.checked ? 'Securing…' : 'Unsecuring…', '/api/sites/secure',
         { name: el.dataset.secure, secure: el.checked }, 'Done'));

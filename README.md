@@ -136,6 +136,8 @@ mullion isolate 7.4            # pin just this project to it
 | `mullion node isolate <v>` / `unisolate` | Pin the current frontend project to a Node version |
 | `mullion node npm <v> [node]` | Change the npm version inside a Node install |
 | `mullion link --build [--dir d]` | Serve the project's LAST production build as `<name>-build.test` (auto-detects dist/build/out) |
+| `mullion serve dev\|build [name]` | Switch what a frontend domain serves: the dev server, or the last production build |
+| `mullion dev start` / `stop` / `restart` `[name]` | Control one site's dev server — `stop` frees RAM/CPU and STAYS stopped until you start it |
 | `mullion link [name]` | Serve current directory at `http://<name>.test` |
 | `mullion unlink [name]` | Stop serving it |
 | `mullion links` | List all linked sites |

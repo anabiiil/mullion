@@ -44,9 +44,14 @@ var startCmd = &cobra.Command{
 			if site.Kind != "node" {
 				continue
 			}
-			if port := devserver.Running(a.Paths, site.Name); port > 0 {
-				fmt.Printf("dev:      %-14s port %d  %s\n", a.State.Host(site), port, term.Green("running"))
-			} else {
+			switch {
+			case site.Mode == "build":
+				fmt.Printf("dev:      %-14s serving the production build (%s/)\n", a.State.Host(site), site.BuildDir)
+			case devserver.Running(a.Paths, site.Name) > 0:
+				fmt.Printf("dev:      %-14s port %d  %s\n", a.State.Host(site), devserver.Running(a.Paths, site.Name), term.Green("running"))
+			case site.DevPaused:
+				fmt.Printf("dev:      %-14s %s (start with `mullion dev start %s`)\n", a.State.Host(site), term.Yellow("paused"), site.Name)
+			default:
 				fmt.Printf("dev:      %-14s %s (starts with `mullion start`)\n", a.State.Host(site), term.Red("stopped"))
 			}
 		}

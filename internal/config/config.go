@@ -51,8 +51,14 @@ type Site struct {
 	// BuildDir is the directory served for "static" sites, relative to Path.
 	BuildDir string `json:"buildDir,omitempty"`
 	// DevPort is the stable local port assigned to this site's dev server.
-	DevPort int  `json:"devPort,omitempty"`
-	Secure  bool `json:"secure"`
+	DevPort int `json:"devPort,omitempty"`
+	// Mode selects what a node site's domain serves: "" or "dev" (the
+	// managed dev server) or "build" (the BuildDir production build).
+	Mode string `json:"mode,omitempty"`
+	// DevPaused records that the user stopped this site's dev server on
+	// purpose — Mullion must not resurrect it until they start it again.
+	DevPaused bool `json:"devPaused,omitempty"`
+	Secure    bool `json:"secure"`
 }
 
 // IsPHP reports whether the site is served through php_fastcgi.
