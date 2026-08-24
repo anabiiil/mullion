@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"runtime"
 
+	"pm/internal/app"
+
 	"github.com/spf13/cobra"
 
 	"pm/internal/phpver"
@@ -31,10 +33,23 @@ var useCmd = &cobra.Command{
 		}
 		fmt.Printf("System PHP is now %s (`php -v` in any new terminal)\n", full)
 		if shadow := a.PhpShadow(); shadow != "" {
+			reassertPathPriority(a)
 			fmt.Print(shadowWarning(shadow))
 		}
 		return nil
 	},
+}
+
+// reassertPathPriority makes Mullion win the PATH again when another
+// php shadows it: re-writing the managed profile block moves it to the
+// END of the shell files, after whatever prepended itself since — so
+// the next terminal resolves Mullion's php first. No-op on Windows
+// (there the fix is machine-PATH priority, done in setup).
+func reassertPathPriority(a *app.App) {
+	if runtime.GOOS == "windows" {
+		return
+	}
+	_ = app.EnsureUserPath(a.Paths.BinDir(), a.Paths.CurrentPhp())
 }
 
 func init() {
@@ -56,10 +71,11 @@ Environment Variables), then open a new terminal.
 `, shadow)
 	}
 	return fmt.Sprintf(`
-WARNING: 'php' currently resolves to
+NOTE: in THIS terminal 'php' still resolves to
   %s
-which shadows the version Mullion just activated. Another PHP install
-(Homebrew?) sits earlier on your PATH. Open a NEW terminal so Mullion's
-PATH entry takes effect, or remove the other php from your PATH.
+(another PHP install — a version manager or Homebrew). Mullion has
+re-asserted its PATH entry so it loads last in your shell profiles:
+open a NEW terminal and `+"`php -v`"+` will show Mullion's version. If it
+still doesn't, remove the other php's PATH line from your shell config.
 `, shadow)
 }

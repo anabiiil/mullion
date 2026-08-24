@@ -109,3 +109,10 @@ Remove-Item -Recurse -Force $dir -ErrorAction SilentlyContinue`,
 	_ = cmd.Process.Release()
 	return nil
 }
+
+// conflictExample names the usual suspect in the port-conflict warning.
+const conflictExample = " (e.g. quit Laragon)"
+
+// printStackHint has nothing extra to add on Windows — killing the
+// process is usually enough there.
+func printStackHint(conflicts []portConflict) {}
