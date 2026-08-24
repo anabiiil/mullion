@@ -44,14 +44,17 @@ func ToFile(ctx context.Context, url, destPath string) error {
 
 	pw := &progressWriter{total: resp.ContentLength, label: filepath.Base(destPath)}
 	_, err = io.Copy(io.MultiWriter(tmp, pw), resp.Body)
-	pw.finish()
 	if closeErr := tmp.Close(); err == nil {
 		err = closeErr
 	}
-	if err != nil {
-		return err
+	if err == nil {
+		err = os.Rename(tmp.Name(), destPath)
 	}
-	return os.Rename(tmp.Name(), destPath)
+	pw.finish(err)
+	if err != nil {
+		return fmt.Errorf("downloading %s: %w", filepath.Base(destPath), err)
+	}
+	return nil
 }
 
 type progressWriter struct {
@@ -84,7 +87,14 @@ func (w *progressWriter) draw() {
 	}
 }
 
-func (w *progressWriter) finish() {
+// finish closes the progress line honestly: ✓ only when the download
+// actually completed — a failed transfer must never look like success.
+func (w *progressWriter) finish(err error) {
+	if err != nil {
+		fmt.Printf("\r  %s %s  failed after %.1f MB: %v%s\n", term.Red("✗"), w.label,
+			float64(w.written)/1e6, err, term.ClearLine())
+		return
+	}
 	fmt.Printf("\r  %s %s  %.1f MB%s\n", term.Green("✓"), w.label,
 		float64(w.written)/1e6, term.ClearLine())
 }
