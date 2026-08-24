@@ -164,6 +164,12 @@ func DisableShadowEntries(shadowExe string) ([]string, error) {
 		rest := strings.TrimPrefix(dir, home)
 		variants = append(variants, "$HOME"+rest, "${HOME}"+rest, "~"+rest)
 	}
+	// Version managers wire themselves in via an init line, not a PATH
+	// line — disabling THAT is what actually stops them.
+	var initMarkers []string
+	if strings.Contains(dir, string(os.PathSeparator)+".nvm"+string(os.PathSeparator)) {
+		initMarkers = []string{"nvm.sh", "NVM_DIR"}
+	}
 
 	var disabled []string
 	files := profileFiles()
@@ -193,12 +199,17 @@ func DisableShadowEntries(shadowExe string) ([]string, error) {
 			if inBlock || trimmed == "" || strings.HasPrefix(trimmed, "#") {
 				continue
 			}
-			if !strings.Contains(line, "PATH") {
-				continue
-			}
 			hit := false
-			for _, v := range variants {
-				if strings.Contains(line, v) {
+			if strings.Contains(line, "PATH") {
+				for _, v := range variants {
+					if strings.Contains(line, v) {
+						hit = true
+						break
+					}
+				}
+			}
+			for _, m := range initMarkers {
+				if strings.Contains(line, m) {
 					hit = true
 					break
 				}
@@ -206,7 +217,7 @@ func DisableShadowEntries(shadowExe string) ([]string, error) {
 			if !hit {
 				continue
 			}
-			lines[i] = "# disabled by mullion (this PHP shadowed Mullion's — remove the marker to restore): " + line
+			lines[i] = "# disabled by mullion (it shadowed Mullion's runtime — remove the marker to restore): " + line
 			changed = true
 			disabled = append(disabled, fmt.Sprintf("%s:%d", f, i+1))
 		}
