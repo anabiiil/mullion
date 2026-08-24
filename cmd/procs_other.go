@@ -106,3 +106,34 @@ func scheduleHomeRemoval(home string) error {
 	_ = cmd.Process.Release()
 	return nil
 }
+
+// conflictExample names the usual suspects in the port-conflict warning.
+const conflictExample = " (e.g. Valet's nginx, Homebrew services)"
+
+// printStackHint explains how to stop stacks that launchd keeps
+// resurrecting: killing Valet's nginx or a `brew services` mysql just
+// brings it back, so the managing service must be stopped instead.
+func printStackHint(conflicts []portConflict) {
+	names := map[string]bool{}
+	for _, c := range conflicts {
+		names[strings.ToLower(filepath.Base(c.Name))] = true
+	}
+	var hints []string
+	if names["nginx"] || names["httpd"] {
+		hints = append(hints,
+			"  valet stop                       # if the server belongs to Laravel Valet",
+			"  brew services stop nginx         # if it runs via Homebrew (try with sudo too)")
+	}
+	if names["mysqld"] || names["mariadbd"] {
+		hints = append(hints, "  brew services stop mysql         # Homebrew's MySQL (or mysql@<version>)")
+	}
+	if len(hints) == 0 && len(conflicts) > 0 {
+		hints = append(hints, "  brew services list               # find and stop whatever manages it")
+	}
+	if len(hints) > 0 {
+		fmt.Println("hint: on macOS these servers are often kept alive by launchd — stopping the manager is what sticks:")
+		for _, h := range hints {
+			fmt.Println(h)
+		}
+	}
+}

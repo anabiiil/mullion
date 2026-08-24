@@ -33,7 +33,8 @@ func resolvePortConflicts(a *app.App) {
 	}
 
 	if !console.Interactive() {
-		fmt.Println("warning: Mullion's services cannot bind those ports until you stop the processes above (e.g. quit Laragon).")
+		fmt.Println("warning: Mullion's services cannot bind those ports until you stop the processes above" + conflictExample + ".")
+		printStackHint(conflicts)
 		return
 	}
 	if !askYesNo("Stop those processes now so Mullion becomes the main server?", true) {
@@ -53,6 +54,7 @@ func resolvePortConflicts(a *app.App) {
 		time.Sleep(500 * time.Millisecond)
 	}
 	fmt.Println("warning: some ports are still busy (the other stack may auto-restart its services — quit it fully).")
+	printStackHint(findPortConflicts(a))
 }
 
 // findPortConflicts checks the ports Mullion needs, skipping the ones

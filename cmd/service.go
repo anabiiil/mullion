@@ -41,6 +41,9 @@ var startCmd = &cobra.Command{
 				return err
 			}
 		}
+		if a.PhpShadow() != "" {
+			reassertPathPriority(a)
+		}
 		fmt.Println(term.Green("✓ Mullion is running."))
 		return statusCmd.RunE(cmd, nil)
 	},
