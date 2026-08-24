@@ -405,7 +405,9 @@ function render() {
   if (s.phpShadow) {
     warn.style.display = '';
     warn.textContent = '⚠ `php` on your PATH resolves to ' + s.phpShadow +
-      ' which shadows Mullion. Remove that directory from the system PATH.';
+      (s.windows
+        ? ' which shadows Mullion. Remove that directory from the system PATH.'
+        : ' which shadows Mullion. Switching a PHP version re-fixes this automatically — then open a NEW terminal. If it persists, remove that PATH line from your shell config (e.g. ~/.zshrc).');
   } else warn.style.display = 'none';
 
   const sel = $('php-global');
