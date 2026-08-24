@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 	"pm/internal/app"
 	"pm/internal/console"
 	"pm/internal/mysql"
+	"pm/internal/phpmyadmin"
 	"pm/internal/term"
 )
 
@@ -147,6 +149,125 @@ one file is imported, otherwise every .sql file in it is.`,
 	},
 }
 
+var mysqlPasswordCmd = &cobra.Command{
+	Use:   "password [new-password]",
+	Short: "Change the MySQL root password ('' to remove it); phpMyAdmin follows automatically",
+	Args:  cobra.MaximumNArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		a, version, err := mustMysql()
+		if err != nil {
+			return err
+		}
+		var newPass string
+		if len(args) == 1 {
+			newPass = args[0]
+		} else {
+			if !console.Interactive() {
+				return fmt.Errorf("pass the new password as an argument, e.g.: mullion mysql password secret")
+			}
+			fmt.Print("New root password (empty to remove): ")
+			line, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+			newPass = strings.TrimRight(line, "\r\n")
+		}
+		if err := mysql.Start(a.Paths, version); err != nil {
+			return err
+		}
+		if err := mysql.SetRootPassword(a.Paths, version, newPass); err != nil {
+			return err
+		}
+		a.State.Config.MySQLPassword = newPass
+		mysql.RootPassword = newPass
+		if err := a.State.Save(); err != nil {
+			return err
+		}
+		if err := phpmyadmin.RefreshConfig(a.Paths, newPass); err != nil {
+			fmt.Println("note: could not update phpMyAdmin's config -", err)
+		}
+		if newPass == "" {
+			fmt.Println("Root password removed. phpMyAdmin updated.")
+		} else {
+			fmt.Println("Root password changed. phpMyAdmin updated to match.")
+		}
+		return nil
+	},
+}
+
+var dbCmd = &cobra.Command{
+	Use:   "db",
+	Short: "Manage databases on the local MySQL server",
+}
+
+var dbListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "List your databases",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		a, version, err := mustMysql()
+		if err != nil {
+			return err
+		}
+		if err := mysql.Start(a.Paths, version); err != nil {
+			return err
+		}
+		dbs, err := mysql.UserDatabases(a.Paths, version)
+		if err != nil {
+			return err
+		}
+		if len(dbs) == 0 {
+			fmt.Println("No databases yet. Create one with: mullion db create <name>")
+			return nil
+		}
+		for _, db := range dbs {
+			fmt.Println("  " + db)
+		}
+		return nil
+	},
+}
+
+var dbCreateCmd = &cobra.Command{
+	Use:   "create <name>",
+	Short: "Create a database (utf8mb4)",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		a, version, err := mustMysql()
+		if err != nil {
+			return err
+		}
+		if err := mysql.Start(a.Paths, version); err != nil {
+			return err
+		}
+		if err := mysql.CreateDatabase(a.Paths, version, args[0]); err != nil {
+			return err
+		}
+		fmt.Printf("Database %s is ready.\n", args[0])
+		return nil
+	},
+}
+
+var dbDropCmd = &cobra.Command{
+	Use:   "drop <name>",
+	Short: "Delete a database and ALL its data",
+	Args:  cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		a, version, err := mustMysql()
+		if err != nil {
+			return err
+		}
+		if console.Interactive() &&
+			!askYesNo(fmt.Sprintf("Delete database %q and ALL its data?", args[0]), false) {
+			fmt.Println("Aborted.")
+			return nil
+		}
+		if err := mysql.Start(a.Paths, version); err != nil {
+			return err
+		}
+		if err := mysql.DropDatabase(a.Paths, version, args[0]); err != nil {
+			return err
+		}
+		fmt.Printf("Database %s dropped.\n", args[0])
+		return nil
+	},
+}
+
 var mysqlStartCmd = &cobra.Command{
 	Use:   "start",
 	Short: "Start the MySQL server",
@@ -212,6 +333,7 @@ func mustMysql() (*app.App, string, error) {
 }
 
 func init() {
-	mysqlCmd.AddCommand(mysqlInstallCmd, mysqlRestoreCmd, mysqlStartCmd, mysqlStopCmd, mysqlUninstallCmd)
-	rootCmd.AddCommand(mysqlCmd, mariadbCmd)
+	mysqlCmd.AddCommand(mysqlInstallCmd, mysqlRestoreCmd, mysqlPasswordCmd, mysqlStartCmd, mysqlStopCmd, mysqlUninstallCmd)
+	dbCmd.AddCommand(dbListCmd, dbCreateCmd, dbDropCmd)
+	rootCmd.AddCommand(mysqlCmd, mariadbCmd, dbCmd)
 }

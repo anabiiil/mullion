@@ -43,7 +43,7 @@ func ensurePhpMyAdmin(ctx context.Context, a *app.App, version string) error {
 		return fmt.Errorf("phpMyAdmin needs PHP: run `mullion php install 8.4` and `mullion use 8.4` first")
 	}
 
-	if err := phpmyadmin.Install(ctx, a.Paths, version); err != nil {
+	if err := phpmyadmin.Install(ctx, a.Paths, version, a.State.Config.MySQLPassword); err != nil {
 		return err
 	}
 	if site := a.State.FindSite("phpmyadmin"); site == nil {

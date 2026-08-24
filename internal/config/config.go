@@ -30,6 +30,9 @@ type Config struct {
 	GlobalPHP string `json:"globalPhp"`
 	// MySQL is the installed server version ("" = not installed).
 	MySQL string `json:"mysql,omitempty"`
+	// MySQLPassword is the root password of Mullion's MySQL ("" = none).
+	// Stored in plain text: this is a LOCAL dev server bound to 127.0.0.1.
+	MySQLPassword string `json:"mysqlPassword,omitempty"`
 }
 
 type Site struct {

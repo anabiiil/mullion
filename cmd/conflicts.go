@@ -43,7 +43,7 @@ func resolvePortConflicts(a *app.App) {
 	}
 
 	for _, c := range conflicts {
-		killWithParent(c.PID)
+		stopConflict(c)
 	}
 	// Give the OS a moment to release the ports, then report honestly.
 	for i := 0; i < 20; i++ {

@@ -116,3 +116,7 @@ const conflictExample = " (e.g. quit Laragon)"
 // printStackHint has nothing extra to add on Windows — killing the
 // process is usually enough there.
 func printStackHint(conflicts []portConflict) {}
+
+// stopConflict stops a conflicting listener; on Windows killing the
+// process (and its same-name parent) is what works.
+func stopConflict(c portConflict) { killWithParent(c.PID) }

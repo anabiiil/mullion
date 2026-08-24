@@ -4,6 +4,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -136,4 +137,81 @@ func printStackHint(conflicts []portConflict) {
 			fmt.Println(h)
 		}
 	}
+}
+
+// stopConflict stops a conflicting listener FOR GOOD: launchd- and
+// brew-managed servers resurrect after a bare kill, so their manager
+// (brew services, Valet) is stopped first, then the process itself.
+func stopConflict(c portConflict) {
+	stopManagedService(c.Name)
+	killWithParent(c.PID)
+}
+
+// stopManagedService stops whatever keeps the named server alive.
+func stopManagedService(procName string) {
+	base := strings.ToLower(filepath.Base(procName))
+	var prefixes []string
+	switch {
+	case strings.Contains(base, "nginx"):
+		prefixes = []string{"nginx"}
+		// Valet manages its nginx (and dnsmasq) itself.
+		if _, err := exec.LookPath("valet"); err == nil {
+			fmt.Println("Stopping Laravel Valet (it manages that nginx)...")
+			cmd := exec.Command("valet", "stop")
+			cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+			_ = cmd.Run()
+		}
+	case strings.Contains(base, "mysqld"):
+		prefixes = []string{"mysql", "percona-server"}
+	case strings.Contains(base, "mariadbd"):
+		prefixes = []string{"mariadb"}
+	case strings.Contains(base, "httpd"):
+		prefixes = []string{"httpd"}
+	default:
+		return
+	}
+	brew, err := exec.LookPath("brew")
+	if err != nil {
+		return
+	}
+	out, err := exec.Command(brew, "services", "list").Output()
+	if err != nil {
+		return
+	}
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n")[1:] {
+		fields := strings.Fields(line)
+		if len(fields) < 2 || fields[1] != "started" {
+			continue
+		}
+		name := fields[0]
+		match := false
+		for _, p := range prefixes {
+			if name == p || strings.HasPrefix(name, p+"@") {
+				match = true
+				break
+			}
+		}
+		if !match {
+			continue
+		}
+		asRoot := len(fields) >= 3 && fields[2] == "root"
+		fmt.Printf("Stopping Homebrew service %s (so it stays down)...\n", name)
+		var cmd *exec.Cmd
+		if asRoot {
+			if !stdinIsTerminal() {
+				fmt.Printf("note: %s runs as root — stop it yourself with: sudo brew services stop %s\n", name, name)
+				continue
+			}
+			cmd = exec.Command("sudo", brew, "services", "stop", name)
+		} else {
+			cmd = exec.Command(brew, "services", "stop", name)
+		}
+		cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+		_ = cmd.Run()
+	}
+}
+
+func stdinIsTerminal() bool {
+	info, err := os.Stdin.Stat()
+	return err == nil && info.Mode()&os.ModeCharDevice != 0
 }

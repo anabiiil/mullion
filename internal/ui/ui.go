@@ -28,6 +28,7 @@ import (
 	"pm/internal/fcgi"
 	"pm/internal/heidisql"
 	"pm/internal/mysql"
+	"pm/internal/phpmyadmin"
 	"pm/internal/phpver"
 )
 
@@ -284,6 +285,73 @@ func newMux(token string) *http.ServeMux {
 		}
 		return nil, mysql.Start(a.Paths, v)
 	})
+	api("/api/mysql/password", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Password string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		v := a.State.Config.MySQL
+		if v == "" {
+			return nil, errors.New("MySQL is not installed")
+		}
+		if err := mysql.Start(a.Paths, v); err != nil {
+			return nil, err
+		}
+		if err := mysql.SetRootPassword(a.Paths, v, in.Password); err != nil {
+			return nil, err
+		}
+		a.State.Config.MySQLPassword = in.Password
+		mysql.RootPassword = in.Password
+		if err := a.State.Save(); err != nil {
+			return nil, err
+		}
+		if err := phpmyadmin.RefreshConfig(a.Paths, in.Password); err != nil {
+			return nil, fmt.Errorf("password changed, but phpMyAdmin's config could not be updated: %w", err)
+		}
+		return nil, nil
+	})
+	api("/api/db/list", func(a *app.App, r *http.Request) (any, error) {
+		v := a.State.Config.MySQL
+		if v == "" || !mysql.Running() {
+			return []string{}, nil
+		}
+		dbs, err := mysql.UserDatabases(a.Paths, v)
+		if err != nil {
+			return nil, err
+		}
+		if dbs == nil {
+			dbs = []string{}
+		}
+		return dbs, nil
+	})
+	api("/api/db/create", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Name string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		v := a.State.Config.MySQL
+		if v == "" {
+			return nil, errors.New("MySQL is not installed")
+		}
+		if err := mysql.Start(a.Paths, v); err != nil {
+			return nil, err
+		}
+		return nil, mysql.CreateDatabase(a.Paths, v, in.Name)
+	})
+	api("/api/db/drop", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Name string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		v := a.State.Config.MySQL
+		if v == "" {
+			return nil, errors.New("MySQL is not installed")
+		}
+		if err := mysql.Start(a.Paths, v); err != nil {
+			return nil, err
+		}
+		return nil, mysql.DropDatabase(a.Paths, v, in.Name)
+	})
 	api("/api/mysql/stop", func(a *app.App, r *http.Request) (any, error) {
 		v := a.State.Config.MySQL
 		if v == "" {
@@ -452,11 +520,12 @@ func getState(a *app.App, r *http.Request) (any, error) {
 	mysqlState := map[string]any{"installed": false}
 	if v := a.State.Config.MySQL; v != "" {
 		mysqlState = map[string]any{
-			"installed": true,
-			"version":   v,
-			"label":     mysql.Label(v),
-			"port":      mysql.Port,
-			"running":   mysql.Running(),
+			"hasPassword": a.State.Config.MySQLPassword != "",
+			"installed":   true,
+			"version":     v,
+			"label":       mysql.Label(v),
+			"port":        mysql.Port,
+			"running":     mysql.Running(),
 		}
 	}
 

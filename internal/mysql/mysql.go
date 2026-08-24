@@ -32,6 +32,20 @@ import (
 // Port is fixed: local dev tools (phpMyAdmin included) expect the default.
 const Port = 3306
 
+// RootPassword is the root password of Mullion's server ("" until the
+// user sets one with `mullion mysql password`). app.New loads it from
+// the config; every client invocation here honors it.
+var RootPassword string
+
+// withPassword hands the root password to a client tool via the
+// environment (MYSQL_PWD), keeping it out of `ps` output.
+func withPassword(cmd *exec.Cmd) *exec.Cmd {
+	if RootPassword != "" {
+		cmd.Env = append(os.Environ(), "MYSQL_PWD="+RootPassword)
+	}
+	return cmd
+}
+
 // MariaDB installs are versioned as "mariadb-<x.y.z>" so one config
 // field and one directory layout cover both flavors.
 const mariaPrefix = "mariadb-"
@@ -372,8 +386,8 @@ func Stop(paths pmdir.Paths, version string) error {
 		return nil
 	}
 	admin := binExe(paths, version, "mysqladmin", "mariadb-admin")
-	cmd := proc.Quiet(admin, "--user=root", "--host=127.0.0.1",
-		fmt.Sprintf("--port=%d", Port), "shutdown")
+	cmd := withPassword(proc.Quiet(admin, "--user=root", "--host=127.0.0.1",
+		fmt.Sprintf("--port=%d", Port), "shutdown"))
 	if out, err := cmd.CombinedOutput(); err != nil {
 		killByPidFile(paths)
 		return fmt.Errorf("mysqladmin shutdown: %v: %s (killed the process instead)", err, out)
@@ -447,9 +461,9 @@ func writeIni(paths pmdir.Paths, version string) error {
 // UserDatabases lists the databases on the running server, minus the
 // system schemas that must not be copied between versions.
 func UserDatabases(paths pmdir.Paths, version string) ([]string, error) {
-	out, err := proc.Quiet(clientExe(paths, version),
+	out, err := withPassword(proc.Quiet(clientExe(paths, version),
 		"--user=root", "--host=127.0.0.1", fmt.Sprintf("--port=%d", Port),
-		"-N", "-e", "SHOW DATABASES").Output()
+		"-N", "-e", "SHOW DATABASES")).Output()
 	if err != nil {
 		return nil, fmt.Errorf("listing databases: %w", err)
 	}
@@ -479,7 +493,7 @@ func DumpAll(paths pmdir.Paths, version string, dbs []string, outFile string) er
 	}
 	args = append(args, dbs...)
 	dump := binExe(paths, version, "mysqldump", "mariadb-dump")
-	cmd := proc.Quiet(dump, args...)
+	cmd := withPassword(proc.Quiet(dump, args...))
 
 	done := make(chan struct{})
 	go func() {
@@ -598,9 +612,9 @@ func RestoreFile(paths pmdir.Paths, version, file string) error {
 		}
 	}()
 
-	cmd := proc.Quiet(clientExe(paths, version),
+	cmd := withPassword(proc.Quiet(clientExe(paths, version),
 		"--user=root", "--host=127.0.0.1", fmt.Sprintf("--port=%d", Port),
-		"--max-allowed-packet=512M")
+		"--max-allowed-packet=512M"))
 	cmd.Stdin = pr
 	out, err := cmd.CombinedOutput()
 	close(done)
@@ -638,3 +652,68 @@ func compare(a, b string) int {
 	}
 	return 0
 }
+
+// runSQL executes one statement as root on the running server.
+func runSQL(paths pmdir.Paths, version, stmt string) error {
+	cmd := withPassword(proc.Quiet(clientExe(paths, version),
+		"--user=root", "--host=127.0.0.1", fmt.Sprintf("--port=%d", Port),
+		"-e", stmt))
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("mysql: %v: %s", err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
+// SetRootPassword changes root's password on the running server (""
+// removes it). The caller persists the new value in the config and
+// refreshes phpMyAdmin's config.
+func SetRootPassword(paths pmdir.Paths, version, newPassword string) error {
+	esc := strings.ReplaceAll(newPassword, `\`, `\\`)
+	esc = strings.ReplaceAll(esc, "'", `\'`)
+	stmts := []string{}
+	for _, host := range []string{"localhost", "127.0.0.1", "%"} {
+		stmts = append(stmts, fmt.Sprintf(
+			"ALTER USER IF EXISTS 'root'@'%s' IDENTIFIED BY '%s';", host, esc))
+	}
+	stmts = append(stmts, "FLUSH PRIVILEGES;")
+	if err := runSQL(paths, version, strings.Join(stmts, " ")); err != nil {
+		return err
+	}
+	// Verify by authenticating with the NEW password — an ALTER that
+	// half-applied must not end up recorded as the working password.
+	verify := proc.Quiet(clientExe(paths, version),
+		"--user=root", "--host=127.0.0.1", fmt.Sprintf("--port=%d", Port),
+		"-e", "SELECT 1")
+	verify.Env = append(os.Environ(), "MYSQL_PWD="+newPassword)
+	if out, err := verify.CombinedOutput(); err != nil {
+		return fmt.Errorf("the password change did not verify: %v: %s", err, strings.TrimSpace(string(out)))
+	}
+	return nil
+}
+
+// validDBName keeps identifiers boring enough to quote safely.
+var validDBName = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
+
+// CreateDatabase creates a database (utf8mb4).
+func CreateDatabase(paths pmdir.Paths, version, name string) error {
+	if !validDBName.MatchString(name) {
+		return fmt.Errorf("invalid database name %q (letters, digits, _ and - only)", name)
+	}
+	return runSQL(paths, version,
+		fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;", quoteIdent(name)))
+}
+
+// DropDatabase permanently deletes a database and everything in it.
+func DropDatabase(paths pmdir.Paths, version, name string) error {
+	if !validDBName.MatchString(name) {
+		return fmt.Errorf("invalid database name %q", name)
+	}
+	system := map[string]bool{"mysql": true, "information_schema": true, "performance_schema": true, "sys": true}
+	if system[strings.ToLower(name)] {
+		return fmt.Errorf("%s is a system database — refusing to drop it", name)
+	}
+	return runSQL(paths, version, fmt.Sprintf("DROP DATABASE %s;", quoteIdent(name)))
+}
+
+// quoteIdent backtick-quotes an already-validated identifier.
+func quoteIdent(name string) string { return "`" + name + "`" }
