@@ -15,14 +15,21 @@ const (
 )
 
 // profileFiles returns the shell startup files the PATH block goes into:
-// ~/.zprofile always (zsh is the macOS default shell), plus the bash
-// files when the user has them.
+// ~/.zprofile AND ~/.zshrc (zsh is the macOS default shell), plus the
+// bash files when the user has them. The .zshrc copy matters: it loads
+// after .zprofile, and our block sits at the END of it, so Mullion's
+// prepend beats version managers (nvm-style PHP switchers) that prepend
+// themselves earlier in the same file — without it, their entry shadows
+// Mullion's php.
 func profileFiles() []string {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return nil
 	}
-	files := []string{filepath.Join(home, ".zprofile")}
+	files := []string{
+		filepath.Join(home, ".zprofile"),
+		filepath.Join(home, ".zshrc"),
+	}
 	for _, f := range []string{".bash_profile", ".profile"} {
 		if _, err := os.Stat(filepath.Join(home, f)); err == nil {
 			files = append(files, filepath.Join(home, f))
