@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -121,6 +122,14 @@ var nodeUseCmd = &cobra.Command{
 			return err
 		}
 		fmt.Printf("Default Node is now %s (`node -v` in any NEW terminal)\n", full)
+		if found, err := exec.LookPath("node"); err == nil {
+			shim := filepath.Join(a.Paths.BinDir(), "node")
+			if filepath.Clean(found) != filepath.Clean(shim) {
+				fmt.Printf("\nNote: in THIS terminal `node` still resolves to %s (another install).\n", found)
+				offerShadowFix(found)
+				fmt.Println("Open a NEW terminal for Mullion's node to take over.")
+			}
+		}
 		return nil
 	},
 }
@@ -228,6 +237,41 @@ var nodeNpmCmd = &cobra.Command{
 	},
 }
 
+var nodeWhichCmd = &cobra.Command{
+	Use:   "which",
+	Short: "Explain which Node version this directory gets, and why",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		a := mustApp()
+		dir, reason, err := resolveNodeDirForCwd(a)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Here, Node %s runs — decided by %s.\n", filepath.Base(dir), reason)
+		if g := a.State.Config.GlobalNode; g != "" {
+			fmt.Printf("Global default: %s\n", g)
+		}
+
+		// Is the `node` on the PATH actually Mullion's shim?
+		found, err := exec.LookPath("node")
+		if err != nil {
+			fmt.Println("warning: no `node` on this terminal's PATH — open a NEW terminal.")
+			return nil
+		}
+		shim := filepath.Join(a.Paths.BinDir(), "node")
+		if filepath.Clean(found) != filepath.Clean(shim) {
+			fmt.Printf(`
+WARNING: in THIS terminal `+"`node`"+` resolves to
+  %s
+which is NOT Mullion's — another Node install (nvm? Homebrew?) is
+earlier on the PATH, so `+"`node -v`"+` here ignores Mullion entirely.
+Fix: run `+"`mullion node use %s`"+` (re-asserts the PATH) and open a
+NEW terminal.
+`, found, filepath.Base(dir))
+		}
+		return nil
+	},
+}
+
 // nodeBinCmd powers the node/npm/npx shims: it prints the absolute path
 // of a tool in the version the CURRENT DIRECTORY should use (pinned
 // site version → .nvmrc → global default). Hidden — not for humans.
@@ -237,7 +281,7 @@ var nodeBinCmd = &cobra.Command{
 	Args:   cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		a := mustApp()
-		dir, err := resolveNodeDirForCwd(a)
+		dir, _, err := resolveNodeDirForCwd(a)
 		if err != nil {
 			return err
 		}
@@ -247,33 +291,42 @@ var nodeBinCmd = &cobra.Command{
 }
 
 // resolveNodeDirForCwd resolves the Node version directory for the
-// current directory: a linked site's pin, a .nvmrc walking up, then the
-// global default.
-func resolveNodeDirForCwd(a *app.App) (string, error) {
+// current directory: a linked site's pin, a .nvmrc walking up (stopping
+// at the home directory), then the global default. The reason explains
+// the choice to a human.
+func resolveNodeDirForCwd(a *app.App) (dir, reason string, err error) {
 	cwd, err := os.Getwd()
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	for dir := cwd; ; dir = filepath.Dir(dir) {
-		if site := a.State.FindSiteByPath(dir); site != nil {
-			return a.NodeVersionDirFor(*site)
+	home, _ := os.UserHomeDir()
+	for d := cwd; ; d = filepath.Dir(d) {
+		if site := a.State.FindSiteByPath(d); site != nil {
+			verDir, err := a.NodeVersionDirFor(*site)
+			why := fmt.Sprintf("linked site %q", site.Name)
+			if site.Node == "" {
+				why += " (.nvmrc / global)"
+			} else {
+				why += " (pinned)"
+			}
+			return verDir, why, err
 		}
-		if data, err := os.ReadFile(filepath.Join(dir, ".nvmrc")); err == nil {
+		if data, err := os.ReadFile(filepath.Join(d, ".nvmrc")); err == nil {
 			full, err := nodever.FindInstalled(a.Paths, strings.TrimSpace(string(data)))
 			if err != nil {
-				return "", err
+				return "", "", err
 			}
-			return a.Paths.NodeVersionDir(full), nil
+			return a.Paths.NodeVersionDir(full), filepath.Join(d, ".nvmrc"), nil
 		}
-		if filepath.Dir(dir) == dir {
+		if d == home || filepath.Dir(d) == d {
 			break
 		}
 	}
 	full, err := nodever.FindInstalled(a.Paths, a.State.Config.GlobalNode)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
-	return a.Paths.NodeVersionDir(full), nil
+	return a.Paths.NodeVersionDir(full), "the global default", nil
 }
 
 // activateNode makes a version the default (junction, shims, PATH).
@@ -298,7 +351,7 @@ func currentNodeSite(a *app.App) (*config.Site, error) {
 }
 
 func init() {
-	nodeCmd.AddCommand(nodeAvailableCmd, nodeInstallCmd, nodeListCmd, nodeUseCmd,
+	nodeCmd.AddCommand(nodeAvailableCmd, nodeInstallCmd, nodeListCmd, nodeUseCmd, nodeWhichCmd,
 		nodeUninstallCmd, nodeIsolateCmd, nodeUnisolateCmd, nodeNpmCmd, nodeBinCmd)
 	rootCmd.AddCommand(nodeCmd)
 }

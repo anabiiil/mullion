@@ -169,11 +169,13 @@ func doSetup(cmd *cobra.Command, wantAutostart bool, dbChoice string) error {
 		}
 
 		// Desktop shortcut to the installed copy — the file setup was
-		// launched from may get deleted later.
-		if err := shortcut.CreateDesktop(a.Paths); err != nil {
-			fmt.Println("note:", err)
-		} else {
-			fmt.Println("Desktop shortcut created.")
+		// launched from may get deleted later (Windows only).
+		if runtime.GOOS == "windows" {
+			if err := shortcut.CreateDesktop(a.Paths); err != nil {
+				fmt.Println("note:", err)
+			} else {
+				fmt.Println("Desktop shortcut created.")
+			}
 		}
 
 		if err := app.EnsureUserPath(a.Paths.BinDir(), a.Paths.CurrentPhp()); err != nil {
