@@ -126,20 +126,46 @@ func (a *App) WriteCaddyfile(devPorts map[string]int) error {
 // NodeVersionDirFor resolves which installed Node a site should run on:
 // its pinned version, the project's .nvmrc, or the global default.
 func (a *App) NodeVersionDirFor(s config.Site) (string, error) {
-	arg := s.Node
-	if arg == "" {
-		if data, err := os.ReadFile(filepath.Join(s.Path, ".nvmrc")); err == nil {
-			arg = strings.TrimSpace(string(data))
-		}
-	}
-	if arg == "" {
-		arg = a.State.Config.GlobalNode
-	}
+	arg := a.nodeArgFor(s)
 	full, err := nodever.FindInstalled(a.Paths, arg)
 	if err != nil {
 		return "", err
 	}
 	return a.Paths.NodeVersionDir(full), nil
+}
+
+func (a *App) nodeArgFor(s config.Site) string {
+	if s.Node != "" {
+		return s.Node
+	}
+	if data, err := os.ReadFile(filepath.Join(s.Path, ".nvmrc")); err == nil {
+		if v := strings.TrimSpace(string(data)); v != "" {
+			return v
+		}
+	}
+	return a.State.Config.GlobalNode
+}
+
+// ensureNodeFor resolves a site's Node version directory, DOWNLOADING
+// the version when the project needs one that isn't installed yet — a
+// pinned site must never fail just because its Node wasn't fetched.
+func (a *App) ensureNodeFor(s config.Site) (string, error) {
+	if dir, err := a.NodeVersionDirFor(s); err == nil {
+		return dir, nil
+	}
+	arg := a.nodeArgFor(s)
+	rel, err := nodever.Resolve(context.Background(), arg)
+	if err != nil {
+		return "", err
+	}
+	fmt.Printf("%s needs Node %s — installing it...\n", s.Name, rel.Version)
+	if _, err := nodever.Install(context.Background(), a.Paths, rel); err != nil {
+		return "", err
+	}
+	if a.State.Config.GlobalNode == "" {
+		_ = a.ActivateNode(rel.Version)
+	}
+	return a.NodeVersionDirFor(s)
 }
 
 // EnsureDevServers brings up the dev server of every linked node site
@@ -151,7 +177,7 @@ func (a *App) EnsureDevServers() map[string]int {
 		if s.Kind != "node" || s.Mode == "build" || s.DevPaused {
 			continue
 		}
-		nodeDir, err := a.NodeVersionDirFor(s)
+		nodeDir, err := a.ensureNodeFor(s)
 		if err != nil {
 			fmt.Printf("warning: %s: %v\n", s.Name, err)
 			continue
@@ -202,30 +228,37 @@ func (a *App) Apply() error {
 	if err := a.WriteCaddyfile(devPorts); err != nil {
 		return err
 	}
-	if err := hosts.Sync(a.Hostnames()); err != nil {
-		return err
-	}
-	for _, v := range a.NeededVersions() {
-		if err := fcgi.Ensure(a.Paths, v); err != nil {
-			return err
+	// The remaining steps are independent: one failing (a declined
+	// hosts-file prompt, a MySQL hiccup) must not leave Caddy serving a
+	// STALE config — every step runs, the first error is reported.
+	var firstErr error
+	keep := func(err error) {
+		if err != nil && firstErr == nil {
+			firstErr = err
 		}
+	}
+	keep(hosts.Sync(a.Hostnames()))
+	for _, v := range a.NeededVersions() {
+		keep(fcgi.Ensure(a.Paths, v))
 	}
 	// Self-heal MySQL too: any mullion command brings it back if it died.
 	if v := a.State.Config.MySQL; v != "" {
 		if err := mysql.EnsureInitialized(a.Paths, v); err != nil {
-			return err
-		}
-		if err := mysql.Start(a.Paths, v); err != nil {
-			return err
+			keep(err)
+		} else {
+			keep(mysql.Start(a.Paths, v))
 		}
 	}
 	if len(a.State.Sites) > 0 {
 		if err := caddy.EnsureInstalled(context.Background(), a.Paths); err != nil {
-			return err
+			keep(err)
+		} else {
+			keep(caddy.Start(a.Paths))
 		}
-		return caddy.Start(a.Paths)
+	} else {
+		keep(caddy.Reload(a.Paths))
 	}
-	return caddy.Reload(a.Paths)
+	return firstErr
 }
 
 // SwitchDatabase installs (if needed) and activates a database version —

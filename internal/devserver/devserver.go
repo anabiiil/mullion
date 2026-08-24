@@ -324,3 +324,9 @@ func RunBuild(paths pmdir.Paths, dir, nodeDir string) error {
 	}
 	return nil
 }
+
+// LogTail returns the last lines of a site's dev-server log (for
+// surfacing failures in the panel).
+func LogTail(paths pmdir.Paths, site string) string {
+	return logTail(logFilePath(paths, site))
+}
