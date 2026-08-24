@@ -14,6 +14,7 @@ import (
 	"pm/internal/autostart"
 	"pm/internal/caddy"
 	"pm/internal/console"
+	"pm/internal/devserver"
 	"pm/internal/elevate"
 	"pm/internal/fcgi"
 	"pm/internal/hosts"
@@ -149,6 +150,7 @@ func doUninstall(a *app.App, wantBackup bool) error {
 	fmt.Println("Stopping services...")
 	_ = caddy.Stop(a.Paths)
 	_ = fcgi.StopAll(a.Paths)
+	devserver.StopAll(a.Paths)
 	if v := a.State.Config.MySQL; v != "" && len(processesUnder(a.Paths.Home, pmdir.ExeName("mysqld"))) > 0 {
 		_ = mysql.Stop(a.Paths, v)
 	}

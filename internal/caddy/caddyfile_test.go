@@ -45,3 +45,28 @@ func TestGenerateEmpty(t *testing.T) {
 		t.Fatalf("global admin block missing:\n%s", out)
 	}
 }
+
+func TestGenerateKinds(t *testing.T) {
+	sites := []SiteConf{
+		{Host: "app.test", Kind: "node", ProxyPort: 5173},
+		{Host: "down.test", Kind: "node", ProxyPort: 0},
+		{Host: "app-build.test", Kind: "static", Root: "/x/dist", Secure: true},
+		{Host: "blog.test", Root: "/y", FcgiPort: 9084},
+	}
+	out := Generate(sites, "/logs")
+	for _, want := range []string{
+		"reverse_proxy localhost:5173",
+		"respond ",
+		`root * "/x/dist"`,
+		"try_files {path} /index.html",
+		"php_fastcgi 127.0.0.1:9084",
+		"tls internal",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("generated Caddyfile misses %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "reverse_proxy localhost:0") {
+		t.Fatalf("down site must not proxy to port 0:\n%s", out)
+	}
+}

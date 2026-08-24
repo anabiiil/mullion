@@ -15,11 +15,13 @@ import (
 var rootCmd = &cobra.Command{
 	Use:   "mullion",
 	Short: "PHP version manager & local dev server",
-	Long: `Mullion — a local PHP development environment for Windows and macOS.
+	Long: `Mullion — a local PHP & frontend development environment for
+Windows and macOS.
 
-Install and switch PHP versions system-wide or per project, serve local
-projects on .test domains through Caddy, and secure them with trusted
-local HTTPS certificates.`,
+Install and switch PHP and Node versions system-wide or per project,
+serve local projects on .test domains through Caddy (frontend projects
+get a managed dev server — just open the link), and secure them with
+trusted local HTTPS certificates.`,
 	SilenceUsage:  true,
 	SilenceErrors: true,
 	Version:       version.Number,

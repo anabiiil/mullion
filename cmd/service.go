@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"pm/internal/caddy"
+	"pm/internal/devserver"
 	"pm/internal/fcgi"
 	"pm/internal/mysql"
 	"pm/internal/phpver"
@@ -36,6 +37,20 @@ var startCmd = &cobra.Command{
 		if err := caddy.Start(a.Paths); err != nil {
 			return err
 		}
+		if v := a.State.Config.GlobalNode; v != "" {
+			fmt.Printf("node:     %s (default)\n", v)
+		}
+		for _, site := range a.State.Sites {
+			if site.Kind != "node" {
+				continue
+			}
+			if port := devserver.Running(a.Paths, site.Name); port > 0 {
+				fmt.Printf("dev:      %-14s port %d  %s\n", a.State.Host(site), port, term.Green("running"))
+			} else {
+				fmt.Printf("dev:      %-14s %s (starts with `mullion start`)\n", a.State.Host(site), term.Red("stopped"))
+			}
+		}
+
 		if v := a.State.Config.MySQL; v != "" {
 			if err := mysql.Start(a.Paths, v); err != nil {
 				return err
@@ -60,6 +75,7 @@ var stopCmd = &cobra.Command{
 		if err := fcgi.StopAll(a.Paths); err != nil {
 			return err
 		}
+		devserver.StopAll(a.Paths)
 		if v := a.State.Config.MySQL; v != "" {
 			if err := mysql.Stop(a.Paths, v); err != nil {
 				return err

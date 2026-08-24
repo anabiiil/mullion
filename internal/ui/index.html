@@ -477,14 +477,28 @@ function render() {
   for (const site of s.sites) {
     const tr = document.createElement('tr');
 
-    const opts = ['<option value="">global (' + s.globalPhp + ')</option>']
-      .concat(s.phpInstalled.map(v =>
-        `<option value="${v}" ${site.php === v ? 'selected' : ''}>${v}</option>`)).join('');
+    let runtimeCell = '';
+    if (site.kind === 'node') {
+      const nopts = ['<option value="">.nvmrc / default (' + (s.globalNode || '—') + ')</option>']
+        .concat(s.nodeInstalled.map(v =>
+          `<option value="${v}" ${site.node === v ? 'selected' : ''}>${v}</option>`)).join('');
+      const dev = site.devPort
+        ? `<span class="badge on" title="dev server port">:${site.devPort}</span>`
+        : '<span class="badge off" title="starts on demand">dev off</span>';
+      runtimeCell = `<select data-nodever="${site.name}" class="mono">${nopts}</select> ${dev}`;
+    } else if (site.kind === 'static') {
+      runtimeCell = `<span class="muted mono">${site.buildDir}/ (build)</span>`;
+    } else {
+      const opts = ['<option value="">global (' + s.globalPhp + ')</option>']
+        .concat(s.phpInstalled.map(v =>
+          `<option value="${v}" ${site.php === v ? 'selected' : ''}>${v}</option>`)).join('');
+      runtimeCell = `<select data-isolate="${site.name}" class="mono">${opts}</select>`;
+    }
 
     tr.innerHTML = `
-      <td><a href="${site.url}" target="_blank">${site.host}</a></td>
+      <td><a href="${site.url}" target="_blank">${site.host}</a>${site.kind !== 'php' ? ' <span class="muted">' + site.kind + '</span>' : ''}</td>
       <td class="muted mono">${site.path}</td>
-      <td><select data-isolate="${site.name}" class="mono">${opts}</select></td>
+      <td>${runtimeCell}</td>
       <td><label class="switch"><input type="checkbox" data-secure="${site.name}" ${site.secure ? 'checked' : ''}><i></i></label></td>
       <td style="text-align:right"><button class="danger" data-unlink="${site.name}">Unlink</button></td>`;
     tb.appendChild(tr);
@@ -492,6 +506,9 @@ function render() {
   tb.querySelectorAll('[data-isolate]').forEach(el => el.onchange = () =>
     act('Switching PHP version…', '/api/sites/isolate',
         { name: el.dataset.isolate, version: el.value }, 'Done'));
+  tb.querySelectorAll('[data-nodever]').forEach(el => el.onchange = () =>
+    act('Switching Node version…', '/api/sites/node',
+        { name: el.dataset.nodever, version: el.value }, 'Done'));
   tb.querySelectorAll('[data-secure]').forEach(el => el.onchange = () =>
     act(el.checked ? 'Securing…' : 'Unsecuring…', '/api/sites/secure',
         { name: el.dataset.secure, secure: el.checked }, 'Done'));
