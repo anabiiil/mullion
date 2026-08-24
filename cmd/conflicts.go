@@ -55,7 +55,7 @@ func resolvePortConflicts(a *app.App) {
 // served by Mullion itself.
 func findPortConflicts(a *app.App) []portConflict {
 	var out []portConflict
-	webIsOurs := caddy.Running()
+	webIsOurs := caddy.ServingOurs(a.Paths)
 	for _, port := range []int{80, 443} {
 		if webIsOurs || !portBusy(port) {
 			continue

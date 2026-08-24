@@ -3,6 +3,7 @@ package caddy
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 	"pm/internal/download"
 	"pm/internal/pmdir"
 	"pm/internal/proc"
+	"pm/internal/sysproc"
 )
 
 const adminEndpoint = "http://127.0.0.1:2019"
@@ -43,6 +45,29 @@ func Running() bool {
 	return resp.StatusCode == http.StatusOK
 }
 
+// ServingOurs reports whether the caddy answering on the admin port is
+// actually running MULLION'S config — an unrelated caddy (or one from a
+// stale install) would swallow every reload while serving old content.
+func ServingOurs(paths pmdir.Paths) bool {
+	client := &http.Client{Timeout: 2 * time.Second}
+	resp, err := client.Get(adminEndpoint + "/config/")
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return false
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
+	if err != nil {
+		return false
+	}
+	// Our config always references log files under our logs dir
+	// (JSON-escaped on Windows).
+	marker := strings.ReplaceAll(paths.LogsDir(), `\`, `\\`)
+	return strings.Contains(string(body), marker)
+}
+
 func pidFile(paths pmdir.Paths) string {
 	return filepath.Join(paths.PidsDir(), "caddy.pid")
 }
@@ -52,8 +77,37 @@ func pidFile(paths pmdir.Paths) string {
 // `caddy start` spawns stays attached to the current console, so closing
 // the terminal would silently kill the server.
 func Start(paths pmdir.Paths) error {
+	// Kill ZOMBIE caddy generations: a caddy process holding the web
+	// ports that is NOT the one answering the admin port can never be
+	// reloaded — it serves a stale config forever (the classic "my
+	// changes don't show up"). Only processes named caddy are touched.
+	adminPid := 0
 	if Running() {
-		return Reload(paths)
+		adminPid, _ = sysproc.PortOwner(2019)
+	}
+	for _, p := range []int{80, 443} {
+		pid, name := sysproc.PortOwner(p)
+		if pid > 0 && pid != adminPid && strings.Contains(strings.ToLower(name), "caddy") {
+			fmt.Printf("Removing a stale Caddy holding port %d (PID %d)...\n", p, pid)
+			sysproc.KillWithParent(pid)
+		}
+	}
+
+	if Running() {
+		if ServingOurs(paths) {
+			return Reload(paths)
+		}
+		// A caddy that is NOT ours holds the ports (an old install, a
+		// manual instance): reloading it is useless and leaving it means
+		// stale sites forever — replace it.
+		fmt.Println("A Caddy that is not Mullion's is running — replacing it...")
+		if pid, _ := sysproc.PortOwner(2019); pid > 0 {
+			sysproc.KillWithParent(pid)
+		}
+		for i := 0; i < 20 && Running(); i++ {
+			time.Sleep(250 * time.Millisecond)
+		}
+		killByPidFile(paths)
 	}
 
 	logPath := filepath.Join(paths.LogsDir(), "caddy.log")
@@ -93,6 +147,9 @@ func Start(paths pmdir.Paths) error {
 func Reload(paths pmdir.Paths) error {
 	if !Running() {
 		return nil
+	}
+	if !ServingOurs(paths) {
+		return nil // a foreign caddy is not ours to reload
 	}
 	// Port 2019 answering while our caddy was never downloaded means a
 	// FOREIGN caddy owns the admin port — nothing of ours to reload.
