@@ -81,3 +81,38 @@ continues in a new window.
 	_, _ = reader.ReadString('\n')
 	return true
 }
+
+// maybeOfferFirstRunSetup handles a bare `mullion` in a terminal before
+// setup has ever run (the typical first moment after `brew install
+// mullion`): instead of dumping the command list, offer to set the
+// stack up right away — the same welcome Windows users get when they
+// double-click the exe. Returns true when it handled the launch.
+func maybeOfferFirstRunSetup() bool {
+	if len(os.Args) > 1 || !console.Interactive() {
+		return false
+	}
+	a, err := app.New()
+	if err != nil || a.State.Config.GlobalPHP != "" {
+		return false
+	}
+
+	fmt.Println("Welcome to Mullion — your local PHP dev stack. It isn't set up on this machine yet.")
+	fmt.Println("")
+	fmt.Println("First-time setup will:")
+	fmt.Println("  - install the Caddy web server and the latest PHP (system default)")
+	fmt.Println("  - install Composer and the latest MySQL (root, no password)")
+	fmt.Println("  - serve phpMyAdmin at https://phpmyadmin.test")
+	fmt.Println("  - put mullion, php, and composer on your PATH")
+	fmt.Println("")
+	if !askYesNo("Run setup now?", true) {
+		fmt.Println("\nOK — run `mullion setup` whenever you're ready, or `mullion --help` for all commands.")
+		return true
+	}
+	fmt.Println("")
+	setupCmd.SetContext(context.Background())
+	if err := setupCmd.RunE(setupCmd, nil); err != nil {
+		fmt.Fprintln(os.Stderr, "Error:", err)
+		os.Exit(1)
+	}
+	return true
+}

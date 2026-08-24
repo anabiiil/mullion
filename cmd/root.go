@@ -30,6 +30,9 @@ func Execute() {
 	if maybeRunExplorerWizard() {
 		return
 	}
+	if maybeOfferFirstRunSetup() {
+		return
+	}
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, term.Red("Error:"), err)
 		os.Exit(1)
