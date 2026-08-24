@@ -25,9 +25,11 @@ import (
 	"pm/internal/autostart"
 	"pm/internal/caddy"
 	"pm/internal/config"
+	"pm/internal/devserver"
 	"pm/internal/fcgi"
 	"pm/internal/heidisql"
 	"pm/internal/mysql"
+	"pm/internal/nodever"
 	"pm/internal/phpmyadmin"
 	"pm/internal/phpver"
 )
@@ -384,7 +386,17 @@ func newMux(token string) *http.ServeMux {
 		if existing := a.State.FindSite(name); existing != nil {
 			return nil, fmt.Errorf("site %q already links to %s", name, existing.Path)
 		}
-		a.State.AddSite(config.Site{Name: name, Path: path})
+		site := config.Site{Name: name, Path: path, Kind: app.DetectProjectKind(path)}
+		if site.Kind == "node" {
+			site.DevPort = devserver.AssignPort(a.State.Sites)
+			if _, err := nodever.Installed(a.Paths); err != nil {
+				return nil, err
+			}
+			if versions, _ := nodever.Installed(a.Paths); len(versions) == 0 {
+				return nil, errors.New("this is a frontend project and no Node is installed yet — run `mullion node install lts` first")
+			}
+		}
+		a.State.AddSite(site)
 		if err := a.Apply(); err != nil {
 			return nil, err
 		}
@@ -421,6 +433,30 @@ func newMux(token string) *http.ServeMux {
 		if !a.State.RemoveSite(in.Name) {
 			return nil, fmt.Errorf("no site named %q", in.Name)
 		}
+		return nil, a.Apply()
+	})
+	api("/api/sites/node", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Name, Version string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		site := a.State.FindSite(in.Name)
+		if site == nil {
+			return nil, fmt.Errorf("no site named %q", in.Name)
+		}
+		if site.Kind != "node" {
+			return nil, fmt.Errorf("%s is not a Node site", in.Name)
+		}
+		if in.Version != "" {
+			full, err := nodever.FindInstalled(a.Paths, in.Version)
+			if err != nil {
+				return nil, err
+			}
+			site.Node = full
+		} else {
+			site.Node = ""
+		}
+		devserver.Stop(a.Paths, site.Name)
 		return nil, a.Apply()
 	})
 	api("/api/sites/isolate", func(a *app.App, r *http.Request) (any, error) {
@@ -494,12 +530,16 @@ func getState(a *app.App, r *http.Request) (any, error) {
 	}
 
 	type site struct {
-		Name   string `json:"name"`
-		Host   string `json:"host"`
-		Path   string `json:"path"`
-		PHP    string `json:"php"`
-		Secure bool   `json:"secure"`
-		URL    string `json:"url"`
+		Name     string `json:"name"`
+		Host     string `json:"host"`
+		Path     string `json:"path"`
+		Kind     string `json:"kind"`
+		PHP      string `json:"php"`
+		Node     string `json:"node"`
+		BuildDir string `json:"buildDir"`
+		DevPort  int    `json:"devPort"`
+		Secure   bool   `json:"secure"`
+		URL      string `json:"url"`
 	}
 	sites := make([]site, 0, len(a.State.Sites))
 	for _, s := range a.State.Sites {
@@ -507,14 +547,31 @@ func getState(a *app.App, r *http.Request) (any, error) {
 		if s.Secure {
 			scheme = "https"
 		}
+		kind := s.Kind
+		if kind == "" {
+			kind = "php"
+		}
+		devPort := 0
+		if kind == "node" {
+			devPort = devserver.Running(a.Paths, s.Name)
+		}
 		sites = append(sites, site{
-			Name:   s.Name,
-			Host:   a.State.Host(s),
-			Path:   s.Path,
-			PHP:    s.PHP,
-			Secure: s.Secure,
-			URL:    scheme + "://" + a.State.Host(s),
+			Name:     s.Name,
+			Host:     a.State.Host(s),
+			Path:     s.Path,
+			Kind:     kind,
+			PHP:      s.PHP,
+			Node:     s.Node,
+			BuildDir: s.BuildDir,
+			DevPort:  devPort,
+			Secure:   s.Secure,
+			URL:      scheme + "://" + a.State.Host(s),
 		})
+	}
+
+	nodeInstalled, _ := nodever.Installed(a.Paths)
+	if nodeInstalled == nil {
+		nodeInstalled = []string{}
 	}
 
 	mysqlState := map[string]any{"installed": false}
@@ -530,20 +587,22 @@ func getState(a *app.App, r *http.Request) (any, error) {
 	}
 
 	return map[string]any{
-		"caddy":        caddy.Running(),
-		"globalPhp":    a.State.Config.GlobalPHP,
-		"phpInstalled": installed,
-		"phpCgi":       cgis,
-		"mysql":        mysqlState,
-		"sites":        sites,
-		"tld":          a.State.Config.TLD,
-		"heidisql":     heidisql.Installed(a.Paths),
-		"windows":      runtime.GOOS == "windows",
-		"homeDir":      homeDir(),
-		"backupsDir":   a.Paths.BackupsDir(),
-		"autostart":    autostart.Enabled(),
-		"phpShadow":    a.PhpShadow(),
-		"time":         time.Now().Format("15:04:05"),
+		"caddy":         caddy.Running(),
+		"globalPhp":     a.State.Config.GlobalPHP,
+		"phpInstalled":  installed,
+		"nodeInstalled": nodeInstalled,
+		"globalNode":    a.State.Config.GlobalNode,
+		"phpCgi":        cgis,
+		"mysql":         mysqlState,
+		"sites":         sites,
+		"tld":           a.State.Config.TLD,
+		"heidisql":      heidisql.Installed(a.Paths),
+		"windows":       runtime.GOOS == "windows",
+		"homeDir":       homeDir(),
+		"backupsDir":    a.Paths.BackupsDir(),
+		"autostart":     autostart.Enabled(),
+		"phpShadow":     a.PhpShadow(),
+		"time":          time.Now().Format("15:04:05"),
 	}, nil
 }
 

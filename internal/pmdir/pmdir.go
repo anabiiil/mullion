@@ -43,6 +43,9 @@ func (p Paths) MysqlVersionDir(v string) string { return filepath.Join(p.MysqlDi
 func (p Paths) MysqlDataDir() string            { return filepath.Join(p.MysqlDir(), "data") }
 func (p Paths) MysqlIni() string                { return filepath.Join(p.MysqlDir(), "my.ini") }
 func (p Paths) PhpMyAdminDir() string           { return filepath.Join(p.Home, "phpmyadmin") }
+func (p Paths) NodeDir() string                 { return filepath.Join(p.Home, "node") }
+func (p Paths) NodeVersionDir(v string) string  { return filepath.Join(p.NodeDir(), v) }
+func (p Paths) CurrentNode() string             { return filepath.Join(p.NodeDir(), "current") }
 func (p Paths) VersionFile() string             { return filepath.Join(p.Home, "version") }
 func (p Paths) ConfigFile() string              { return filepath.Join(p.Home, "config.json") }
 func (p Paths) SitesFile() string               { return filepath.Join(p.Home, "sites.json") }

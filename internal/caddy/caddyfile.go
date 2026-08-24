@@ -11,10 +11,12 @@ import (
 
 // SiteConf is everything the Caddyfile needs to know about one site.
 type SiteConf struct {
-	Host     string // e.g. "blog.test"
-	Root     string // absolute document root
-	FcgiPort int    // php-cgi port for this site's PHP version
-	Secure   bool
+	Host      string // e.g. "blog.test"
+	Kind      string // "php" (default), "node", or "static"
+	Root      string // absolute document root (php and static sites)
+	FcgiPort  int    // FastCGI port for this site's PHP version
+	ProxyPort int    // dev-server port for node sites (0 = not running)
+	Secure    bool
 }
 
 // Generate renders the full Caddyfile. Secured sites use Caddy's internal
@@ -33,13 +35,31 @@ func Generate(sites []SiteConf, logsDir string) string {
 			addr = "http://" + s.Host
 		}
 		b.WriteString("\n" + addr + " {\n")
-		b.WriteString("\troot * " + quote(s.Root) + "\n")
 		if s.Secure {
 			b.WriteString("\ttls internal\n")
 		}
-		b.WriteString("\tencode zstd gzip\n")
-		b.WriteString(fmt.Sprintf("\tphp_fastcgi 127.0.0.1:%d\n", s.FcgiPort))
-		b.WriteString("\tfile_server\n")
+		switch s.Kind {
+		case "node":
+			if s.ProxyPort > 0 {
+				// localhost (not 127.0.0.1): dev servers often listen on
+				// ::1 only, and dialing localhost covers both families.
+				b.WriteString(fmt.Sprintf("\treverse_proxy localhost:%d\n", s.ProxyPort))
+			} else {
+				b.WriteString("\trespond \"The dev server for this site is not running — run `mullion start` (or open the Mullion panel).\" 503\n")
+			}
+		case "static":
+			b.WriteString("\troot * " + quote(s.Root) + "\n")
+			b.WriteString("\tencode zstd gzip\n")
+			// Single-page apps route in the browser: unknown paths fall
+			// back to index.html.
+			b.WriteString("\ttry_files {path} /index.html\n")
+			b.WriteString("\tfile_server\n")
+		default: // php
+			b.WriteString("\troot * " + quote(s.Root) + "\n")
+			b.WriteString("\tencode zstd gzip\n")
+			b.WriteString(fmt.Sprintf("\tphp_fastcgi 127.0.0.1:%d\n", s.FcgiPort))
+			b.WriteString("\tfile_server\n")
+		}
 		b.WriteString("\tlog {\n\t\toutput file " + quote(filepath.Join(logsDir, s.Host+".log")) + "\n\t}\n")
 		b.WriteString("}\n")
 	}

@@ -33,15 +33,30 @@ type Config struct {
 	// MySQLPassword is the root password of Mullion's MySQL ("" = none).
 	// Stored in plain text: this is a LOCAL dev server bound to 127.0.0.1.
 	MySQLPassword string `json:"mysqlPassword,omitempty"`
+	// GlobalNode is the full Node version the node/current junction points at.
+	GlobalNode string `json:"globalNode,omitempty"`
 }
 
 type Site struct {
 	Name string `json:"name"`
 	Path string `json:"path"`
+	// Kind is what serves the site: "" or "php" (php_fastcgi), "node"
+	// (a managed dev server behind a reverse proxy), or "static"
+	// (file_server over BuildDir — e.g. a frontend production build).
+	Kind string `json:"kind,omitempty"`
 	// PHP is a full version pinned for this site ("" = follow global).
-	PHP    string `json:"php,omitempty"`
-	Secure bool   `json:"secure"`
+	PHP string `json:"php,omitempty"`
+	// Node is a full version pinned for this node site ("" = .nvmrc or global).
+	Node string `json:"node,omitempty"`
+	// BuildDir is the directory served for "static" sites, relative to Path.
+	BuildDir string `json:"buildDir,omitempty"`
+	// DevPort is the stable local port assigned to this site's dev server.
+	DevPort int  `json:"devPort,omitempty"`
+	Secure  bool `json:"secure"`
 }
+
+// IsPHP reports whether the site is served through php_fastcgi.
+func (s Site) IsPHP() bool { return s.Kind == "" || s.Kind == "php" }
 
 type State struct {
 	Config Config

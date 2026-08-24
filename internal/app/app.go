@@ -9,14 +9,17 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"pm/internal/caddy"
 	"pm/internal/config"
+	"pm/internal/devserver"
 	"pm/internal/fcgi"
 	"pm/internal/hosts"
 	"pm/internal/junction"
 	"pm/internal/mysql"
+	"pm/internal/nodever"
 	"pm/internal/phpver"
 	"pm/internal/pmdir"
 )
@@ -58,7 +61,7 @@ func (a *App) NeededVersions() []string {
 		set[v] = true
 	}
 	for _, s := range a.State.Sites {
-		if s.PHP != "" {
+		if s.IsPHP() && s.PHP != "" {
 			set[s.PHP] = true
 		}
 	}
@@ -79,27 +82,91 @@ func (a *App) Hostnames() []string {
 	return out
 }
 
-// WriteCaddyfile regenerates ~/.mullion/Caddyfile from the current state.
-func (a *App) WriteCaddyfile() error {
+// WriteCaddyfile regenerates ~/.mullion/Caddyfile from the current
+// state. devPorts maps node site names to their running dev-server port
+// (0 = down, which renders a friendly 503).
+func (a *App) WriteCaddyfile(devPorts map[string]int) error {
 	var confs []caddy.SiteConf
 	for _, s := range a.State.Sites {
-		version := a.SiteVersion(s)
-		if version == "" {
-			return fmt.Errorf("no PHP version set: run `mullion use <version>` first")
+		conf := caddy.SiteConf{
+			Host:   a.State.Host(s),
+			Kind:   s.Kind,
+			Secure: s.Secure,
 		}
-		port, err := phpver.FcgiPort(version)
-		if err != nil {
-			return err
+		switch s.Kind {
+		case "node":
+			conf.ProxyPort = devPorts[s.Name]
+		case "static":
+			conf.Root = filepath.Join(s.Path, s.BuildDir)
+		default: // php
+			version := a.SiteVersion(s)
+			if version == "" {
+				return fmt.Errorf("no PHP version set: run `mullion use <version>` first")
+			}
+			port, err := phpver.FcgiPort(version)
+			if err != nil {
+				return err
+			}
+			conf.Root = caddy.DocRoot(s.Path)
+			conf.FcgiPort = port
 		}
-		confs = append(confs, caddy.SiteConf{
-			Host:     a.State.Host(s),
-			Root:     caddy.DocRoot(s.Path),
-			FcgiPort: port,
-			Secure:   s.Secure,
-		})
+		confs = append(confs, conf)
 	}
 	content := caddy.Generate(confs, a.Paths.LogsDir())
 	return writeFile(a.Paths.Caddyfile(), content)
+}
+
+// NodeVersionDirFor resolves which installed Node a site should run on:
+// its pinned version, the project's .nvmrc, or the global default.
+func (a *App) NodeVersionDirFor(s config.Site) (string, error) {
+	arg := s.Node
+	if arg == "" {
+		if data, err := os.ReadFile(filepath.Join(s.Path, ".nvmrc")); err == nil {
+			arg = strings.TrimSpace(string(data))
+		}
+	}
+	if arg == "" {
+		arg = a.State.Config.GlobalNode
+	}
+	full, err := nodever.FindInstalled(a.Paths, arg)
+	if err != nil {
+		return "", err
+	}
+	return a.Paths.NodeVersionDir(full), nil
+}
+
+// EnsureDevServers brings up the dev server of every linked node site
+// and returns their ports. A site that fails to start is reported but
+// does not block the others — its host serves a clear 503 instead.
+func (a *App) EnsureDevServers() map[string]int {
+	ports := map[string]int{}
+	for _, s := range a.State.Sites {
+		if s.Kind != "node" {
+			continue
+		}
+		nodeDir, err := a.NodeVersionDirFor(s)
+		if err != nil {
+			fmt.Printf("warning: %s: %v\n", s.Name, err)
+			continue
+		}
+		port, err := devserver.Ensure(a.Paths, s, a.State.Host(s), nodeDir)
+		if err != nil {
+			fmt.Printf("warning: %s: %v\n", s.Name, err)
+			continue
+		}
+		ports[s.Name] = port
+	}
+	return ports
+}
+
+// UseGlobalNode switches the node/current junction (and therefore the
+// `node`/`npm` on PATH) to the given installed full version.
+func (a *App) UseGlobalNode(fullVersion string) error {
+	if err := junction.Set(a.Paths.CurrentNode(), a.Paths.NodeVersionDir(fullVersion)); err != nil {
+		return err
+	}
+	a.State.Config.GlobalNode = fullVersion
+	return nil
 }
 
 // Apply converges everything after a state change: config files, hosts
@@ -109,7 +176,8 @@ func (a *App) Apply() error {
 	if err := a.State.Save(); err != nil {
 		return err
 	}
-	if err := a.WriteCaddyfile(); err != nil {
+	devPorts := a.EnsureDevServers()
+	if err := a.WriteCaddyfile(devPorts); err != nil {
 		return err
 	}
 	if err := hosts.Sync(a.Hostnames()); err != nil {
@@ -246,4 +314,42 @@ func (a *App) UseGlobal(fullVersion string) error {
 // ActiveVersion reads which version the junction points at ("" if none).
 func (a *App) ActiveVersion() string {
 	return a.State.Config.GlobalPHP
+}
+
+// DetectProjectKind classifies a project directory: PHP wins when there
+// is any index.php/artisan/composer.json (mixed Laravel+Vite projects
+// are served as PHP — Vite runs alongside); otherwise a package.json
+// means a frontend project served by a managed dev server.
+func DetectProjectKind(dir string) string {
+	for _, marker := range []string{
+		"index.php",
+		filepath.Join("public", "index.php"),
+		"artisan",
+		"composer.json",
+	} {
+		if _, err := os.Stat(filepath.Join(dir, marker)); err == nil {
+			return "php"
+		}
+	}
+	if _, err := os.Stat(filepath.Join(dir, "package.json")); err == nil {
+		return "node"
+	}
+	return "php"
+}
+
+// ResolveBuildDir picks the production build directory to serve for a
+// --build (static) site.
+func ResolveBuildDir(dir, override string) (string, error) {
+	if override != "" {
+		if _, err := os.Stat(filepath.Join(dir, override, "index.html")); err != nil {
+			return "", fmt.Errorf("%s has no index.html — build the project first, or pass the right --dir", filepath.Join(dir, override))
+		}
+		return override, nil
+	}
+	for _, c := range []string{"dist", "build", "out", filepath.Join(".output", "public")} {
+		if _, err := os.Stat(filepath.Join(dir, c, "index.html")); err == nil {
+			return c, nil
+		}
+	}
+	return "", fmt.Errorf("no build output found (looked for dist/, build/, out/, .output/public) — run your build first, or pass --dir <folder>")
 }

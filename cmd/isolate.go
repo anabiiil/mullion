@@ -35,6 +35,9 @@ e.g. an old client project on PHP 7.4 while everything else uses 8.3.`,
 		if site == nil {
 			return fmt.Errorf("no site named %q", name)
 		}
+		if !site.IsPHP() {
+			return fmt.Errorf("%s is not a PHP site — for Node versions use `mullion node isolate`", site.Name)
+		}
 		site.PHP = full
 		if err := a.Apply(); err != nil {
 			return err

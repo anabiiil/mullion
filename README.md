@@ -4,11 +4,13 @@ A local PHP development environment for **Windows 10/11** and **macOS**,
 shipped as a single binary with no dependencies — no Homebrew, no
 installers. It installs PHP versions (from windows.php.net on Windows,
 from [static-php.dev](https://static-php.dev)'s dependency-free static
-builds on macOS), switches them system-wide or per project, installs
-Composer and MySQL, serves your projects on `.test` domains through
-[Caddy](https://caddyserver.com), and secures them with trusted local
-HTTPS certificates — all driven from a desktop control panel or the
-terminal.
+builds on macOS) and Node.js versions (official nodejs.org builds),
+switches them system-wide or per project, installs Composer and MySQL,
+serves your PHP **and frontend** projects on `.test` domains through
+[Caddy](https://caddyserver.com) — frontend projects get a managed
+`npm run dev` behind the scenes, so opening the link is all you do —
+and secures everything with trusted local HTTPS certificates, all
+driven from a desktop control panel or the terminal.
 
 ## Install
 
@@ -101,6 +103,14 @@ mullion link                   # serve at http://myapp.test (Laravel public/ aut
 mullion secure                 # upgrade to https://myapp.test (trusted local cert)
 ```
 
+Frontend projects work the same way — Mullion runs the dev server for you:
+
+```
+cd ~/code/my-vite-app
+mullion link                   # http://my-vite-app.test — npm install + npm run dev are handled for you
+mullion link --build           # http://my-vite-app-build.test — serves dist/ (compare the last build against dev)
+```
+
 Need another PHP version (e.g. a legacy project)?
 
 ```
@@ -121,6 +131,11 @@ mullion isolate 7.4            # pin just this project to it
 | `mullion use <v>` | Switch the **system-wide** PHP version |
 | `mullion isolate <v>` | Pin the **current project** to a version (e.g. legacy app on 7.4) |
 | `mullion unisolate` | Project follows the global version again |
+| `mullion node install [v]` | Install a Node version (`lts` by default; `latest`, `22`, `22.12.0`) |
+| `mullion node use <v>` / `list` / `available` / `uninstall <v>` | Manage Node versions (`node`/`npm` shims resolve per project: pinned → `.nvmrc` → default) |
+| `mullion node isolate <v>` / `unisolate` | Pin the current frontend project to a Node version |
+| `mullion node npm <v> [node]` | Change the npm version inside a Node install |
+| `mullion link --build [--dir d]` | Serve the project's LAST production build as `<name>-build.test` (auto-detects dist/build/out) |
 | `mullion link [name]` | Serve current directory at `http://<name>.test` |
 | `mullion unlink [name]` | Stop serving it |
 | `mullion links` | List all linked sites |
@@ -158,6 +173,16 @@ mullion isolate 7.4            # pin just this project to it
 - **HTTPS**: Caddy's internal CA issues certificates for secured sites and
   installs its root into the system trust store (one-time UAC/password
   prompt), so browsers show a proper padlock.
+- **Frontend sites**: `mullion link` in a project with a package.json
+  starts a managed dev server (`npm run dev`, pnpm/yarn auto-detected,
+  dependencies installed on first run), detects the port it actually
+  opened, and reverse-proxies the `.test` domain to it — HMR/websockets
+  included. `--build` serves the production build directory as a
+  separate static site with SPA fallback.
+- **Node versions**: official nodejs.org builds under `node/<version>`.
+  The `node`/`npm`/`npx` on your PATH are Mullion shims that pick the
+  right version for the directory you are in: the site's pinned version,
+  the project's `.nvmrc`, or the global default.
 - **PHP builds**: Windows uses the official windows.php.net zips, with
   per-extension enable/disable and PECL downloads (`mullion php ext ...`).
   macOS uses static-php.dev's static builds, which have the common
