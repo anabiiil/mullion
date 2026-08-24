@@ -280,6 +280,7 @@ var mysqlStartCmd = &cobra.Command{
 		if err := mysql.Start(a.Paths, version); err != nil {
 			return err
 		}
+		restorePendingDump(a)
 		fmt.Printf("MySQL %s is running on 127.0.0.1:%d.\n", version, mysql.Port)
 		return nil
 	},

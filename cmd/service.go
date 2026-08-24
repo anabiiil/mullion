@@ -67,6 +67,7 @@ var startCmd = &cobra.Command{
 			if err := mysql.Start(a.Paths, v); err != nil {
 				return err
 			}
+			restorePendingDump(a)
 		}
 		if a.PhpShadow() != "" {
 			reassertPathPriority(a)

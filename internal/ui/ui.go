@@ -285,17 +285,12 @@ func newMux(token string) *http.ServeMux {
 			return nil, errors.New("MySQL is not installed (run: mullion mysql install)")
 		}
 		// A foreign MySQL (a resurrected brew service, Laragon...) on the
-		// port means every connection hits the WRONG server. The Start
-		// click is explicit consent to stop it through its manager.
+		// port means every connection hits the WRONG server. Its data
+		// deserves the backup flow, which needs a terminal — never
+		// replace it silently from a button.
 		if mysql.Running() && len(sysproc.ProcessesUnder(a.Paths.Home, pmdir.ExeName("mysqld"))) == 0 {
-			pid, name := sysproc.PortOwner(mysql.Port)
-			sysproc.StopConflict(sysproc.Conflict{Port: mysql.Port, PID: pid, Name: name})
-			for i := 0; i < 20 && mysql.Running(); i++ {
-				time.Sleep(500 * time.Millisecond)
-			}
-			if mysql.Running() {
-				return nil, fmt.Errorf("another MySQL server (%s) is still holding port %d — stop it from a terminal (brew services list) and try again", name, mysql.Port)
-			}
+			_, name := sysproc.PortOwner(mysql.Port)
+			return nil, fmt.Errorf("another MySQL server (%s) is holding port %d — run `mullion mysql start` in a terminal: it offers to back up that server's databases before taking over", name, mysql.Port)
 		}
 		if err := mysql.EnsureInitialized(a.Paths, v); err != nil {
 			return nil, err
