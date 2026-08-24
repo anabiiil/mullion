@@ -101,6 +101,7 @@ func (a *App) WriteCaddyfile(devPorts map[string]int) error {
 				break
 			}
 			conf.ProxyPort = devPorts[s.Name]
+			conf.RewriteHost = usesVite(s.Path)
 			conf.Paused = s.DevPaused
 		case "static":
 			conf.Root = filepath.Join(s.Path, s.BuildDir)
@@ -373,4 +374,18 @@ func ResolveBuildDir(dir, override string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("no build output found (looked for dist/, build/, out/, .output/public) — run your build first, or pass --dir <folder>")
+}
+
+// usesVite reports whether a project runs on Vite (directly or through
+// a Vite-based framework — node_modules/vite covers both).
+func usesVite(dir string) bool {
+	if _, err := os.Stat(filepath.Join(dir, "node_modules", "vite")); err == nil {
+		return true
+	}
+	for _, c := range []string{"vite.config.js", "vite.config.ts", "vite.config.mjs", "vite.config.mts"} {
+		if _, err := os.Stat(filepath.Join(dir, c)); err == nil {
+			return true
+		}
+	}
+	return false
 }
