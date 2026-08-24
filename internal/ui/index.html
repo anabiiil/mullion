@@ -299,6 +299,33 @@
         </div>
       </section>
 
+      <section class="card" id="node">
+        <div class="card-head">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l9 5v10l-9 5-9-5V7z"/><path d="M12 22V12"/><path d="M21 7l-9 5-9-5"/></svg>
+          <h2>Node</h2>
+          <span class="hint" id="node-hint"></span>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <span class="label">Default version</span>
+            <select id="node-global" class="mono"></select>
+            <span class="spacer"></span>
+            <input type="text" id="node-new" list="node-avail" placeholder="install: lts, 22, 20.11.0 …" size="18" class="mono">
+            <datalist id="node-avail">
+              <option value="lts">newest LTS</option>
+              <option value="latest">newest overall</option>
+              <option value="22"></option>
+              <option value="20"></option>
+            </datalist>
+            <button id="btn-node-install">Install</button>
+          </div>
+          <p class="muted" style="margin:10px 0 0">
+            <span class="mono">node</span>/<span class="mono">npm</span> resolve per project:
+            a site's pinned version → the project's <span class="mono">.nvmrc</span> → this default.
+          </p>
+        </div>
+      </section>
+
       <section class="card" id="db">
         <div class="card-head">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
@@ -467,6 +494,21 @@ function render() {
       act(s.mysql.running ? 'Stopping the database…' : 'Starting the database…',
           s.mysql.running ? '/api/mysql/stop' : '/api/mysql/start');
   }
+  const ng = $('node-global');
+  ng.innerHTML = '';
+  if (s.nodeInstalled.length === 0) {
+    ng.innerHTML = '<option value="">none installed</option>';
+    $('node-hint').textContent = '';
+  } else {
+    for (const v of s.nodeInstalled) {
+      const o = document.createElement('option');
+      o.value = v; o.textContent = v + (v === s.globalNode ? '  (default)' : '');
+      if (v === s.globalNode) o.selected = true;
+      ng.appendChild(o);
+    }
+    $('node-hint').textContent = s.nodeInstalled.length + ' installed';
+  }
+
   $('mysql-pass-row').style.display = s.mysql.installed ? '' : 'none';
   $('db-row').style.display = (s.mysql.installed && s.mysql.running) ? '' : 'none';
   if (s.mysql.installed && s.mysql.running) loadDatabases();
@@ -620,6 +662,15 @@ async function loadDatabases() {
     });
   } catch (e) { /* mysql not reachable yet */ }
 }
+
+$('node-global').onchange = () =>
+  act('Switching the default Node…', '/api/node/use', { version: $('node-global').value }, 'Switched');
+
+$('btn-node-install').onclick = () => {
+  const v = $('node-new').value.trim() || 'lts';
+  act('Downloading Node ' + v + '… (this can take a minute)', '/api/node/install', { version: v }, 'Installed');
+  $('node-new').value = '';
+};
 
 $('btn-mysql-pass').onclick = () => {
   const password = $('mysql-pass').value;

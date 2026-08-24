@@ -276,19 +276,9 @@ func resolveNodeDirForCwd(a *app.App) (string, error) {
 	return a.Paths.NodeVersionDir(full), nil
 }
 
-// activateNode switches the junction, refreshes the PATH block and the
-// node/npm/npx shims, and saves the state.
+// activateNode makes a version the default (junction, shims, PATH).
 func activateNode(a *app.App, fullVersion string) error {
-	if err := a.UseGlobalNode(fullVersion); err != nil {
-		return err
-	}
-	if err := a.State.Save(); err != nil {
-		return err
-	}
-	if err := writeNodeShims(a.Paths.BinDir()); err != nil {
-		fmt.Println("note: could not write the node shims -", err)
-	}
-	return app.EnsureUserPath(a.Paths.BinDir(), a.Paths.CurrentPhp())
+	return a.ActivateNode(fullVersion)
 }
 
 // currentNodeSite resolves the node site linked to the current directory.

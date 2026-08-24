@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"time"
 
 	"pm/internal/app"
 	"pm/internal/autostart"
@@ -39,23 +38,13 @@ func selfUpdateIfNeeded(a *app.App) {
 	if err != nil {
 		return
 	}
-	if resolved, err := filepath.EvalSymlinks(exe); err == nil {
-		exe = resolved
-	}
 	dest := filepath.Join(a.Paths.BinDir(), pmdir.ExeName("mullion"))
 
-	// Replace the installed copy unless we ARE the installed copy.
-	if !sameFile(exe, dest) {
-		for _, pid := range processesUnder(a.Paths.Home, pmdir.ExeName("mullion")) {
-			if pid != os.Getpid() {
-				killProcess(pid)
-			}
-		}
-		time.Sleep(time.Second)
-		if err := copyFile(exe, dest); err != nil {
-			fmt.Println("note: could not update the installed copy -", err)
-			return
-		}
+	// Replace the installed copy unless we ARE the installed copy
+	// (package-manager installs become symlinks so upgrades stick).
+	if err := installSelf(a, exe); err != nil {
+		fmt.Println("note: could not update the installed copy -", err)
+		return
 	}
 
 	// The autostart script and shortcut may point at old behavior —

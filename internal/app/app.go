@@ -169,6 +169,21 @@ func (a *App) UseGlobalNode(fullVersion string) error {
 	return nil
 }
 
+// ActivateNode makes a version the default: junction, saved state, the
+// node/npm/npx shims, and the PATH block.
+func (a *App) ActivateNode(fullVersion string) error {
+	if err := a.UseGlobalNode(fullVersion); err != nil {
+		return err
+	}
+	if err := a.State.Save(); err != nil {
+		return err
+	}
+	if err := WriteNodeShims(a.Paths.BinDir()); err != nil {
+		fmt.Println("note: could not write the node shims -", err)
+	}
+	return EnsureUserPath(a.Paths.BinDir(), a.Paths.CurrentPhp())
+}
+
 // Apply converges everything after a state change: config files, hosts
 // entries, php-cgi processes, and Caddy — started if any site needs
 // serving, merely reloaded otherwise.

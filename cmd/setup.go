@@ -20,6 +20,7 @@ import (
 	"pm/internal/elevate"
 	"pm/internal/heidisql"
 	"pm/internal/mysql"
+	"pm/internal/nodever"
 	"pm/internal/phpver"
 	"pm/internal/pmdir"
 	"pm/internal/shortcut"
@@ -47,6 +48,13 @@ func exampleProjectDir() string {
 		return filepath.Join(home, "code", "myapp")
 	}
 	return "~/code/myapp"
+}
+
+func nodeSummary(a *app.App) string {
+	if v := a.State.Config.GlobalNode; v != "" {
+		return v
+	}
+	return "not installed (mullion node install lts)"
 }
 
 func panelHint() string {
@@ -150,31 +158,13 @@ func doSetup(cmd *cobra.Command, wantAutostart bool, dbChoice string) error {
 			return err
 		}
 
-		// Copy this executable into ~/.mullion/bin so `mullion` works from
-		// anywhere — always under the canonical name, so the command and
-		// autostart still work when the downloaded file was renamed by the
-		// browser (e.g. "mullion (1).exe").
+		// Install this executable into ~/.mullion/bin so `mullion` works
+		// from anywhere. A package-manager install (Homebrew) is
+		// SYMLINKED, not copied — the bin entry leads the PATH, and a
+		// stale copy there would keep shadowing every `brew upgrade`.
 		if exe, err := os.Executable(); err == nil {
-			dest := filepath.Join(a.Paths.BinDir(), pmdir.ExeName("mullion"))
-			if resolved, err := filepath.EvalSymlinks(exe); err == nil {
-				exe = resolved
-			}
-			if !sameFile(exe, dest) {
-				if err := copyFile(exe, dest); err != nil {
-					// An older Mullion (tray, panel) is running from bin —
-					// this is an upgrade: replace it.
-					for _, pid := range processesUnder(a.Paths.Home, pmdir.ExeName("mullion")) {
-						if pid != os.Getpid() {
-							killProcess(pid)
-						}
-					}
-					time.Sleep(time.Second)
-					if err := copyFile(exe, dest); err != nil {
-						fmt.Println("note: could not copy mullion into", a.Paths.BinDir(), "-", err)
-					} else {
-						fmt.Println("Updated the installed mullion binary.")
-					}
-				}
+			if err := installSelf(a, exe); err != nil {
+				fmt.Println("note: could not install mullion into", a.Paths.BinDir(), "-", err)
 			}
 		}
 
@@ -248,6 +238,22 @@ func doSetup(cmd *cobra.Command, wantAutostart bool, dbChoice string) error {
 		// Composer (runs on the active PHP via the `composer` shim).
 		if err := composer.Ensure(cmd.Context(), a.Paths); err != nil {
 			return err
+		}
+
+		// Latest LTS Node (frontend projects need it). Failures are
+		// notes, not errors: the PHP stack must not die on nodejs.org.
+		if a.State.Config.GlobalNode == "" {
+			if rel, err := nodever.Resolve(cmd.Context(), "lts"); err != nil {
+				fmt.Println("note: could not resolve the Node LTS -", err)
+			} else if _, err := nodever.Install(cmd.Context(), a.Paths, rel); err != nil {
+				fmt.Println("note: could not install Node -", err)
+			} else if err := a.ActivateNode(rel.Version); err != nil {
+				fmt.Println("note:", err)
+			} else {
+				fmt.Printf("Node %s (LTS, with npm) is now the default.\n", rel.Version)
+			}
+		} else {
+			fmt.Printf("Node %s already installed — keeping it.\n", a.State.Config.GlobalNode)
 		}
 
 		// Newest LTS MySQL, initialized and running.
@@ -334,6 +340,7 @@ func doSetup(cmd *cobra.Command, wantAutostart bool, dbChoice string) error {
 Done! Your stack is running:
   php        %s (`+"`php -v`"+` in any NEW terminal)
   composer   latest (`+"`composer -V`"+` in any NEW terminal)
+  node       %s (with npm — `+"`node -v`"+` in any NEW terminal)
   mysql      %s on 127.0.0.1:%d (user root, empty password)
 %sServe a project:
   cd %s
@@ -341,7 +348,7 @@ Done! Your stack is running:
   mullion secure              upgrade it to https
 
 Control panel: run `+"`mullion ui`"+`%s.
-`, a.State.Config.GlobalPHP, a.State.Config.MySQL, mysql.Port, dbLines+"\n", exampleProjectDir(), a.State.Config.TLD, panelHint())
+`, a.State.Config.GlobalPHP, nodeSummary(a), a.State.Config.MySQL, mysql.Port, dbLines+"\n", exampleProjectDir(), a.State.Config.TLD, panelHint())
 		return nil
 	}
 }
@@ -403,6 +410,57 @@ func importFromExistingMysql(a *app.App, version string) string {
 		fmt.Println("warning: port", mysql.Port, "is still busy (the other stack may auto-restart its services — quit it fully).")
 	}
 	return dump
+}
+
+// installSelf puts the running executable at bin/mullion: a SYMLINK
+// when it runs from a package manager's bin (brew keeps it current on
+// upgrade), a copy otherwise (a downloaded file may get deleted later).
+func installSelf(a *app.App, exe string) error {
+	dest := filepath.Join(a.Paths.BinDir(), pmdir.ExeName("mullion"))
+	if runtime.GOOS != "windows" && isPackageManagerBin(exe) {
+		if target, err := os.Readlink(dest); err == nil && target == exe {
+			return nil
+		}
+		os.Remove(dest)
+		if err := os.Symlink(exe, dest); err != nil {
+			return err
+		}
+		fmt.Println("mullion in", a.Paths.BinDir(), "now follows your package manager's install (brew upgrade keeps it current).")
+		return nil
+	}
+	resolved := exe
+	if r, err := filepath.EvalSymlinks(exe); err == nil {
+		resolved = r
+	}
+	if sameFile(resolved, dest) {
+		return nil
+	}
+	if err := copyFile(resolved, dest); err != nil {
+		// An older Mullion (tray, panel) is running from bin —
+		// this is an upgrade: replace it.
+		for _, pid := range processesUnder(a.Paths.Home, pmdir.ExeName("mullion")) {
+			if pid != os.Getpid() {
+				killProcess(pid)
+			}
+		}
+		time.Sleep(time.Second)
+		if err := copyFile(resolved, dest); err != nil {
+			return err
+		}
+	}
+	fmt.Println("Updated the installed mullion binary.")
+	return nil
+}
+
+// isPackageManagerBin reports whether the (unresolved) executable path
+// lives in a package manager's bin directory.
+func isPackageManagerBin(exe string) bool {
+	dir := filepath.Dir(exe)
+	switch dir {
+	case "/opt/homebrew/bin", "/usr/local/bin", "/home/linuxbrew/.linuxbrew/bin":
+		return true
+	}
+	return strings.Contains(exe, "/Cellar/")
 }
 
 func sameFile(a, b string) bool {
