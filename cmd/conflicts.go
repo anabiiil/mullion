@@ -10,12 +10,6 @@ import (
 	"pm/internal/console"
 )
 
-type portConflict struct {
-	Port int
-	PID  int
-	Name string
-}
-
 // resolvePortConflicts detects other stacks (Laragon, XAMPP, IIS, ...)
 // squatting on Mullion's WEB ports and — with the user's OK — stops them
 // so Mullion becomes the main server. Port 3306 is deliberately not

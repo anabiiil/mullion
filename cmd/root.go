@@ -29,6 +29,7 @@ trusted local HTTPS certificates.`,
 
 func Execute() {
 	term.Init()
+	maybeExecFresher()
 	if maybeRunExplorerWizard() {
 		return
 	}

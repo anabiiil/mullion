@@ -116,9 +116,12 @@ func doUninstall(a *app.App, wantBackup bool) error {
 	if wantBackup && a.State.Config.MySQL != "" && mysql.DataInitialized(a.Paths) {
 		v := a.State.Config.MySQL
 		// Port 3306 answering while no Mullion mysqld runs means another
-		// stack (Laragon?) owns it — dumping would export THEIR data.
+		// server owns it — dumping would export THEIR data. Offer to
+		// stop it (via its manager) so Mullion's own data gets backed up.
 		if mysql.Running() && len(processesUnder(a.Paths.Home, pmdir.ExeName("mysqld"))) == 0 {
-			return fmt.Errorf("another MySQL server (Laragon/XAMPP?) is on port 3306 — stop it and re-run, or pass --no-backup")
+			if !reclaimMysqlPort(a, false) {
+				return fmt.Errorf("another MySQL server is on port %d — stop it and re-run, or pass --no-backup", mysql.Port)
+			}
 		}
 		if !mysql.Running() {
 			fmt.Println("Starting MySQL to export your databases...")

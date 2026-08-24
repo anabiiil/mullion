@@ -1,6 +1,6 @@
 //go:build windows
 
-package cmd
+package sysproc
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 )
 
 // portOwner resolves which process listens on the port.
-func portOwner(port int) (int, string) {
+func PortOwner(port int) (int, string) {
 	script := fmt.Sprintf(
 		`$p = (Get-NetTCPConnection -State Listen -LocalPort %d -ErrorAction SilentlyContinue | Select-Object -First 1).OwningProcess; if ($p) { "$p " + (Get-Process -Id $p -ErrorAction SilentlyContinue).Name }`,
 		port)
@@ -36,7 +36,7 @@ func portOwner(port int) (int, string) {
 
 // killWithParent stops the process, and — for supervisor architectures
 // like mysqld's monitor — also its parent when it's the same executable.
-func killWithParent(pid int) {
+func KillWithParent(pid int) {
 	script := fmt.Sprintf(`
 $p = Get-Process -Id %d -ErrorAction SilentlyContinue
 if ($p) {
@@ -51,7 +51,7 @@ if ($p) {
 // processesUnder lists PIDs of running processes whose executable lives
 // under dir (optionally restricted to one image name). This is how the
 // uninstall distinguishes Mullion's servers from Laragon's.
-func processesUnder(dir, image string) []int {
+func ProcessesUnder(dir, image string) []int {
 	pattern := strings.ReplaceAll(dir, "'", "''") + `\*`
 	script := fmt.Sprintf(
 		`Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -like '%s' } | ForEach-Object { "$($_.ProcessId) $($_.Name)" }`,
@@ -78,19 +78,19 @@ func processesUnder(dir, image string) []int {
 }
 
 // killProcess force-stops one process by pid.
-func killProcess(pid int) {
+func KillProcess(pid int) {
 	_ = proc.Quiet("taskkill", "/F", "/PID", fmt.Sprint(pid)).Run()
 }
 
 // openURL opens a web page in the default browser.
-func openURL(url string) {
+func OpenURL(url string) {
 	_ = proc.Quiet("cmd", "/c", "start", "", url).Start()
 }
 
 // scheduleHomeRemoval starts a detached helper that deletes the install
 // directory once every Mullion process has exited — this very process
 // still runs from bin, so it cannot delete it itself.
-func scheduleHomeRemoval(home string) error {
+func ScheduleHomeRemoval(home string) error {
 	script := fmt.Sprintf(`
 $dir = '%s'
 for ($i = 0; $i -lt 120; $i++) {
@@ -111,12 +111,12 @@ Remove-Item -Recurse -Force $dir -ErrorAction SilentlyContinue`,
 }
 
 // conflictExample names the usual suspect in the port-conflict warning.
-const conflictExample = " (e.g. quit Laragon)"
+const ConflictExample = " (e.g. quit Laragon)"
 
 // printStackHint has nothing extra to add on Windows — killing the
 // process is usually enough there.
-func printStackHint(conflicts []portConflict) {}
+func PrintStackHint(conflicts []Conflict) {}
 
 // stopConflict stops a conflicting listener; on Windows killing the
 // process (and its same-name parent) is what works.
-func stopConflict(c portConflict) { killWithParent(c.PID) }
+func StopConflict(c Conflict) { KillWithParent(c.PID) }

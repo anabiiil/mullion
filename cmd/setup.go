@@ -294,6 +294,15 @@ func doSetup(cmd *cobra.Command, wantAutostart bool, dbChoice string) error {
 			fmt.Printf("MySQL %s is running on 127.0.0.1:%d (user `root`, empty password).\n", v, mysql.Port)
 		} else {
 			fmt.Printf("%s already installed — your databases are untouched.\n", mysql.Label(a.State.Config.MySQL))
+			// A launchd/brew-managed MySQL may have resurrected and
+			// squatted the port since the first setup — take it back.
+			if reclaimMysqlPort(a, false) {
+				if err := mysql.EnsureInitialized(a.Paths, a.State.Config.MySQL); err != nil {
+					fmt.Println("note:", err)
+				} else if err := mysql.Start(a.Paths, a.State.Config.MySQL); err != nil {
+					fmt.Println("note:", err)
+				}
+			}
 		}
 
 		// Database manager(s), per the user's choice. phpMyAdmin's step

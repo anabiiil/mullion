@@ -1,6 +1,6 @@
 //go:build !windows
 
-package cmd
+package sysproc
 
 import (
 	"fmt"
@@ -14,7 +14,7 @@ import (
 )
 
 // portOwner resolves which process listens on the port.
-func portOwner(port int) (int, string) {
+func PortOwner(port int) (int, string) {
 	out, err := exec.Command("lsof", "-nP", "-iTCP:"+strconv.Itoa(port), "-sTCP:LISTEN", "-Fpc").Output()
 	if err != nil {
 		return 0, ""
@@ -35,7 +35,7 @@ func portOwner(port int) (int, string) {
 // killWithParent stops the process: TERM first, KILL if it lingers.
 // (The Windows implementation also stops a same-name parent — the
 // mysqld monitor pattern — which doesn't exist on Unix.)
-func killWithParent(pid int) {
+func KillWithParent(pid int) {
 	_ = syscall.Kill(pid, syscall.SIGTERM)
 	for i := 0; i < 20; i++ {
 		if syscall.Kill(pid, 0) != nil {
@@ -49,7 +49,7 @@ func killWithParent(pid int) {
 // processesUnder lists PIDs of running processes whose executable lives
 // under dir (optionally restricted to one image name). This is how the
 // uninstall distinguishes Mullion's servers from someone else's.
-func processesUnder(dir, image string) []int {
+func ProcessesUnder(dir, image string) []int {
 	// On macOS `ps -o comm` prints the full executable path.
 	out, err := exec.Command("ps", "-axo", "pid=,comm=").Output()
 	if err != nil {
@@ -77,12 +77,12 @@ func processesUnder(dir, image string) []int {
 }
 
 // killProcess force-stops one process by pid.
-func killProcess(pid int) {
+func KillProcess(pid int) {
 	_ = syscall.Kill(pid, syscall.SIGKILL)
 }
 
 // openURL opens a web page in the default browser.
-func openURL(url string) {
+func OpenURL(url string) {
 	opener := "open" // macOS
 	if _, err := exec.LookPath(opener); err != nil {
 		opener = "xdg-open"
@@ -93,7 +93,7 @@ func openURL(url string) {
 // scheduleHomeRemoval starts a detached helper that deletes the install
 // directory once every Mullion process has exited — this very process
 // still runs from bin, so it cannot delete it itself.
-func scheduleHomeRemoval(home string) error {
+func ScheduleHomeRemoval(home string) error {
 	// The [f]irst-char class keeps pgrep -f from matching the helper's
 	// own command line (which contains the pattern itself).
 	pattern := "[" + home[:1] + "]" + home[1:] + "/"
@@ -109,12 +109,12 @@ func scheduleHomeRemoval(home string) error {
 }
 
 // conflictExample names the usual suspects in the port-conflict warning.
-const conflictExample = " (e.g. Valet's nginx, Homebrew services)"
+const ConflictExample = " (e.g. Valet's nginx, Homebrew services)"
 
 // printStackHint explains how to stop stacks that launchd keeps
 // resurrecting: killing Valet's nginx or a `brew services` mysql just
 // brings it back, so the managing service must be stopped instead.
-func printStackHint(conflicts []portConflict) {
+func PrintStackHint(conflicts []Conflict) {
 	names := map[string]bool{}
 	for _, c := range conflicts {
 		names[strings.ToLower(filepath.Base(c.Name))] = true
@@ -142,9 +142,9 @@ func printStackHint(conflicts []portConflict) {
 // stopConflict stops a conflicting listener FOR GOOD: launchd- and
 // brew-managed servers resurrect after a bare kill, so their manager
 // (brew services, Valet) is stopped first, then the process itself.
-func stopConflict(c portConflict) {
+func StopConflict(c Conflict) {
 	stopManagedService(c.Name)
-	killWithParent(c.PID)
+	KillWithParent(c.PID)
 }
 
 // stopManagedService stops whatever keeps the named server alive.

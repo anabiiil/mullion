@@ -276,6 +276,7 @@ var mysqlStartCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		reclaimMysqlPort(a, false)
 		if err := mysql.Start(a.Paths, version); err != nil {
 			return err
 		}
