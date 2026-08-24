@@ -32,6 +32,8 @@ import (
 	"pm/internal/nodever"
 	"pm/internal/phpmyadmin"
 	"pm/internal/phpver"
+	"pm/internal/pmdir"
+	"pm/internal/sysproc"
 )
 
 //go:embed index.html
@@ -281,6 +283,19 @@ func newMux(token string) *http.ServeMux {
 		v := a.State.Config.MySQL
 		if v == "" {
 			return nil, errors.New("MySQL is not installed (run: mullion mysql install)")
+		}
+		// A foreign MySQL (a resurrected brew service, Laragon...) on the
+		// port means every connection hits the WRONG server. The Start
+		// click is explicit consent to stop it through its manager.
+		if mysql.Running() && len(sysproc.ProcessesUnder(a.Paths.Home, pmdir.ExeName("mysqld"))) == 0 {
+			pid, name := sysproc.PortOwner(mysql.Port)
+			sysproc.StopConflict(sysproc.Conflict{Port: mysql.Port, PID: pid, Name: name})
+			for i := 0; i < 20 && mysql.Running(); i++ {
+				time.Sleep(500 * time.Millisecond)
+			}
+			if mysql.Running() {
+				return nil, fmt.Errorf("another MySQL server (%s) is still holding port %d — stop it from a terminal (brew services list) and try again", name, mysql.Port)
+			}
 		}
 		if err := mysql.EnsureInitialized(a.Paths, v); err != nil {
 			return nil, err
