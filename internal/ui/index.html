@@ -318,6 +318,22 @@
             <button id="btn-mysql-switch">Switch</button>
             <span class="muted">databases migrate automatically — backed up <span id="backups-dir"></span>first</span>
           </div>
+          <div class="row" id="mysql-pass-row" style="display:none">
+            <span class="label">Root password</span>
+            <input type="password" id="mysql-pass" placeholder="new password (empty = none)" size="22" class="mono">
+            <button id="btn-mysql-pass">Set</button>
+            <span class="muted">phpMyAdmin follows automatically</span>
+          </div>
+          <div class="row" id="db-row" style="display:none; align-items:flex-start">
+            <span class="label" style="padding-top:6px">Databases</span>
+            <div style="flex:1">
+              <div id="db-list" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px"></div>
+              <div class="row" style="margin:0">
+                <input type="text" id="db-new" placeholder="new_database" size="18" class="mono">
+                <button id="btn-db-create">Create</button>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -444,13 +460,16 @@ function render() {
   } else {
     m.innerHTML = `<span style="font-weight:600">${s.mysql.label || ('MySQL ' + s.mysql.version)}</span>
       <span class="badge ${s.mysql.running ? 'on' : 'off'}">${s.mysql.running ? 'running' : 'stopped'}</span>
-      <span class="muted mono">127.0.0.1:${s.mysql.port} · root · no password</span>
+      <span class="muted mono">127.0.0.1:${s.mysql.port} · root · ${s.mysql.hasPassword ? 'password set' : 'no password'}</span>
       <span class="spacer"></span>
       <button id="btn-mysql">${s.mysql.running ? 'Stop' : 'Start'}</button>`;
     $('btn-mysql').onclick = () =>
       act(s.mysql.running ? 'Stopping the database…' : 'Starting the database…',
           s.mysql.running ? '/api/mysql/stop' : '/api/mysql/start');
   }
+  $('mysql-pass-row').style.display = s.mysql.installed ? '' : 'none';
+  $('db-row').style.display = (s.mysql.installed && s.mysql.running) ? '' : 'none';
+  if (s.mysql.installed && s.mysql.running) loadDatabases();
 
   $('sites-count').textContent = s.sites.length + (s.sites.length === 1 ? ' site' : ' sites');
   const tb = $('sites-body');
@@ -560,6 +579,48 @@ $('btn-ext-get').onclick = async () => {
     $('busy').classList.remove('show');
   }
 };
+let dbsLoadedAt = 0;
+async function loadDatabases() {
+  if (Date.now() - dbsLoadedAt < 4000) return;
+  dbsLoadedAt = Date.now();
+  try {
+    const dbs = await api('/api/db/list', {});
+    const wrap = $('db-list');
+    wrap.innerHTML = dbs.length ? '' : '<span class="muted">no databases yet</span>';
+    for (const db of dbs) {
+      const chip = document.createElement('span');
+      chip.className = 'badge';
+      chip.style.cssText = 'display:inline-flex; align-items:center; gap:6px';
+      chip.innerHTML = `<span class="mono">${db}</span><a href="#" data-dropdb="${db}" title="drop" style="text-decoration:none">✕</a>`;
+      wrap.appendChild(chip);
+    }
+    wrap.querySelectorAll('[data-dropdb]').forEach(el => el.onclick = (e) => {
+      e.preventDefault();
+      const name = el.dataset.dropdb;
+      if (!confirm(`Delete database "${name}" and ALL its data? This cannot be undone.`)) return;
+      dbsLoadedAt = 0;
+      act('Dropping ' + name + '…', '/api/db/drop', { name }, 'Dropped');
+    });
+  } catch (e) { /* mysql not reachable yet */ }
+}
+
+$('btn-mysql-pass').onclick = () => {
+  const password = $('mysql-pass').value;
+  if (!confirm(password
+    ? 'Set the MySQL root password? phpMyAdmin will be updated to match.'
+    : 'Remove the MySQL root password?')) return;
+  act('Updating the root password…', '/api/mysql/password', { password }, 'Password updated');
+  $('mysql-pass').value = '';
+};
+
+$('btn-db-create').onclick = () => {
+  const name = $('db-new').value.trim();
+  if (!name) return;
+  dbsLoadedAt = 0;
+  act('Creating ' + name + '…', '/api/db/create', { name }, 'Created');
+  $('db-new').value = '';
+};
+
 $('btn-mysql-switch').onclick = () => {
   const v = $('mysql-new').value.trim();
   if (!v) return toast('Type a version first — e.g. 8.4, latest, or mariadb');

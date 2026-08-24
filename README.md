@@ -129,6 +129,8 @@ mullion isolate 7.4            # pin just this project to it
 | `mullion tld [tld]` | Show or change the domain suffix (default `.test`) |
 | `mullion mysql install [v]` | Install MySQL (newest 8.4 LTS by default; `latest`, a branch, or an exact version) — switching versions migrates your databases automatically. MariaDB: Windows only |
 | `mullion mysql start` / `stop` / `uninstall` | Control / remove the MySQL server |
+| `mullion mysql password [pw]` | Change the root password ('' removes it) — phpMyAdmin follows automatically |
+| `mullion db list` / `create <n>` / `drop <n>` | Manage databases (also available in the control panel) |
 | `mullion composer install [v]` | Install Composer (latest by default, or a specific version) |
 | `mullion phpmyadmin [v]` | Install phpMyAdmin (latest by default) at `https://phpmyadmin.test` |
 | `mullion heidisql` | Install (first use) and open the HeidiSQL desktop client (Windows only) |

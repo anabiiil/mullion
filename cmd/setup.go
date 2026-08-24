@@ -189,6 +189,14 @@ func doSetup(cmd *cobra.Command, wantAutostart bool, dbChoice string) error {
 		if err := app.EnsureUserPath(a.Paths.BinDir(), a.Paths.CurrentPhp()); err != nil {
 			return err
 		}
+		// A version manager (.pvm & friends) already owning `php` would
+		// shadow Mullion forever — offer to disable its PATH line now.
+		if runtime.GOOS != "windows" {
+			if shadow := a.PhpShadow(); shadow != "" {
+				fmt.Printf("\nAnother `php` is on your PATH: %s\n", shadow)
+				offerShadowFix(shadow)
+			}
+		}
 		// Ahead of Laragon/XAMPP on the system PATH, so `php` and
 		// `composer` always mean Mullion's (possible because setup is
 		// already elevated; without elevation the shadow warning covers it).
@@ -386,7 +394,7 @@ func importFromExistingMysql(a *app.App, version string) string {
 		return dump
 	}
 	if owner > 0 {
-		killWithParent(owner)
+		stopConflict(portConflict{Port: mysql.Port, PID: owner, Name: name})
 	}
 	for i := 0; i < 20 && portBusy(mysql.Port); i++ {
 		time.Sleep(500 * time.Millisecond)

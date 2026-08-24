@@ -96,3 +96,7 @@ $parts = $path -split ';' | Where-Object { $_ -ne '' -and $dirs -notcontains $_ 
 func psQuote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
 }
+
+// DisableShadowEntries is a no-op on Windows: PATH priority is fixed via
+// the machine PATH during setup instead of profile-file edits.
+func DisableShadowEntries(shadowExe string) ([]string, error) { return nil, nil }

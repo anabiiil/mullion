@@ -2,9 +2,11 @@ package cmd
 
 import (
 	"fmt"
+	"path/filepath"
 	"runtime"
 
 	"pm/internal/app"
+	"pm/internal/console"
 
 	"github.com/spf13/cobra"
 
@@ -49,7 +51,34 @@ func reassertPathPriority(a *app.App) {
 	if runtime.GOOS == "windows" {
 		return
 	}
+	shadow := a.PhpShadow()
 	_ = app.EnsureUserPath(a.Paths.BinDir(), a.Paths.CurrentPhp())
+	if shadow == "" {
+		return
+	}
+	offerShadowFix(shadow)
+}
+
+// offerShadowFix disables the shadowing php's own PATH lines (with
+// consent when a human is present), so Mullion wins permanently instead
+// of re-fighting the ordering every time.
+func offerShadowFix(shadow string) {
+	dir := filepath.Dir(shadow)
+	if console.Interactive() &&
+		!askYesNo(fmt.Sprintf("Disable the PATH entry for %s so Mullion's php always wins?", dir), true) {
+		return
+	}
+	disabled, err := app.DisableShadowEntries(shadow)
+	if err != nil {
+		fmt.Println("note:", err)
+		return
+	}
+	if len(disabled) > 0 {
+		fmt.Println("Disabled the shadowing PATH line(s) — commented with a marker, easy to restore:")
+		for _, d := range disabled {
+			fmt.Println("  " + d)
+		}
+	}
 }
 
 func init() {

@@ -38,6 +38,7 @@ func New() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+	mysql.RootPassword = state.Config.MySQLPassword
 	return &App{Paths: paths, State: state}, nil
 }
 

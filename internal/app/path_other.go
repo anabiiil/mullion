@@ -139,3 +139,82 @@ func RemovePathEntries(scope string, dirs ...string) error {
 	}
 	return nil
 }
+
+// sharedBinDirs are directories many tools live in — a PATH line adding
+// one of these must never be touched (disabling the Homebrew line to
+// beat a Homebrew php would break everything else brew installed).
+var sharedBinDirs = map[string]bool{
+	"/opt/homebrew/bin": true, "/opt/homebrew/sbin": true,
+	"/usr/local/bin": true, "/usr/local/sbin": true,
+	"/usr/bin": true, "/bin": true, "/usr/sbin": true, "/sbin": true,
+}
+
+// DisableShadowEntries comments out profile lines that put the given
+// shadowing php's directory on the PATH — the fix for version managers
+// (.pvm and friends) that keep beating Mullion. Lines adding shared
+// directories are left alone (there the managed-block ordering wins
+// instead). Returns a human-readable list of what was disabled.
+func DisableShadowEntries(shadowExe string) ([]string, error) {
+	dir := filepath.Dir(filepath.Clean(shadowExe))
+	if sharedBinDirs[dir] {
+		return nil, nil
+	}
+	variants := []string{dir}
+	if home, err := os.UserHomeDir(); err == nil && strings.HasPrefix(dir, home+string(os.PathSeparator)) {
+		rest := strings.TrimPrefix(dir, home)
+		variants = append(variants, "$HOME"+rest, "${HOME}"+rest, "~"+rest)
+	}
+
+	var disabled []string
+	files := profileFiles()
+	if home, err := os.UserHomeDir(); err == nil {
+		if _, statErr := os.Stat(filepath.Join(home, ".bashrc")); statErr == nil {
+			files = append(files, filepath.Join(home, ".bashrc"))
+		}
+	}
+	for _, f := range files {
+		data, err := os.ReadFile(f)
+		if err != nil {
+			continue
+		}
+		lines := strings.Split(string(data), "\n")
+		changed := false
+		inBlock := false
+		for i, line := range lines {
+			trimmed := strings.TrimSpace(line)
+			switch trimmed {
+			case pathBeginMarker:
+				inBlock = true
+				continue
+			case pathEndMarker:
+				inBlock = false
+				continue
+			}
+			if inBlock || trimmed == "" || strings.HasPrefix(trimmed, "#") {
+				continue
+			}
+			if !strings.Contains(line, "PATH") {
+				continue
+			}
+			hit := false
+			for _, v := range variants {
+				if strings.Contains(line, v) {
+					hit = true
+					break
+				}
+			}
+			if !hit {
+				continue
+			}
+			lines[i] = "# disabled by mullion (this PHP shadowed Mullion's — remove the marker to restore): " + line
+			changed = true
+			disabled = append(disabled, fmt.Sprintf("%s:%d", f, i+1))
+		}
+		if changed {
+			if err := os.WriteFile(f, []byte(strings.Join(lines, "\n")), 0o644); err != nil {
+				return disabled, fmt.Errorf("updating %s: %w", f, err)
+			}
+		}
+	}
+	return disabled, nil
+}
