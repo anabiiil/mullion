@@ -552,7 +552,8 @@ function render() {
     }
 
     tr.innerHTML = `
-      <td><a href="${site.url}" target="_blank">${site.host}</a>${site.kind !== 'php' ? ' <span class="muted">' + site.kind + '</span>' : ''}</td>
+      <td><a href="${site.url}" target="_blank">${site.host}</a>
+        <a href="#" data-rename="${site.name}" title="rename this site (changes the domain)" class="muted" style="text-decoration:none">&#9998;</a>${site.kind !== 'php' ? ' <span class="muted">' + site.kind + '</span>' : ''}</td>
       <td class="muted mono">${site.path}</td>
       <td>${runtimeCell}</td>
       <td><label class="switch"><input type="checkbox" data-secure="${site.name}" ${site.secure ? 'checked' : ''}><i></i></label></td>
@@ -565,6 +566,14 @@ function render() {
   tb.querySelectorAll('[data-nodever]').forEach(el => el.onchange = () =>
     act('Switching Node version…', '/api/sites/node',
         { name: el.dataset.nodever, version: el.value }, 'Done'));
+  tb.querySelectorAll('[data-rename]').forEach(el => el.onclick = (e) => {
+    e.preventDefault();
+    const oldName = el.dataset.rename;
+    const newName = prompt('New site name — the domain becomes <name>.' + (s.tld || 'test') + ':', oldName);
+    if (!newName || newName === oldName) return;
+    act('Renaming ' + oldName + ' → ' + newName + '…', '/api/sites/rename',
+        { name: oldName, newName }, 'Renamed');
+  });
   tb.querySelectorAll('[data-mode]').forEach(el => el.onchange = () =>
     act(el.value === 'build' ? 'Switching to the production build… (builds the project first if needed — can take a minute)' : 'Switching the domain to the dev server…',
         '/api/sites/mode', { name: el.dataset.mode, mode: el.value }, 'Done'));

@@ -473,6 +473,25 @@ func newMux(token string) *http.ServeMux {
 		}
 		return nil, a.ActivateNode(full)
 	})
+	api("/api/sites/rename", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Name, NewName string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		site := a.State.FindSite(in.Name)
+		if site == nil {
+			return nil, fmt.Errorf("no site named %q", in.Name)
+		}
+		// The dev server's pid/log files are keyed by name — stop it
+		// under the old name; Apply restarts it under the new one.
+		if site.Kind == "node" {
+			devserver.Stop(a.Paths, site.Name)
+		}
+		if err := a.State.RenameSite(in.Name, in.NewName); err != nil {
+			return nil, err
+		}
+		return nil, a.Apply()
+	})
 	api("/api/sites/mode", func(a *app.App, r *http.Request) (any, error) {
 		var in struct{ Name, Mode string }
 		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
