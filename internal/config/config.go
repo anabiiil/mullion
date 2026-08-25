@@ -124,6 +124,24 @@ func (s *State) AddSite(site Site) {
 	sort.Slice(s.Sites, func(i, j int) bool { return s.Sites[i].Name < s.Sites[j].Name })
 }
 
+// RenameSite gives a site a new name (and therefore a new domain).
+func (s *State) RenameSite(oldName, newName string) error {
+	newName = Slugify(newName)
+	if newName == "" {
+		return fmt.Errorf("invalid site name")
+	}
+	site := s.FindSite(oldName)
+	if site == nil {
+		return fmt.Errorf("no site named %q", oldName)
+	}
+	if !strings.EqualFold(oldName, newName) && s.FindSite(newName) != nil {
+		return fmt.Errorf("a site named %q already exists", newName)
+	}
+	site.Name = newName
+	sort.Slice(s.Sites, func(i, j int) bool { return s.Sites[i].Name < s.Sites[j].Name })
+	return nil
+}
+
 func (s *State) RemoveSite(name string) bool {
 	for i := range s.Sites {
 		if strings.EqualFold(s.Sites[i].Name, name) {
