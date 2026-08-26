@@ -6,24 +6,24 @@
 <link rel="icon" type="image/png" href="/favicon.png">
 <style>
   :root {
-    --lime: #b8ef47; --lime-deep: #9edb2b; --lime-ink: #17240a;
-    --green: #16a35b; --green-soft: rgba(22, 163, 91, .1);
-    --bg: #f2f4ef; --side: #ffffff; --card: #ffffff; --inset: #f6f8f3;
-    --text: #171b16; --muted: #6d7568; --faint: #a0a89a;
-    --border: #e5e9df; --border-strong: #d5dbcc;
-    --ok: #15934f; --ok-bg: #e6f6ec; --bad: #d4373e; --bad-bg: #fdeeee;
+    --accent: #4f63e6; --accent-deep: #4356ce; --accent-ink: #ffffff;
+    --accent-soft: rgba(79, 99, 230, .09);
+    --bg: #f6f7f9; --side: #ffffff; --card: #ffffff; --inset: #f1f2f6;
+    --text: #1a1d26; --muted: #737a8c; --faint: #a2a8b8;
+    --border: #e7e9f0; --border-strong: #d9dce6;
+    --ok: #189a52; --ok-bg: #e9f7ef; --bad: #d4373e; --bad-bg: #fdeeee;
     --warn-bg: #fdf6e3; --warn-text: #8a6a12;
-    --shadow: 0 1px 2px rgba(23, 27, 22, .05);
-    --shadow-lg: 0 6px 24px rgba(23, 27, 22, .08);
+    --shadow: 0 1px 2px rgba(20, 22, 32, .05);
+    --shadow-lg: 0 6px 24px rgba(20, 22, 32, .08);
     --mono: "SF Mono", "Cascadia Code", Consolas, monospace;
   }
   html[data-theme=dark] {
-    --lime: #c5f95c; --lime-deep: #b2ea43; --lime-ink: #131b07;
-    --green: #4ade80; --green-soft: rgba(74, 222, 128, .1);
-    --bg: #0c0f0a; --side: #10140e; --card: #151a12; --inset: #0f130c;
-    --text: #e9eee4; --muted: #92a089; --faint: #5c665a;
-    --border: #222a1e; --border-strong: #2f392a;
-    --ok: #4ade80; --ok-bg: #12251a; --bad: #f07178; --bad-bg: #2a1719;
+    --accent: #7186ff; --accent-deep: #5f76f5; --accent-ink: #ffffff;
+    --accent-soft: rgba(113, 134, 255, .12);
+    --bg: #0c0e13; --side: #10131a; --card: #141822; --inset: #0f121a;
+    --text: #e7e9f1; --muted: #8d94a6; --faint: #5c6274;
+    --border: #222736; --border-strong: #2d3346;
+    --ok: #3ecf7a; --ok-bg: #10251a; --bad: #f07178; --bad-bg: #2a1719;
     --warn-bg: #2b230c; --warn-text: #e5c15c;
     --shadow: 0 1px 2px rgba(0, 0, 0, .4);
     --shadow-lg: 0 8px 28px rgba(0, 0, 0, .45);
@@ -51,13 +51,13 @@
            color: var(--muted); font-weight: 550; font-size: 13px;
            transition: background .12s, color .12s; position: relative; }
   .nav a:hover { background: var(--inset); color: var(--text); }
-  .nav a.active { background: var(--lime); color: var(--lime-ink); font-weight: 650; }
+  .nav a.active { background: var(--accent); color: var(--accent-ink); font-weight: 650; }
   .nav a.active svg { opacity: 1; }
   .nav a svg { width: 16px; height: 16px; flex: none; opacity: .7; }
   .nav a .count { margin-left: auto; font-size: 10.5px; font-weight: 700;
                   background: var(--inset); color: var(--muted);
                   border-radius: 999px; padding: 1px 8px; }
-  .nav a.active .count { background: rgba(0,0,0,.14); color: var(--lime-ink); }
+  .nav a.active .count { background: rgba(0,0,0,.14); color: var(--accent-ink); }
   .side-foot { margin-top: auto; padding: 14px 8px 0;
                border-top: 1px solid var(--border);
                display: flex; flex-direction: column; gap: 12px; }
@@ -92,7 +92,7 @@
                  border-radius: 16px; box-shadow: var(--shadow); }
   .card-head { display: flex; align-items: center; gap: 10px;
                padding: 16px 22px; border-bottom: 1px solid var(--border); }
-  .card-head svg { width: 17px; height: 17px; color: var(--green); flex: none; }
+  .card-head svg { width: 17px; height: 17px; color: var(--accent); flex: none; }
   .card-head h2 { margin: 0; font-size: 14px; font-weight: 650; }
   .card-head .hint { margin-left: auto; font-size: 12px; color: var(--muted); }
   .card-body { padding: 18px 22px; }
@@ -110,7 +110,7 @@
   .stat:hover { box-shadow: var(--shadow-lg); transform: translateY(-1px); }
   .stat .k { font-size: 12px; color: var(--muted); font-weight: 600;
              display: flex; align-items: center; gap: 7px; }
-  .stat .k svg { width: 14px; height: 14px; color: var(--green); }
+  .stat .k svg { width: 14px; height: 14px; color: var(--accent); }
   .stat .v { font-size: 21px; font-weight: 700; letter-spacing: -.4px;
              font-variant-numeric: tabular-nums; }
   .stat .d { font-size: 11.5px; color: var(--faint); }
@@ -120,12 +120,12 @@
            color: var(--text); border-radius: 10px; padding: 7.5px 16px;
            cursor: pointer; font: inherit; font-size: 13px; font-weight: 600;
            transition: border-color .12s, background .12s, transform .06s; }
-  button:hover { border-color: var(--green); color: var(--green); }
+  button:hover { border-color: var(--accent); color: var(--accent); }
   button:active { transform: translateY(1px); }
-  button.primary { background: var(--lime); border-color: var(--lime);
-                   color: var(--lime-ink); }
-  button.primary:hover { background: var(--lime-deep); border-color: var(--lime-deep);
-                   color: var(--lime-ink); }
+  button.primary { background: var(--accent); border-color: var(--accent);
+                   color: var(--accent-ink); }
+  button.primary:hover { background: var(--accent-deep); border-color: var(--accent-deep);
+                   color: var(--accent-ink); }
   button.danger { color: var(--muted); }
   button.danger:hover { border-color: var(--bad); color: var(--bad); }
   button.sm { padding: 5px 12px; font-size: 12px; border-radius: 8px; }
@@ -135,8 +135,8 @@
            color: var(--text); border-radius: 10px; padding: 7.5px 11px;
            font: inherit; font-size: 13px; outline: none;
            transition: border-color .12s, box-shadow .12s; }
-  select:focus, input:focus { border-color: var(--green);
-           box-shadow: 0 0 0 3px var(--green-soft); }
+  select:focus, input:focus { border-color: var(--accent);
+           box-shadow: 0 0 0 3px var(--accent-soft); }
   input::placeholder { color: var(--faint); }
   .mono { font-family: var(--mono); font-size: 12.5px; }
 
@@ -158,7 +158,7 @@
   .muted { color: var(--muted); font-size: 12.5px; }
   .warn { background: var(--warn-bg); color: var(--warn-text);
           border-radius: 12px; padding: 12px 16px; font-size: 13px; }
-  .note { background: var(--green-soft); color: var(--green);
+  .note { background: var(--accent-soft); color: var(--accent);
           border-radius: 12px; padding: 12px 16px; font-size: 12.5px; font-weight: 550; }
 
   /* ── table ───────────────────────────────────────────────── */
@@ -170,7 +170,7 @@
        vertical-align: middle; }
   tbody tr:hover td { background: var(--inset); }
   tr:last-child td { border-bottom: none; }
-  a { color: var(--green); text-decoration: none; font-weight: 600; }
+  a { color: var(--accent); text-decoration: none; font-weight: 600; }
   a:hover { text-decoration: underline; }
   .empty { color: var(--faint); text-align: center; padding: 26px 0; font-size: 13px; }
 
@@ -183,7 +183,7 @@
               width: 15px; height: 15px; border-radius: 50%; background: #fff;
               transition: transform .18s cubic-bezier(.34,1.56,.64,1);
               box-shadow: 0 1px 3px rgba(0,0,0,.3); }
-  .switch input:checked + i { background: var(--green); }
+  .switch input:checked + i { background: var(--accent); }
   .switch input:checked + i::after { transform: translateX(15px); }
   label.toggle { display: flex; align-items: center; gap: 9px; cursor: pointer;
                  font-size: 12.5px; color: var(--muted); }
@@ -197,7 +197,7 @@
                     font-size: 12.5px; padding: 4px 0; font-family: var(--mono);
                     color: var(--muted); }
   .ext-grid label:hover { color: var(--text); }
-  .ext-grid input { accent-color: var(--green); }
+  .ext-grid input { accent-color: var(--accent); }
   .ext-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
   .ext-chips span { font-family: var(--mono); font-size: 11.5px; color: var(--muted);
                     background: var(--inset); border: 1px solid var(--border);
@@ -212,7 +212,7 @@
            pointer-events: none; max-width: 78%; box-shadow: var(--shadow-lg);
            z-index: 30; }
   #toast.show { opacity: .97; transform: translate(-50%, 0); }
-  #busy { position: fixed; inset: 0; background: rgba(8, 10, 6, .5); display: none;
+  #busy { position: fixed; inset: 0; background: rgba(8, 9, 14, .5); display: none;
           align-items: center; justify-content: center; z-index: 20;
           backdrop-filter: blur(3px); }
   #busy.show { display: flex; }
@@ -220,7 +220,7 @@
                border-radius: 14px; padding: 22px 30px;
                display: flex; align-items: center; gap: 14px; box-shadow: var(--shadow-lg); }
   .spin { width: 20px; height: 20px; border: 2.5px solid var(--border-strong);
-          border-top-color: var(--green); border-radius: 50%;
+          border-top-color: var(--accent); border-radius: 50%;
           animation: spin .7s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -239,10 +239,13 @@
   <aside class="side">
     <div class="brand">
       <svg viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg">
-        <rect width="96" height="96" rx="24" fill="#b8ef47"/>
-        <rect x="25" y="21" width="46" height="54" rx="9" fill="none" stroke="#17240a" stroke-width="6"/>
-        <line x1="48" y1="21" x2="48" y2="75" stroke="#17240a" stroke-width="6"/>
-        <line x1="25" y1="43" x2="71" y2="43" stroke="#17240a" stroke-width="6"/>
+        <defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#6366F1"/><stop offset="1" stop-color="#A855F7"/>
+        </linearGradient></defs>
+        <rect width="96" height="96" rx="22" fill="url(#lg)"/>
+        <rect x="25" y="21" width="46" height="54" rx="9" fill="none" stroke="#fff" stroke-width="6"/>
+        <line x1="48" y1="21" x2="48" y2="75" stroke="#fff" stroke-width="6"/>
+        <line x1="25" y1="43" x2="71" y2="43" stroke="#fff" stroke-width="6"/>
       </svg>
       <div><b>Mullion</b><span>local dev server</span></div>
     </div>
@@ -709,8 +712,7 @@ function render() {
 }
 
 function siteCell(site) {
-  return `<a href="${site.url}" target="_blank">${site.host}</a>
-    <a href="#" data-rename="${site.name}" title="rename this site (changes the domain)" class="muted" style="text-decoration:none">&#9998;</a>`;
+  return `<a href="${site.url}" target="_blank">${site.host}</a>`;
 }
 
 function renderBackend(sites) {
@@ -730,7 +732,9 @@ function renderBackend(sites) {
       <td class="muted mono">${site.path}</td>
       <td><select data-isolate="${site.name}" class="mono">${opts}</select></td>
       <td><label class="switch"><input type="checkbox" data-secure="${site.name}" ${site.secure ? 'checked' : ''}><i></i></label></td>
-      <td style="text-align:right"><button class="danger sm" data-unlink="${site.name}">Unlink</button></td>`;
+      <td style="text-align:right; white-space:nowrap">
+        <button class="sm" data-rename="${site.name}" title="change this site's domain">Rename</button>
+        <button class="danger sm" data-unlink="${site.name}">Unlink</button></td>`;
     tb.appendChild(tr);
   }
   wireSiteHandlers(tb);
@@ -779,7 +783,9 @@ function renderFrontend(sites) {
       <td>${nodeSel}</td>
       <td>${status} ${action}</td>
       <td><label class="switch"><input type="checkbox" data-secure="${site.name}" ${site.secure ? 'checked' : ''}><i></i></label></td>
-      <td style="text-align:right"><button class="danger sm" data-unlink="${site.name}">Unlink</button></td>`;
+      <td style="text-align:right; white-space:nowrap">
+        <button class="sm" data-rename="${site.name}" title="change this site's domain">Rename</button>
+        <button class="danger sm" data-unlink="${site.name}">Unlink</button></td>`;
     tb.appendChild(tr);
   }
   wireSiteHandlers(tb);
