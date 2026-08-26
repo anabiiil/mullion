@@ -34,6 +34,7 @@ import (
 	"pm/internal/phpver"
 	"pm/internal/pmdir"
 	"pm/internal/sysproc"
+	"pm/internal/version"
 )
 
 //go:embed index.html
@@ -719,6 +720,7 @@ func getState(a *app.App, r *http.Request) (any, error) {
 	}
 
 	return map[string]any{
+		"version":       version.Number,
 		"caddy":         caddy.Running(),
 		"globalPhp":     a.State.Config.GlobalPHP,
 		"phpInstalled":  installed,
