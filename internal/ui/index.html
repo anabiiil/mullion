@@ -6,125 +6,143 @@
 <link rel="icon" type="image/png" href="/favicon.png">
 <style>
   :root {
-    --grad-a: #6366F1; --grad-b: #A855F7;
-    --accent: #4f63e6; --accent-soft: rgba(79, 99, 230, .09);
-    --bg: #f6f7f9; --side: #ffffff; --card: #ffffff;
-    --text: #1a1d26; --muted: #737a8c; --faint: #a2a8b8;
-    --border: #e7e9f0; --border-strong: #d9dce6;
-    --ok: #189a52; --ok-bg: #e9f7ef; --bad: #d4373e; --bad-bg: #fdeeee;
+    --lime: #b8ef47; --lime-deep: #9edb2b; --lime-ink: #17240a;
+    --green: #16a35b; --green-soft: rgba(22, 163, 91, .1);
+    --bg: #f2f4ef; --side: #ffffff; --card: #ffffff; --inset: #f6f8f3;
+    --text: #171b16; --muted: #6d7568; --faint: #a0a89a;
+    --border: #e5e9df; --border-strong: #d5dbcc;
+    --ok: #15934f; --ok-bg: #e6f6ec; --bad: #d4373e; --bad-bg: #fdeeee;
     --warn-bg: #fdf6e3; --warn-text: #8a6a12;
-    --shadow: 0 1px 2px rgba(20, 22, 32, .05);
-    --shadow-lg: 0 4px 20px rgba(20, 22, 32, .07);
-    --mono: "Cascadia Code", Consolas, "Courier New", monospace;
+    --shadow: 0 1px 2px rgba(23, 27, 22, .05);
+    --shadow-lg: 0 6px 24px rgba(23, 27, 22, .08);
+    --mono: "SF Mono", "Cascadia Code", Consolas, monospace;
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --accent: #7186ff; --accent-soft: rgba(113, 134, 255, .12);
-      --bg: #0c0e13; --side: #10131a; --card: #141822;
-      --text: #e7e9f1; --muted: #8d94a6; --faint: #5c6274;
-      --border: #222736; --border-strong: #2d3346;
-      --ok: #3ecf7a; --ok-bg: #10251a; --bad: #f07178; --bad-bg: #2a1719;
-      --warn-bg: #2b230c; --warn-text: #e5c15c;
-      --shadow: 0 1px 2px rgba(0, 0, 0, .35);
-      --shadow-lg: 0 6px 24px rgba(0, 0, 0, .4);
-    }
+  html[data-theme=dark] {
+    --lime: #c5f95c; --lime-deep: #b2ea43; --lime-ink: #131b07;
+    --green: #4ade80; --green-soft: rgba(74, 222, 128, .1);
+    --bg: #0c0f0a; --side: #10140e; --card: #151a12; --inset: #0f130c;
+    --text: #e9eee4; --muted: #92a089; --faint: #5c665a;
+    --border: #222a1e; --border-strong: #2f392a;
+    --ok: #4ade80; --ok-bg: #12251a; --bad: #f07178; --bad-bg: #2a1719;
+    --warn-bg: #2b230c; --warn-text: #e5c15c;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4);
+    --shadow-lg: 0 8px 28px rgba(0, 0, 0, .45);
   }
   * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
   body { margin: 0; background: var(--bg); color: var(--text);
-         font: 13.5px/1.55 "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+         font: 13.5px/1.55 Inter, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
          -webkit-font-smoothing: antialiased; }
 
   .shell { display: flex; min-height: 100vh; }
 
   /* ── sidebar ─────────────────────────────────────────────── */
-  .side { width: 232px; flex: none; background: var(--side);
+  .side { width: 236px; flex: none; background: var(--side);
           border-right: 1px solid var(--border);
-          display: flex; flex-direction: column; gap: 4px;
-          padding: 20px 14px; position: sticky; top: 0; height: 100vh; }
-  .brand { display: flex; align-items: center; gap: 11px; padding: 2px 8px 18px; }
-  .brand svg { width: 34px; height: 34px; flex: none;
-               transition: transform .25s ease; }
-  .brand:hover svg { transform: rotate(-5deg) scale(1.05); }
-  .brand b { font-size: 16.5px; font-weight: 650; letter-spacing: .2px; }
-  .brand span { display: block; font-size: 11px; color: var(--muted);
-                margin-top: -2px; }
+          display: flex; flex-direction: column; gap: 3px;
+          padding: 22px 14px 16px; position: sticky; top: 0; height: 100vh; }
+  .brand { display: flex; align-items: center; gap: 11px; padding: 0 8px 20px; }
+  .brand svg { width: 34px; height: 34px; flex: none; }
+  .brand b { font-size: 16.5px; font-weight: 700; letter-spacing: .2px; }
+  .brand span { display: block; font-size: 11px; color: var(--muted); margin-top: -2px; }
+  .nav-label { font-size: 10.5px; font-weight: 700; letter-spacing: 1px;
+               text-transform: uppercase; color: var(--faint); padding: 12px 10px 5px; }
   .nav a { display: flex; align-items: center; gap: 10px;
-           padding: 8px 10px; border-radius: 8px; text-decoration: none;
-           color: var(--muted); font-weight: 500; font-size: 13px;
-           transition: background .12s, color .12s; }
-  .nav a:hover { background: var(--accent-soft); color: var(--text); }
-  .nav a svg { width: 16px; height: 16px; flex: none; opacity: .75; }
-  .side-foot { margin-top: auto; padding: 12px 8px 0;
+           padding: 8.5px 11px; border-radius: 10px; text-decoration: none;
+           color: var(--muted); font-weight: 550; font-size: 13px;
+           transition: background .12s, color .12s; position: relative; }
+  .nav a:hover { background: var(--inset); color: var(--text); }
+  .nav a.active { background: var(--lime); color: var(--lime-ink); font-weight: 650; }
+  .nav a.active svg { opacity: 1; }
+  .nav a svg { width: 16px; height: 16px; flex: none; opacity: .7; }
+  .nav a .count { margin-left: auto; font-size: 10.5px; font-weight: 700;
+                  background: var(--inset); color: var(--muted);
+                  border-radius: 999px; padding: 1px 8px; }
+  .nav a.active .count { background: rgba(0,0,0,.14); color: var(--lime-ink); }
+  .side-foot { margin-top: auto; padding: 14px 8px 0;
                border-top: 1px solid var(--border);
-               display: flex; flex-direction: column; gap: 10px; }
+               display: flex; flex-direction: column; gap: 12px; }
   .side-foot .ver { font-size: 11px; color: var(--faint); font-family: var(--mono); }
 
+  /* ── theme pill ──────────────────────────────────────────── */
+  .theme-pill { display: inline-flex; background: var(--inset);
+                border: 1px solid var(--border); border-radius: 999px; padding: 3px; }
+  .theme-pill button { border: none; background: transparent; box-shadow: none;
+                border-radius: 999px; padding: 5px 14px; font-size: 12px;
+                color: var(--muted); font-weight: 600; }
+  .theme-pill button:hover { color: var(--text); border: none; }
+  .theme-pill button.active { background: var(--card); color: var(--text);
+                box-shadow: var(--shadow); }
+
   /* ── content ─────────────────────────────────────────────── */
-  .content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-  .topbar { display: flex; align-items: center; gap: 14px;
-            padding: 18px 32px; background: var(--bg);
-            position: sticky; top: 0; z-index: 5;
-            border-bottom: 1px solid transparent; }
-  .topbar.scrolled { background: color-mix(in srgb, var(--bg) 85%, transparent);
-                     backdrop-filter: blur(8px);
-                     border-bottom-color: var(--border); }
-  .topbar h1 { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: -.2px; }
+  .content { flex: 1; min-width: 0; }
+  .topbar { display: flex; align-items: center; gap: 12px;
+            padding: 20px 34px 6px; }
+  .topbar h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.3px; }
+  .topbar .sub { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
   .spacer { flex: 1; }
 
-  main { max-width: 880px; width: 100%; margin: 0 auto;
-         padding: 10px 32px 48px; display: grid; gap: 22px; }
-
-  section.card { background: var(--card); border: 1px solid var(--border);
-                 border-radius: 12px; box-shadow: var(--shadow);
-                 animation: rise .35s ease both;
-                 transition: box-shadow .2s; scroll-margin-top: 80px; }
-  section.card:hover { box-shadow: var(--shadow-lg); }
-  main section:nth-child(2) { animation-delay: .05s; }
-  main section:nth-child(3) { animation-delay: .1s; }
-  main section:nth-child(4) { animation-delay: .15s; }
+  main { max-width: 960px; width: 100%; margin: 0 auto;
+         padding: 16px 34px 48px; }
+  .page { display: none; animation: rise .3s ease both; }
+  .page.active { display: grid; gap: 20px; }
   @keyframes rise { from { opacity: 0; transform: translateY(8px); }
                     to   { opacity: 1; transform: none; } }
 
+  section.card { background: var(--card); border: 1px solid var(--border);
+                 border-radius: 16px; box-shadow: var(--shadow); }
   .card-head { display: flex; align-items: center; gap: 10px;
                padding: 16px 22px; border-bottom: 1px solid var(--border); }
-  .card-head svg { width: 17px; height: 17px; color: var(--accent); flex: none; }
-  .card-head h2 { margin: 0; font-size: 14px; font-weight: 600; letter-spacing: .1px; }
+  .card-head svg { width: 17px; height: 17px; color: var(--green); flex: none; }
+  .card-head h2 { margin: 0; font-size: 14px; font-weight: 650; }
   .card-head .hint { margin-left: auto; font-size: 12px; color: var(--muted); }
   .card-body { padding: 18px 22px; }
 
   .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .row + .row { margin-top: 14px; }
-  .label { font-size: 12.5px; color: var(--muted); font-weight: 500; }
+  .label { font-size: 12.5px; color: var(--muted); font-weight: 550; }
+
+  /* ── stat cards ──────────────────────────────────────────── */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+  .stat { background: var(--card); border: 1px solid var(--border);
+          border-radius: 16px; padding: 18px 20px; box-shadow: var(--shadow);
+          display: flex; flex-direction: column; gap: 5px; cursor: pointer;
+          transition: box-shadow .18s, transform .18s; }
+  .stat:hover { box-shadow: var(--shadow-lg); transform: translateY(-1px); }
+  .stat .k { font-size: 12px; color: var(--muted); font-weight: 600;
+             display: flex; align-items: center; gap: 7px; }
+  .stat .k svg { width: 14px; height: 14px; color: var(--green); }
+  .stat .v { font-size: 21px; font-weight: 700; letter-spacing: -.4px;
+             font-variant-numeric: tabular-nums; }
+  .stat .d { font-size: 11.5px; color: var(--faint); }
 
   /* ── controls ────────────────────────────────────────────── */
   button { border: 1px solid var(--border-strong); background: var(--card);
-           color: var(--text); border-radius: 8px; padding: 7px 15px;
-           cursor: pointer; font: inherit; font-size: 13px; font-weight: 550;
-           transition: border-color .12s, background .12s, transform .06s,
-                       box-shadow .15s; }
-  button:hover { border-color: var(--accent); color: var(--accent); }
+           color: var(--text); border-radius: 10px; padding: 7.5px 16px;
+           cursor: pointer; font: inherit; font-size: 13px; font-weight: 600;
+           transition: border-color .12s, background .12s, transform .06s; }
+  button:hover { border-color: var(--green); color: var(--green); }
   button:active { transform: translateY(1px); }
-  button.primary { background: var(--accent); border-color: var(--accent);
-                   color: #fff; box-shadow: 0 1px 6px rgba(79, 99, 230, .3); }
-  button.primary:hover { filter: brightness(1.09); color: #fff; }
+  button.primary { background: var(--lime); border-color: var(--lime);
+                   color: var(--lime-ink); }
+  button.primary:hover { background: var(--lime-deep); border-color: var(--lime-deep);
+                   color: var(--lime-ink); }
   button.danger { color: var(--muted); }
   button.danger:hover { border-color: var(--bad); color: var(--bad); }
+  button.sm { padding: 5px 12px; font-size: 12px; border-radius: 8px; }
 
-  select, input[type=text] {
-           border: 1px solid var(--border-strong); background: var(--bg);
-           color: var(--text); border-radius: 8px; padding: 7px 10px;
+  select, input[type=text], input[type=password] {
+           border: 1px solid var(--border-strong); background: var(--inset);
+           color: var(--text); border-radius: 10px; padding: 7.5px 11px;
            font: inherit; font-size: 13px; outline: none;
            transition: border-color .12s, box-shadow .12s; }
-  select:focus, input[type=text]:focus { border-color: var(--accent);
-           box-shadow: 0 0 0 3px var(--accent-soft); }
+  select:focus, input:focus { border-color: var(--green);
+           box-shadow: 0 0 0 3px var(--green-soft); }
   input::placeholder { color: var(--faint); }
-
   .mono { font-family: var(--mono); font-size: 12.5px; }
 
   /* ── status ──────────────────────────────────────────────── */
   .pill { display: inline-flex; align-items: center; gap: 7px;
-          font-size: 12px; font-weight: 600; padding: 5px 13px;
+          font-size: 12px; font-weight: 650; padding: 6px 14px;
           border-radius: 999px; }
   .pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%;
                   background: currentColor; }
@@ -133,25 +151,28 @@
   .pill.off { color: var(--bad); background: var(--bad-bg); }
   @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 40%, transparent); }
                      60%      { box-shadow: 0 0 0 5px transparent; } }
-  .badge { font-size: 11px; font-weight: 600; padding: 3px 10px;
+  .badge { font-size: 11px; font-weight: 650; padding: 3px 10px;
            border-radius: 999px; letter-spacing: .2px; }
   .badge.on  { color: var(--ok);  background: var(--ok-bg); }
-  .badge.off { color: var(--muted); background: var(--bg); }
+  .badge.off { color: var(--muted); background: var(--inset); }
   .muted { color: var(--muted); font-size: 12.5px; }
   .warn { background: var(--warn-bg); color: var(--warn-text);
-          border-radius: 10px; padding: 11px 16px; font-size: 13px; }
+          border-radius: 12px; padding: 12px 16px; font-size: 13px; }
+  .note { background: var(--green-soft); color: var(--green);
+          border-radius: 12px; padding: 12px 16px; font-size: 12.5px; font-weight: 550; }
 
   /* ── table ───────────────────────────────────────────────── */
   table { width: 100%; border-collapse: collapse; }
-  th { text-align: left; color: var(--faint); font-weight: 600;
+  th { text-align: left; color: var(--faint); font-weight: 650;
        font-size: 10.5px; text-transform: uppercase; letter-spacing: .8px;
-       padding: 4px 10px 8px; border-bottom: 1px solid var(--border); }
+       padding: 4px 10px 9px; border-bottom: 1px solid var(--border); }
   td { padding: 11px 10px; border-bottom: 1px solid var(--border);
-       vertical-align: middle; transition: background .12s; }
-  tbody tr:hover td { background: var(--accent-soft); }
+       vertical-align: middle; }
+  tbody tr:hover td { background: var(--inset); }
   tr:last-child td { border-bottom: none; }
-  a { color: var(--accent); text-decoration: none; font-weight: 550; }
+  a { color: var(--green); text-decoration: none; font-weight: 600; }
   a:hover { text-decoration: underline; }
+  .empty { color: var(--faint); text-align: center; padding: 26px 0; font-size: 13px; }
 
   /* ── toggle switch ───────────────────────────────────────── */
   .switch { position: relative; width: 34px; height: 19px; display: inline-block; }
@@ -162,51 +183,51 @@
               width: 15px; height: 15px; border-radius: 50%; background: #fff;
               transition: transform .18s cubic-bezier(.34,1.56,.64,1);
               box-shadow: 0 1px 3px rgba(0,0,0,.3); }
-  .switch input:checked + i { background: var(--accent); }
+  .switch input:checked + i { background: var(--green); }
   .switch input:checked + i::after { transform: translateX(15px); }
   label.toggle { display: flex; align-items: center; gap: 9px; cursor: pointer;
                  font-size: 12.5px; color: var(--muted); }
 
-  /* ── extensions grid ─────────────────────────────────────── */
+  /* ── extensions ──────────────────────────────────────────── */
   .ext-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
               gap: 2px 14px; margin-top: 14px; padding: 14px 16px;
-              background: var(--bg); border: 1px solid var(--border);
-              border-radius: 10px; animation: rise .25s ease both; }
+              background: var(--inset); border: 1px solid var(--border);
+              border-radius: 12px; }
   .ext-grid label { display: flex; align-items: center; gap: 8px; cursor: pointer;
                     font-size: 12.5px; padding: 4px 0; font-family: var(--mono);
-                    color: var(--muted); transition: color .12s; }
+                    color: var(--muted); }
   .ext-grid label:hover { color: var(--text); }
-  .ext-grid input { accent-color: var(--accent); }
+  .ext-grid input { accent-color: var(--green); }
+  .ext-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
+  .ext-chips span { font-family: var(--mono); font-size: 11.5px; color: var(--muted);
+                    background: var(--inset); border: 1px solid var(--border);
+                    border-radius: 999px; padding: 4px 12px; }
 
   /* ── toast & busy ────────────────────────────────────────── */
   #toast { position: fixed; bottom: 22px; left: 50%;
            transform: translate(-50%, 12px);
-           background: var(--text); color: var(--card); padding: 10px 20px;
-           border-radius: 10px; font-size: 13px; opacity: 0;
+           background: var(--text); color: var(--card); padding: 11px 20px;
+           border-radius: 12px; font-size: 13px; opacity: 0;
            transition: opacity .22s, transform .22s;
            pointer-events: none; max-width: 78%; box-shadow: var(--shadow-lg);
            z-index: 30; }
   #toast.show { opacity: .97; transform: translate(-50%, 0); }
-  #busy { position: fixed; inset: 0; background: rgba(8, 9, 14, .5); display: none;
+  #busy { position: fixed; inset: 0; background: rgba(8, 10, 6, .5); display: none;
           align-items: center; justify-content: center; z-index: 20;
           backdrop-filter: blur(3px); }
   #busy.show { display: flex; }
   #busy .box { background: var(--card); border: 1px solid var(--border);
-               border-radius: 12px; padding: 22px 30px;
-               display: flex; align-items: center; gap: 14px;
-               box-shadow: var(--shadow-lg); animation: popIn .18s ease both; }
-  @keyframes popIn { from { opacity: 0; transform: scale(.95); }
-                     to   { opacity: 1; transform: scale(1); } }
+               border-radius: 14px; padding: 22px 30px;
+               display: flex; align-items: center; gap: 14px; box-shadow: var(--shadow-lg); }
   .spin { width: 20px; height: 20px; border: 2.5px solid var(--border-strong);
-          border-top-color: var(--accent); border-radius: 50%;
+          border-top-color: var(--green); border-radius: 50%;
           animation: spin .7s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
   ::-webkit-scrollbar { width: 10px; }
   ::-webkit-scrollbar-thumb { background: var(--border-strong);
                               border-radius: 5px; border: 2px solid var(--bg); }
-
-  @media (max-width: 860px) {
+  @media (max-width: 900px) {
     .side { display: none; }
     main, .topbar { padding-left: 18px; padding-right: 18px; }
   }
@@ -218,174 +239,282 @@
   <aside class="side">
     <div class="brand">
       <svg viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg">
-        <defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stop-color="#6366F1"/><stop offset="1" stop-color="#A855F7"/>
-        </linearGradient></defs>
-        <rect width="96" height="96" rx="22" fill="url(#lg)"/>
-        <rect x="25" y="21" width="46" height="54" rx="9" fill="none" stroke="#fff" stroke-width="6"/>
-        <line x1="48" y1="21" x2="48" y2="75" stroke="#fff" stroke-width="6"/>
-        <line x1="25" y1="43" x2="71" y2="43" stroke="#fff" stroke-width="6"/>
+        <rect width="96" height="96" rx="24" fill="#b8ef47"/>
+        <rect x="25" y="21" width="46" height="54" rx="9" fill="none" stroke="#17240a" stroke-width="6"/>
+        <line x1="48" y1="21" x2="48" y2="75" stroke="#17240a" stroke-width="6"/>
+        <line x1="25" y1="43" x2="71" y2="43" stroke="#17240a" stroke-width="6"/>
       </svg>
       <div><b>Mullion</b><span>local dev server</span></div>
     </div>
 
     <nav class="nav">
-      <a href="#php">
+      <a href="#overview" data-page="overview">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
+        Overview
+      </a>
+      <div class="nav-label">Projects</div>
+      <a href="#backend" data-page="backend">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17l6-6-6-6"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+        Backend <span class="count" id="nav-be">0</span>
+      </a>
+      <a href="#frontend" data-page="frontend">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="18" x2="12" y2="21"/></svg>
+        Frontend <span class="count" id="nav-fe">0</span>
+      </a>
+      <div class="nav-label">Runtimes</div>
+      <a href="#php" data-page="php">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
         PHP
       </a>
-      <a href="#db">
+      <a href="#node" data-page="node">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l9 5v10l-9 5-9-5V7z"/><path d="M12 22V12"/><path d="M21 7l-9 5-9-5"/></svg>
+        Node
+      </a>
+      <a href="#database" data-page="database">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
         Database
-      </a>
-      <a href="#sites">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-        Sites
       </a>
     </nav>
 
     <div class="side-foot">
+      <div class="theme-pill">
+        <button id="theme-light">☀ Light</button>
+        <button id="theme-dark">☾ Dark</button>
+      </div>
       <label class="toggle"><span class="switch"><input type="checkbox" id="autostart"><i></i></span> <span id="autostart-label">Start at sign-in</span></label>
-      <span class="ver">Mullion v1.1</span>
+      <span class="ver" id="ver">Mullion</span>
     </div>
   </aside>
 
   <div class="content">
-    <header class="topbar" id="topbar">
-      <h1>Dashboard</h1>
-      <span id="svc-pill" class="pill off">…</span>
+    <header class="topbar">
+      <div><h1 id="page-title">Overview</h1><div class="sub" id="page-sub"></div></div>
       <span class="spacer"></span>
+      <span id="svc-pill" class="pill off">…</span>
       <button id="btn-heidi" style="display:none">HeidiSQL</button>
       <button id="btn-pma" style="display:none">phpMyAdmin</button>
       <button id="btn-toggle" class="primary">Start</button>
     </header>
 
     <main>
-      <div id="shadow-warn" class="warn" style="display:none"></div>
+      <!-- ═══ OVERVIEW ═══ -->
+      <div class="page" id="page-overview">
+        <div id="shadow-warn" class="warn" style="display:none"></div>
+        <div class="stats">
+          <div class="stat" data-go="overview">
+            <span class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Services</span>
+            <span class="v" id="st-services">…</span>
+            <span class="d" id="st-services-d"></span>
+          </div>
+          <div class="stat" data-go="backend">
+            <span class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17l6-6-6-6"/><line x1="12" y1="19" x2="20" y2="19"/></svg> Backend</span>
+            <span class="v" id="st-be">0</span>
+            <span class="d">PHP projects on .test domains</span>
+          </div>
+          <div class="stat" data-go="frontend">
+            <span class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="18" x2="12" y2="21"/></svg> Frontend</span>
+            <span class="v" id="st-fe">0</span>
+            <span class="d" id="st-fe-d">dev servers managed for you</span>
+          </div>
+          <div class="stat" data-go="php">
+            <span class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg> PHP</span>
+            <span class="v mono" id="st-php">—</span>
+            <span class="d" id="st-php-d"></span>
+          </div>
+          <div class="stat" data-go="node">
+            <span class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l9 5v10l-9 5-9-5V7z"/></svg> Node</span>
+            <span class="v mono" id="st-node">—</span>
+            <span class="d" id="st-node-d"></span>
+          </div>
+          <div class="stat" data-go="database">
+            <span class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg> Database</span>
+            <span class="v" id="st-db">—</span>
+            <span class="d" id="st-db-d"></span>
+          </div>
+        </div>
+      </div>
 
-      <section class="card" id="php">
-        <div class="card-head">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-          <h2>PHP</h2>
-          <span class="hint" id="php-cgi"></span>
-        </div>
-        <div class="card-body">
-          <div class="row">
-            <span class="label">Global version</span>
-            <select id="php-global" class="mono"></select>
-            <span class="spacer"></span>
-            <input type="text" id="php-new" list="php-avail" placeholder="install: 8.3, 7.4 …" size="16" class="mono">
-            <datalist id="php-avail"></datalist>
-            <button id="btn-php-install">Install</button>
+      <!-- ═══ BACKEND ═══ -->
+      <div class="page" id="page-backend">
+        <section class="card">
+          <div class="card-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17l6-6-6-6"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+            <h2>Backend projects</h2>
+            <span class="hint" id="be-count"></span>
           </div>
-          <div class="row">
-            <span class="label">Extensions</span>
-            <select id="ext-version" class="mono"></select>
-            <button id="btn-ext">Manage</button>
-            <span id="ext-hint" class="muted"></span>
-            <span class="spacer"></span>
-            <input type="text" id="ext-new" list="ext-known" placeholder="get from PECL: redis, xdebug…" size="20" class="mono">
-            <datalist id="ext-known">
-              <option value="redis"></option>
-              <option value="xdebug"></option>
-              <option value="imagick"></option>
-              <option value="mongodb"></option>
-              <option value="apcu"></option>
-              <option value="memcache"></option>
-            </datalist>
-            <button id="btn-ext-get">Get</button>
+          <div class="card-body">
+            <table>
+              <thead><tr><th>Site</th><th>Path</th><th>PHP</th><th>HTTPS</th><th></th></tr></thead>
+              <tbody id="be-body"></tbody>
+            </table>
+            <div class="row" style="margin-top:16px">
+              <input type="text" id="be-link-path" placeholder="full project path" style="flex:1; min-width:240px" class="mono">
+              <input type="text" id="be-link-name" placeholder="name (optional)" size="13" class="mono">
+              <button id="btn-be-link" class="primary">Link project</button>
+            </div>
+            <p class="muted" style="margin:10px 0 0">
+              Served at http://&lt;name&gt;.test — a <span class="mono">public/</span> folder with
+              <span class="mono">index.php</span> is detected automatically.
+            </p>
           </div>
-          <div id="ext-panel" class="ext-grid" style="display:none"></div>
-        </div>
-      </section>
+        </section>
+      </div>
 
-      <section class="card" id="node">
-        <div class="card-head">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l9 5v10l-9 5-9-5V7z"/><path d="M12 22V12"/><path d="M21 7l-9 5-9-5"/></svg>
-          <h2>Node</h2>
-          <span class="hint" id="node-hint"></span>
-        </div>
-        <div class="card-body">
-          <div class="row">
-            <span class="label">Default version</span>
-            <select id="node-global" class="mono"></select>
-            <span class="spacer"></span>
-            <input type="text" id="node-new" list="node-avail" placeholder="install: lts, 22, 20.11.0 …" size="18" class="mono">
-            <datalist id="node-avail">
-              <option value="lts">newest LTS</option>
-              <option value="latest">newest overall</option>
-              <option value="22"></option>
-              <option value="20"></option>
-            </datalist>
-            <button id="btn-node-install">Install</button>
+      <!-- ═══ FRONTEND ═══ -->
+      <div class="page" id="page-frontend">
+        <section class="card">
+          <div class="card-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="18" x2="12" y2="21"/></svg>
+            <h2>Frontend projects</h2>
+            <span class="hint" id="fe-count"></span>
           </div>
-          <p class="muted" style="margin:10px 0 0">
-            <span class="mono">node</span>/<span class="mono">npm</span> resolve per project:
-            a site's pinned version → the project's <span class="mono">.nvmrc</span> → this default.
-          </p>
-        </div>
-      </section>
+          <div class="card-body">
+            <table>
+              <thead><tr><th>Site</th><th>Path</th><th>Serves</th><th>Node</th><th>Status</th><th>HTTPS</th><th></th></tr></thead>
+              <tbody id="fe-body"></tbody>
+            </table>
+            <div class="row" style="margin-top:16px">
+              <input type="text" id="fe-link-path" placeholder="full project path" style="flex:1; min-width:240px" class="mono">
+              <input type="text" id="fe-link-name" placeholder="name (optional)" size="13" class="mono">
+              <button id="btn-fe-link" class="primary">Link project</button>
+            </div>
+            <p class="muted" style="margin:10px 0 0">
+              Mullion runs <span class="mono">npm run dev</span> for you behind the domain —
+              switch a domain to <b>build</b> to serve the last production build instead
+              (it builds first when needed). Stopped dev servers stay stopped until you start them.
+            </p>
+          </div>
+        </section>
+      </div>
 
-      <section class="card" id="db">
-        <div class="card-head">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
-          <h2>Database</h2>
-        </div>
-        <div class="card-body">
-          <div class="row" id="mysql-row"></div>
-          <div class="row">
-            <span class="label">Switch to</span>
-            <input type="text" id="mysql-new" list="mysql-avail" placeholder="8.4 / latest / mariadb" size="16" class="mono">
-            <datalist id="mysql-avail">
-              <option value="8.4">newest MySQL LTS</option>
-              <option value="latest">newest MySQL overall</option>
-              <option value="mariadb">newest stable MariaDB</option>
-              <option value="8.0"></option>
-            </datalist>
-            <button id="btn-mysql-switch">Switch</button>
-            <span class="muted">databases migrate automatically — backed up <span id="backups-dir"></span>first</span>
+      <!-- ═══ PHP ═══ -->
+      <div class="page" id="page-php">
+        <section class="card">
+          <div class="card-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+            <h2>Versions</h2>
+            <span class="hint" id="php-cgi"></span>
           </div>
-          <div class="row" id="mysql-pass-row" style="display:none">
-            <span class="label">Root password</span>
-            <input type="password" id="mysql-pass" placeholder="new password (empty = none)" size="22" class="mono">
-            <button id="btn-mysql-pass">Set</button>
-            <span class="muted">phpMyAdmin follows automatically</span>
-          </div>
-          <div class="row" id="db-row" style="display:none; align-items:flex-start">
-            <span class="label" style="padding-top:6px">Databases</span>
-            <div style="flex:1">
-              <div id="db-list" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px"></div>
-              <div class="row" style="margin:0">
-                <input type="text" id="db-new" placeholder="new_database" size="18" class="mono">
-                <button id="btn-db-create">Create</button>
-              </div>
+          <div class="card-body">
+            <div class="row">
+              <span class="label">Global version</span>
+              <select id="php-global" class="mono"></select>
+              <span class="spacer"></span>
+              <input type="text" id="php-new" list="php-avail" placeholder="install: 8.3, 7.4 …" size="16" class="mono">
+              <datalist id="php-avail"></datalist>
+              <button id="btn-php-install" class="primary">Install</button>
             </div>
           </div>
-        </div>
-      </section>
-
-      <section class="card" id="sites">
-        <div class="card-head">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-          <h2>Sites</h2>
-          <span class="hint" id="sites-count"></span>
-        </div>
-        <div class="card-body">
-          <table>
-            <thead><tr><th>Site</th><th>Path</th><th>PHP</th><th>HTTPS</th><th></th></tr></thead>
-            <tbody id="sites-body"></tbody>
-          </table>
-          <div class="row" style="margin-top:16px">
-            <input type="text" id="link-path" placeholder="full project path" style="flex:1; min-width:240px" class="mono">
-            <input type="text" id="link-name" placeholder="name (optional)" size="13" class="mono">
-            <button id="btn-link" class="primary">Link</button>
+        </section>
+        <section class="card">
+          <div class="card-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            <h2>Extensions</h2>
+            <span class="hint" id="ext-hint"></span>
           </div>
-          <p class="muted" style="margin:10px 0 0">
-            Served at http://&lt;name&gt;.test — a <span class="mono">public/</span> folder with
-            <span class="mono">index.php</span> is detected automatically.
-          </p>
-        </div>
-      </section>
+          <div class="card-body">
+            <div class="row">
+              <span class="label">PHP version</span>
+              <select id="ext-version" class="mono"></select>
+              <button id="btn-ext">Show</button>
+              <span class="spacer"></span>
+              <span id="ext-win-controls">
+                <input type="text" id="ext-new" list="ext-known" placeholder="get from PECL: redis, xdebug…" size="20" class="mono">
+                <datalist id="ext-known">
+                  <option value="redis"></option><option value="xdebug"></option>
+                  <option value="imagick"></option><option value="mongodb"></option>
+                  <option value="apcu"></option><option value="memcache"></option>
+                </datalist>
+                <button id="btn-ext-get">Get</button>
+              </span>
+            </div>
+            <div id="ext-static-note" class="note" style="display:none; margin-top:14px">
+              These PHP builds are static: every extension below is compiled in and always on —
+              nothing to enable, disable, or download. (Includes opcache, intl, imagick, redis,
+              and the pdo_mysql / pdo_sqlite / pdo_pgsql drivers.)
+            </div>
+            <div id="ext-panel" style="display:none"></div>
+          </div>
+        </section>
+      </div>
+
+      <!-- ═══ NODE ═══ -->
+      <div class="page" id="page-node">
+        <section class="card">
+          <div class="card-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l9 5v10l-9 5-9-5V7z"/><path d="M12 22V12"/><path d="M21 7l-9 5-9-5"/></svg>
+            <h2>Versions</h2>
+            <span class="hint" id="node-hint"></span>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <span class="label">Default version</span>
+              <select id="node-global" class="mono"></select>
+              <span class="spacer"></span>
+              <input type="text" id="node-new" list="node-avail" placeholder="install: lts, 22, 20.11.0 …" size="18" class="mono">
+              <datalist id="node-avail">
+                <option value="lts">newest LTS</option>
+                <option value="latest">newest overall</option>
+                <option value="22"></option><option value="20"></option>
+              </datalist>
+              <button id="btn-node-install" class="primary">Install</button>
+            </div>
+            <p class="muted" style="margin:12px 0 0">
+              <span class="mono">node</span>/<span class="mono">npm</span> resolve per project:
+              a site's pinned version → the project's <span class="mono">.nvmrc</span> → this default.
+              Pin a frontend project from its row in the Frontend page.
+            </p>
+          </div>
+        </section>
+      </div>
+
+      <!-- ═══ DATABASE ═══ -->
+      <div class="page" id="page-database">
+        <section class="card">
+          <div class="card-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+            <h2>Server</h2>
+          </div>
+          <div class="card-body">
+            <div class="row" id="mysql-row"></div>
+            <div class="row">
+              <span class="label">Switch to</span>
+              <input type="text" id="mysql-new" list="mysql-avail" placeholder="8.4 / latest / mariadb" size="16" class="mono">
+              <datalist id="mysql-avail">
+                <option value="8.4">newest MySQL LTS</option>
+                <option value="latest">newest MySQL overall</option>
+                <option value="mariadb">newest stable MariaDB</option>
+                <option value="8.0"></option>
+              </datalist>
+              <button id="btn-mysql-switch">Switch</button>
+              <span class="muted">databases migrate automatically — backed up <span id="backups-dir"></span>first</span>
+            </div>
+            <div class="row" id="mysql-pass-row" style="display:none">
+              <span class="label">Root password</span>
+              <input type="password" id="mysql-pass" placeholder="new password (empty = none)" size="22" class="mono">
+              <button id="btn-mysql-pass">Set</button>
+              <span class="muted">phpMyAdmin follows automatically</span>
+            </div>
+          </div>
+        </section>
+        <section class="card" id="db-card" style="display:none">
+          <div class="card-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            <h2>Databases</h2>
+            <span class="hint" id="db-count"></span>
+          </div>
+          <div class="card-body">
+            <table>
+              <thead><tr><th style="width:36px">#</th><th>Name</th><th style="text-align:right"></th></tr></thead>
+              <tbody id="db-body"></tbody>
+            </table>
+            <div class="row" style="margin-top:16px">
+              <input type="text" id="db-new" placeholder="new_database" size="22" class="mono">
+              <button id="btn-db-create" class="primary">Create database</button>
+            </div>
+          </div>
+        </section>
+      </div>
     </main>
   </div>
 </div>
@@ -398,6 +527,46 @@ const token = new URLSearchParams(location.search).get('t') || '';
 const $ = id => document.getElementById(id);
 let state = null;
 
+/* ── theme ─────────────────────────────────────────────────── */
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  $('theme-light').classList.toggle('active', t === 'light');
+  $('theme-dark').classList.toggle('active', t === 'dark');
+  try { localStorage.setItem('mullion-theme', t); } catch {}
+}
+$('theme-light').onclick = () => applyTheme('light');
+$('theme-dark').onclick = () => applyTheme('dark');
+(() => {
+  let t = null;
+  try { t = localStorage.getItem('mullion-theme'); } catch {}
+  if (!t) t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  applyTheme(t);
+})();
+
+/* ── router ────────────────────────────────────────────────── */
+const TITLES = {
+  overview: ['Overview', 'Your whole local stack at a glance'],
+  backend:  ['Backend projects', 'PHP sites served through php-fpm'],
+  frontend: ['Frontend projects', 'Managed dev servers & production builds'],
+  php:      ['PHP', 'Versions and extensions'],
+  node:     ['Node', 'Versions — per project or global'],
+  database: ['Database', 'MySQL server, credentials, and databases'],
+};
+function showPage(name) {
+  if (!TITLES[name]) name = 'overview';
+  document.querySelectorAll('.page').forEach(p =>
+    p.classList.toggle('active', p.id === 'page-' + name));
+  document.querySelectorAll('.nav a').forEach(a =>
+    a.classList.toggle('active', a.dataset.page === name));
+  $('page-title').textContent = TITLES[name][0];
+  $('page-sub').textContent = TITLES[name][1];
+  if (name === 'database' && state && state.mysql.installed && state.mysql.running) loadDatabases(true);
+}
+window.addEventListener('hashchange', () => showPage(location.hash.slice(1)));
+document.querySelectorAll('[data-go]').forEach(el =>
+  el.addEventListener('click', () => { location.hash = el.dataset.go; }));
+
+/* ── plumbing ──────────────────────────────────────────────── */
 async function api(path, body) {
   const res = await fetch(path, {
     method: body === undefined ? 'GET' : 'POST',
@@ -408,14 +577,12 @@ async function api(path, body) {
   if (!out.ok) throw new Error(out.error || 'request failed');
   return out.data;
 }
-
 function toast(msg) {
   const t = $('toast');
   t.textContent = msg;
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3500);
 }
-
 async function act(label, path, body, after) {
   $('busy-label').textContent = label;
   $('busy').classList.add('show');
@@ -430,6 +597,7 @@ async function act(label, path, body, after) {
   }
 }
 
+/* ── render ────────────────────────────────────────────────── */
 function render() {
   const s = state;
   const on = s.caddy;
@@ -441,8 +609,11 @@ function render() {
   $('btn-pma').style.display = s.sites.some(x => x.name === 'phpmyadmin') ? '' : 'none';
   $('btn-heidi').style.display = s.heidisql ? '' : 'none';
   $('autostart-label').textContent = s.windows ? 'Start with Windows' : 'Start at login';
+  if (s.version) $('ver').textContent = 'Mullion v' + s.version;
   if (s.backupsDir) $('backups-dir').textContent = 'to ' + s.backupsDir + ' ';
-  $('link-path').placeholder = (s.windows ? 'C:\\code\\myapp' : s.homeDir + '/code/myapp') + ' — full project path';
+  const ph = (s.windows ? 'C:\\code\\myapp' : s.homeDir + '/code/myapp') + ' — full project path';
+  $('be-link-path').placeholder = ph;
+  $('fe-link-path').placeholder = ph;
 
   const warn = $('shadow-warn');
   if (s.phpShadow) {
@@ -450,9 +621,29 @@ function render() {
     warn.textContent = '⚠ `php` on your PATH resolves to ' + s.phpShadow +
       (s.windows
         ? ' which shadows Mullion. Remove that directory from the system PATH.'
-        : ' which shadows Mullion. Switching a PHP version re-fixes this automatically — then open a NEW terminal. If it persists, remove that PATH line from your shell config (e.g. ~/.zshrc).');
+        : ' which shadows Mullion. Switching a PHP version re-fixes this automatically — then open a NEW terminal.');
   } else warn.style.display = 'none';
 
+  const beSites = s.sites.filter(x => x.kind === 'php');
+  const feSites = s.sites.filter(x => x.kind !== 'php');
+  $('nav-be').textContent = beSites.length;
+  $('nav-fe').textContent = feSites.length;
+
+  /* overview stats */
+  $('st-services').textContent = on ? 'Running' : 'Stopped';
+  $('st-services-d').textContent = on ? 'Caddy is serving your .test domains' : 'press Start to bring the stack up';
+  $('st-be').textContent = beSites.length;
+  $('st-fe').textContent = feSites.length;
+  const devUp = feSites.filter(x => x.devPort).length;
+  $('st-fe-d').textContent = feSites.length ? devUp + ' dev server' + (devUp === 1 ? '' : 's') + ' running' : 'link a project to get started';
+  $('st-php').textContent = s.globalPhp || '—';
+  $('st-php-d').textContent = s.phpInstalled.length + ' version' + (s.phpInstalled.length === 1 ? '' : 's') + ' installed';
+  $('st-node').textContent = s.globalNode || '—';
+  $('st-node-d').textContent = s.nodeInstalled.length ? s.nodeInstalled.length + ' version' + (s.nodeInstalled.length === 1 ? '' : 's') + ' installed' : 'not installed yet';
+  $('st-db').textContent = s.mysql.installed ? (s.mysql.label || 'MySQL') : '—';
+  $('st-db-d').textContent = s.mysql.installed ? (s.mysql.running ? 'running on :' + s.mysql.port : 'stopped') : 'not installed yet';
+
+  /* php page */
   const sel = $('php-global');
   sel.innerHTML = '';
   for (const v of s.phpInstalled) {
@@ -461,9 +652,6 @@ function render() {
     if (v === s.globalPhp) o.selected = true;
     sel.appendChild(o);
   }
-
-  // Extension version picker: rebuild only when the set changes, so the
-  // periodic refresh doesn't wipe the user's selection.
   const ev = $('ext-version');
   const want = s.phpInstalled.join('|');
   if (ev.dataset.versions !== want) {
@@ -477,15 +665,16 @@ function render() {
     ev.value = s.phpInstalled.includes(prev) ? prev : s.globalPhp;
     ev.dataset.versions = want;
   }
-
+  $('ext-win-controls').style.display = s.windows ? '' : 'none';
   $('php-cgi').textContent = (s.phpCgi || []).map(c =>
     `${c.version} · :${c.port} · ${c.running ? 'running' : 'stopped'}`).join('    ') || '';
 
+  /* database page */
   const m = $('mysql-row');
   if (!s.mysql.installed) {
-    m.innerHTML = '<span class="muted">Not installed yet — type a version below (e.g. <span class="mono">8.4</span> or <span class="mono">mariadb</span>) and press Switch.</span>';
+    m.innerHTML = '<span class="muted">Not installed yet — type a version below (e.g. <span class="mono">8.4</span>) and press Switch.</span>';
   } else {
-    m.innerHTML = `<span style="font-weight:600">${s.mysql.label || ('MySQL ' + s.mysql.version)}</span>
+    m.innerHTML = `<span style="font-weight:650; font-size:15px">${s.mysql.label || ('MySQL ' + s.mysql.version)}</span>
       <span class="badge ${s.mysql.running ? 'on' : 'off'}">${s.mysql.running ? 'running' : 'stopped'}</span>
       <span class="muted mono">127.0.0.1:${s.mysql.port} · root · ${s.mysql.hasPassword ? 'password set' : 'no password'}</span>
       <span class="spacer"></span>
@@ -494,6 +683,12 @@ function render() {
       act(s.mysql.running ? 'Stopping the database…' : 'Starting the database…',
           s.mysql.running ? '/api/mysql/stop' : '/api/mysql/start');
   }
+  $('mysql-pass-row').style.display = s.mysql.installed ? '' : 'none';
+  $('db-card').style.display = (s.mysql.installed && s.mysql.running) ? '' : 'none';
+  if (s.mysql.installed && s.mysql.running &&
+      document.querySelector('#page-database').classList.contains('active')) loadDatabases();
+
+  /* node page */
   const ng = $('node-global');
   ng.innerHTML = '';
   if (s.nodeInstalled.length === 0) {
@@ -509,57 +704,88 @@ function render() {
     $('node-hint').textContent = s.nodeInstalled.length + ' installed';
   }
 
-  $('mysql-pass-row').style.display = s.mysql.installed ? '' : 'none';
-  $('db-row').style.display = (s.mysql.installed && s.mysql.running) ? '' : 'none';
-  if (s.mysql.installed && s.mysql.running) loadDatabases();
+  renderBackend(beSites);
+  renderFrontend(feSites);
+}
 
-  $('sites-count').textContent = s.sites.length + (s.sites.length === 1 ? ' site' : ' sites');
-  const tb = $('sites-body');
+function siteCell(site) {
+  return `<a href="${site.url}" target="_blank">${site.host}</a>
+    <a href="#" data-rename="${site.name}" title="rename this site (changes the domain)" class="muted" style="text-decoration:none">&#9998;</a>`;
+}
+
+function renderBackend(sites) {
+  $('be-count').textContent = sites.length + (sites.length === 1 ? ' project' : ' projects');
+  const tb = $('be-body');
   tb.innerHTML = '';
-  for (const site of s.sites) {
+  if (!sites.length) {
+    tb.innerHTML = '<tr><td colspan="5" class="empty">No backend projects linked yet — add one below.</td></tr>';
+  }
+  for (const site of sites) {
+    const opts = ['<option value="">global (' + state.globalPhp + ')</option>']
+      .concat(state.phpInstalled.map(v =>
+        `<option value="${v}" ${site.php === v ? 'selected' : ''}>${v}</option>`)).join('');
     const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${siteCell(site)}</td>
+      <td class="muted mono">${site.path}</td>
+      <td><select data-isolate="${site.name}" class="mono">${opts}</select></td>
+      <td><label class="switch"><input type="checkbox" data-secure="${site.name}" ${site.secure ? 'checked' : ''}><i></i></label></td>
+      <td style="text-align:right"><button class="danger sm" data-unlink="${site.name}">Unlink</button></td>`;
+    tb.appendChild(tr);
+  }
+  wireSiteHandlers(tb);
+}
 
-    let runtimeCell = '';
-    if (site.kind === 'node') {
-      const nopts = ['<option value="">.nvmrc / default (' + (s.globalNode || '—') + ')</option>']
-        .concat(s.nodeInstalled.map(v =>
-          `<option value="${v}" ${site.node === v ? 'selected' : ''}>${v}</option>`)).join('');
-      const modeSel = `<select data-mode="${site.name}" class="mono" title="what this domain serves">
+function renderFrontend(sites) {
+  $('fe-count').textContent = sites.length + (sites.length === 1 ? ' project' : ' projects');
+  const tb = $('fe-body');
+  tb.innerHTML = '';
+  if (!sites.length) {
+    tb.innerHTML = '<tr><td colspan="7" class="empty">No frontend projects linked yet — add one below.</td></tr>';
+  }
+  for (const site of sites) {
+    let serves, nodeSel = '—', status, action = '';
+    if (site.kind === 'static') {
+      serves = `<span class="muted mono">${site.buildDir}/</span>`;
+      status = '<span class="badge">static build</span>';
+    } else {
+      serves = `<select data-mode="${site.name}" class="mono" title="what this domain serves">
         <option value="dev" ${site.mode !== 'build' ? 'selected' : ''}>dev</option>
         <option value="build" ${site.mode === 'build' ? 'selected' : ''}>build</option>
       </select>`;
-      let status, action = '';
+      nodeSel = `<select data-nodever="${site.name}" class="mono">` +
+        ['<option value="">.nvmrc / default (' + (state.globalNode || '—') + ')</option>']
+          .concat(state.nodeInstalled.map(v =>
+            `<option value="${v}" ${site.node === v ? 'selected' : ''}>${v}</option>`)).join('') +
+        '</select>';
       if (site.mode === 'build') {
         status = `<span class="badge" title="serving ${site.buildDir}/">${site.buildDir}/</span>`;
       } else if (site.devPort) {
         status = `<span class="badge on" title="dev server port">:${site.devPort}</span>`;
-        action = `<button data-devstop="${site.name}" title="stop the dev server (frees RAM/CPU); the domain shows a hint until started again">Stop</button>`;
+        action = `<button class="sm" data-devstop="${site.name}" title="stop the dev server (frees RAM/CPU)">Stop</button>`;
       } else if (site.devPaused) {
         status = '<span class="badge off">paused</span>';
-        action = `<button data-devstart="${site.name}">Start</button>`;
+        action = `<button class="sm" data-devstart="${site.name}">Start</button>`;
       } else {
         status = '<span class="badge off">down</span>';
-        action = `<button data-devstart="${site.name}">Start</button>`;
+        action = `<button class="sm" data-devstart="${site.name}">Start</button>`;
       }
-      runtimeCell = `${modeSel} <select data-nodever="${site.name}" class="mono">${nopts}</select> ${status} ${action}`;
-    } else if (site.kind === 'static') {
-      runtimeCell = `<span class="muted mono">${site.buildDir}/ (build)</span>`;
-    } else {
-      const opts = ['<option value="">global (' + s.globalPhp + ')</option>']
-        .concat(s.phpInstalled.map(v =>
-          `<option value="${v}" ${site.php === v ? 'selected' : ''}>${v}</option>`)).join('');
-      runtimeCell = `<select data-isolate="${site.name}" class="mono">${opts}</select>`;
     }
-
+    const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td><a href="${site.url}" target="_blank">${site.host}</a>
-        <a href="#" data-rename="${site.name}" title="rename this site (changes the domain)" class="muted" style="text-decoration:none">&#9998;</a>${site.kind !== 'php' ? ' <span class="muted">' + site.kind + '</span>' : ''}</td>
+      <td>${siteCell(site)}</td>
       <td class="muted mono">${site.path}</td>
-      <td>${runtimeCell}</td>
+      <td>${serves}</td>
+      <td>${nodeSel}</td>
+      <td>${status} ${action}</td>
       <td><label class="switch"><input type="checkbox" data-secure="${site.name}" ${site.secure ? 'checked' : ''}><i></i></label></td>
-      <td style="text-align:right"><button class="danger" data-unlink="${site.name}">Unlink</button></td>`;
+      <td style="text-align:right"><button class="danger sm" data-unlink="${site.name}">Unlink</button></td>`;
     tb.appendChild(tr);
   }
+  wireSiteHandlers(tb);
+}
+
+function wireSiteHandlers(tb) {
   tb.querySelectorAll('[data-isolate]').forEach(el => el.onchange = () =>
     act('Switching PHP version…', '/api/sites/isolate',
         { name: el.dataset.isolate, version: el.value }, 'Done'));
@@ -569,13 +795,13 @@ function render() {
   tb.querySelectorAll('[data-rename]').forEach(el => el.onclick = (e) => {
     e.preventDefault();
     const oldName = el.dataset.rename;
-    const newName = prompt('New site name — the domain becomes <name>.' + (s.tld || 'test') + ':', oldName);
+    const newName = prompt('New site name — the domain becomes <name>.' + (state.tld || 'test') + ':', oldName);
     if (!newName || newName === oldName) return;
     act('Renaming ' + oldName + ' → ' + newName + '…', '/api/sites/rename',
         { name: oldName, newName }, 'Renamed');
   });
   tb.querySelectorAll('[data-mode]').forEach(el => el.onchange = () =>
-    act(el.value === 'build' ? 'Switching to the production build… (builds the project first if needed — can take a minute)' : 'Switching the domain to the dev server…',
+    act(el.value === 'build' ? 'Switching to the production build… (builds first if needed — can take a minute)' : 'Switching the domain to the dev server…',
         '/api/sites/mode', { name: el.dataset.mode, mode: el.value }, 'Done'));
   tb.querySelectorAll('[data-devstart]').forEach(el => el.onclick = () =>
     act('Starting the dev server… (first start can take a minute)', '/api/dev/start',
@@ -601,6 +827,7 @@ async function refresh() {
   }
 }
 
+/* ── extensions ────────────────────────────────────────────── */
 async function loadExts() {
   const version = $('ext-version').value;
   if (!version) return;
@@ -609,6 +836,15 @@ async function loadExts() {
   panel.innerHTML = '<span class="muted">Loading…</span>';
   try {
     const exts = await api('/api/php/ext', { version });
+    if (!state.windows) {
+      // Static builds: everything is compiled in — show, don't toggle.
+      $('ext-static-note').style.display = '';
+      $('ext-hint').textContent = exts.length + ' built in';
+      panel.className = 'ext-chips';
+      panel.innerHTML = exts.map(e => `<span>${e.name}</span>`).join('');
+      return;
+    }
+    panel.className = 'ext-grid';
     $('ext-hint').textContent = exts.filter(e => e.enabled).length + ' of ' + exts.length + ' enabled';
     panel.innerHTML = '';
     for (const e of exts) {
@@ -635,6 +871,46 @@ async function loadExts() {
   }
 }
 
+/* ── databases table ───────────────────────────────────────── */
+let dbsLoadedAt = 0;
+async function loadDatabases(force) {
+  if (!force && Date.now() - dbsLoadedAt < 4000) return;
+  dbsLoadedAt = Date.now();
+  try {
+    const dbs = await api('/api/db/list', {});
+    $('db-count').textContent = dbs.length + (dbs.length === 1 ? ' database' : ' databases');
+    const tb = $('db-body');
+    tb.innerHTML = '';
+    if (!dbs.length) {
+      tb.innerHTML = '<tr><td colspan="3" class="empty">No databases yet — create one below.</td></tr>';
+    }
+    dbs.forEach((db, i) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="muted">${i + 1}</td>
+        <td class="mono" style="font-weight:600">${db}</td>
+        <td style="text-align:right">
+          ${state.sites.some(x => x.name === 'phpmyadmin')
+            ? `<button class="sm" data-opendb="${db}">Open</button> ` : ''}
+          <button class="danger sm" data-dropdb="${db}">Drop</button>
+        </td>`;
+      tb.appendChild(tr);
+    });
+    tb.querySelectorAll('[data-opendb]').forEach(el => el.onclick = () => {
+      const host = 'phpmyadmin.' + (state ? state.tld : 'test');
+      window.open('https://' + host + '/index.php?route=/database/structure&db=' +
+        encodeURIComponent(el.dataset.opendb), '_blank');
+    });
+    tb.querySelectorAll('[data-dropdb]').forEach(el => el.onclick = () => {
+      const name = el.dataset.dropdb;
+      if (!confirm(`Delete database "${name}" and ALL its data? This cannot be undone.`)) return;
+      dbsLoadedAt = 0;
+      act('Dropping ' + name + '…', '/api/db/drop', { name }, 'Dropped');
+    });
+  } catch (e) { /* mysql not reachable yet */ }
+}
+
+/* ── wiring ────────────────────────────────────────────────── */
 $('btn-toggle').onclick = () =>
   act(state && state.caddy ? 'Stopping…' : 'Starting…',
       state && state.caddy ? '/api/stop' : '/api/start');
@@ -648,7 +924,7 @@ $('btn-php-install').onclick = () => {
 $('btn-ext').onclick = () => {
   const panel = $('ext-panel');
   if (panel.style.display === 'none') loadExts();
-  else { panel.style.display = 'none'; $('ext-hint').textContent = ''; }
+  else { panel.style.display = 'none'; $('ext-static-note').style.display = 'none'; $('ext-hint').textContent = ''; }
 };
 $('ext-version').onchange = () => {
   if ($('ext-panel').style.display !== 'none') loadExts();
@@ -657,7 +933,7 @@ $('btn-ext-get').onclick = async () => {
   const name = $('ext-new').value.trim();
   const version = $('ext-version').value;
   if (!name) return toast('Type an extension name first — e.g. redis or xdebug');
-  $('busy-label').textContent = 'Installing ' + name + ' for PHP ' + version + '… (finding the matching build)';
+  $('busy-label').textContent = 'Installing ' + name + ' for PHP ' + version + '…';
   $('busy').classList.add('show');
   try {
     await api('/api/php/ext/get', { version, name });
@@ -670,40 +946,13 @@ $('btn-ext-get').onclick = async () => {
     $('busy').classList.remove('show');
   }
 };
-let dbsLoadedAt = 0;
-async function loadDatabases() {
-  if (Date.now() - dbsLoadedAt < 4000) return;
-  dbsLoadedAt = Date.now();
-  try {
-    const dbs = await api('/api/db/list', {});
-    const wrap = $('db-list');
-    wrap.innerHTML = dbs.length ? '' : '<span class="muted">no databases yet</span>';
-    for (const db of dbs) {
-      const chip = document.createElement('span');
-      chip.className = 'badge';
-      chip.style.cssText = 'display:inline-flex; align-items:center; gap:6px';
-      chip.innerHTML = `<span class="mono">${db}</span><a href="#" data-dropdb="${db}" title="drop" style="text-decoration:none">✕</a>`;
-      wrap.appendChild(chip);
-    }
-    wrap.querySelectorAll('[data-dropdb]').forEach(el => el.onclick = (e) => {
-      e.preventDefault();
-      const name = el.dataset.dropdb;
-      if (!confirm(`Delete database "${name}" and ALL its data? This cannot be undone.`)) return;
-      dbsLoadedAt = 0;
-      act('Dropping ' + name + '…', '/api/db/drop', { name }, 'Dropped');
-    });
-  } catch (e) { /* mysql not reachable yet */ }
-}
-
 $('node-global').onchange = () =>
   act('Switching the default Node…', '/api/node/use', { version: $('node-global').value }, 'Switched');
-
 $('btn-node-install').onclick = () => {
   const v = $('node-new').value.trim() || 'lts';
   act('Downloading Node ' + v + '… (this can take a minute)', '/api/node/install', { version: v }, 'Installed');
   $('node-new').value = '';
 };
-
 $('btn-mysql-pass').onclick = () => {
   const password = $('mysql-pass').value;
   if (!confirm(password
@@ -712,7 +961,6 @@ $('btn-mysql-pass').onclick = () => {
   act('Updating the root password…', '/api/mysql/password', { password }, 'Password updated');
   $('mysql-pass').value = '';
 };
-
 $('btn-db-create').onclick = () => {
   const name = $('db-new').value.trim();
   if (!name) return;
@@ -720,7 +968,6 @@ $('btn-db-create').onclick = () => {
   act('Creating ' + name + '…', '/api/db/create', { name }, 'Created');
   $('db-new').value = '';
 };
-
 $('btn-mysql-switch').onclick = () => {
   const v = $('mysql-new').value.trim();
   if (!v) return toast('Type a version first — e.g. 8.4, latest, or mariadb');
@@ -728,22 +975,26 @@ $('btn-mysql-switch').onclick = () => {
       '/api/mysql/switch', { version: v }, 'Database switched');
   $('mysql-new').value = '';
 };
-$('btn-link').onclick = async () => {
-  const path = $('link-path').value.trim();
-  if (!path) return toast('Type the project folder path first');
-  $('busy-label').textContent = 'Linking…';
-  $('busy').classList.add('show');
-  try {
-    const url = await api('/api/sites/link', { path, name: $('link-name').value.trim() });
-    $('link-path').value = ''; $('link-name').value = '';
-    toast('Linked: ' + url);
-  } catch (e) {
-    toast('Error: ' + e.message);
-  } finally {
-    $('busy').classList.remove('show');
-    refresh();
-  }
-};
+function linkProject(pathId, nameId) {
+  return async () => {
+    const path = $(pathId).value.trim();
+    if (!path) return toast('Type the project folder path first');
+    $('busy-label').textContent = 'Linking…';
+    $('busy').classList.add('show');
+    try {
+      const url = await api('/api/sites/link', { path, name: $(nameId).value.trim() });
+      $(pathId).value = ''; $(nameId).value = '';
+      toast('Linked: ' + url);
+    } catch (e) {
+      toast('Error: ' + e.message);
+    } finally {
+      $('busy').classList.remove('show');
+      refresh();
+    }
+  };
+}
+$('btn-be-link').onclick = linkProject('be-link-path', 'be-link-name');
+$('btn-fe-link').onclick = linkProject('fe-link-path', 'fe-link-name');
 $('autostart').onchange = () =>
   act('Saving…', '/api/autostart', { enabled: $('autostart').checked }, 'Saved');
 $('btn-pma').onclick = () => {
@@ -753,12 +1004,8 @@ $('btn-pma').onclick = () => {
 $('btn-heidi').onclick = () =>
   act('Opening HeidiSQL…', '/api/heidisql/open', {}, 'HeidiSQL opened');
 
-document.querySelector('.content').addEventListener('scroll', () => {}, { passive: true });
-window.addEventListener('scroll', () => {
-  $('topbar').classList.toggle('scrolled', window.scrollY > 8);
-}, { passive: true });
-
 (async () => {
+  showPage(location.hash.slice(1) || 'overview');
   await refresh();
   try {
     const avail = await api('/api/php/available');
