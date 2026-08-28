@@ -44,9 +44,12 @@ func TestWriteCaddyfileModes(t *testing.T) {
 	if !strings.Contains(bSection, "try_files") || strings.Contains(bSection, "paused") {
 		t.Fatalf("build site wrong:\n%s", bSection)
 	}
+	// A stopped dev server now proxies to the wake agent: opening the
+	// link starts the project instead of showing a "paused" page.
 	pSection := section(out, "http://p.test")
-	if !strings.Contains(pSection, "paused") {
-		t.Fatalf("paused site wrong:\n%s", pSection)
+	if !strings.Contains(pSection, "reverse_proxy 127.0.0.1:42999") ||
+		!strings.Contains(pSection, `header_up X-Mullion-Wake "p"`) {
+		t.Fatalf("stopped site must wake via the agent:\n%s", pSection)
 	}
 	rSection := section(out, "http://r.test")
 	if !strings.Contains(rSection, "reverse_proxy localhost:5173") {
