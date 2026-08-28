@@ -11,19 +11,23 @@ import (
 
 // SiteConf is everything the Caddyfile needs to know about one site.
 type SiteConf struct {
+	Name      string // site name (the wake key for down dev servers)
 	Host      string // e.g. "blog.test"
 	Kind      string // "php" (default), "node", or "static"
 	Root      string // absolute document root (php and static sites)
 	FcgiPort  int    // FastCGI port for this site's PHP version
-	ProxyPort int    // dev-server port for node sites (0 = not running)
+	ProxyPort int    // dev-server port for node sites (0 = down)
 	// RewriteHost makes the proxy send "localhost:<port>" as the Host
 	// header — Vite-family dev servers block unknown hosts (and old
 	// versions ignore the allow-list env var), but always accept
 	// localhost. Only set for Vite projects: others (Next.js) rely on
 	// the original Host for origin checks.
 	RewriteHost bool
-	Paused      bool // the user stopped this dev server on purpose
-	Secure      bool
+	// AgentPort receives requests while the dev server is down: the
+	// agent shows a "starting…" page and wakes the server, so opening
+	// the link is all the user does.
+	AgentPort int
+	Secure    bool
 }
 
 // Generate renders the full Caddyfile. Secured sites use Caddy's internal
@@ -47,17 +51,18 @@ func Generate(sites []SiteConf, logsDir string) string {
 		}
 		switch s.Kind {
 		case "node":
-			if s.ProxyPort > 0 {
+			switch {
+			case s.ProxyPort > 0 && s.RewriteHost:
 				// localhost (not 127.0.0.1): dev servers often listen on
 				// ::1 only, and dialing localhost covers both families.
-				if s.RewriteHost {
-					b.WriteString(fmt.Sprintf("\treverse_proxy localhost:%d {\n\t\theader_up Host {upstream_hostport}\n\t}\n", s.ProxyPort))
-				} else {
-					b.WriteString(fmt.Sprintf("\treverse_proxy localhost:%d\n", s.ProxyPort))
-				}
-			} else if s.Paused {
-				b.WriteString("\trespond \"This site's dev server is paused — start it from the Mullion panel or with `mullion dev start`.\" 503\n")
-			} else {
+				b.WriteString(fmt.Sprintf("\treverse_proxy localhost:%d {\n\t\theader_up Host {upstream_hostport}\n\t}\n", s.ProxyPort))
+			case s.ProxyPort > 0:
+				b.WriteString(fmt.Sprintf("\treverse_proxy localhost:%d\n", s.ProxyPort))
+			case s.AgentPort > 0:
+				// Dev server down: the agent wakes it and shows a
+				// self-refreshing "starting…" page in the meantime.
+				b.WriteString(fmt.Sprintf("\treverse_proxy 127.0.0.1:%d {\n\t\theader_up X-Mullion-Wake %q\n\t}\n", s.AgentPort, s.Name))
+			default:
 				b.WriteString("\trespond \"The dev server for this site is not running — run `mullion start` (or open the Mullion panel).\" 503\n")
 			}
 		case "static":

@@ -50,7 +50,8 @@ func TestGenerateKinds(t *testing.T) {
 	sites := []SiteConf{
 		{Host: "app.test", Kind: "node", ProxyPort: 5173},
 		{Host: "vapp.test", Kind: "node", ProxyPort: 5199, RewriteHost: true},
-		{Host: "down.test", Kind: "node", ProxyPort: 0},
+		{Name: "down", Host: "down.test", Kind: "node", ProxyPort: 0, AgentPort: 42999},
+		{Name: "dead", Host: "dead.test", Kind: "node", ProxyPort: 0},
 		{Host: "app-build.test", Kind: "static", Root: "/x/dist", Secure: true},
 		{Host: "blog.test", Root: "/y", FcgiPort: 9084},
 	}
@@ -60,6 +61,8 @@ func TestGenerateKinds(t *testing.T) {
 		"reverse_proxy localhost:5199 {",
 		"header_up Host {upstream_hostport}",
 		"respond ",
+		"reverse_proxy 127.0.0.1:42999",
+		`header_up X-Mullion-Wake "down"`,
 		`root * "/x/dist"`,
 		"try_files {path} /index.html",
 		"php_fastcgi 127.0.0.1:9084",

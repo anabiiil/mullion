@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"pm/internal/agent"
 	"pm/internal/caddy"
 	"pm/internal/devserver"
 	"pm/internal/fcgi"
@@ -89,6 +90,7 @@ var stopCmd = &cobra.Command{
 			return err
 		}
 		devserver.StopAll(a.Paths)
+		agent.Stop(a.Paths)
 		if v := a.State.Config.MySQL; v != "" {
 			if err := mysql.Stop(a.Paths, v); err != nil {
 				return err

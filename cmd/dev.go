@@ -3,6 +3,8 @@ package cmd
 import (
 	"fmt"
 
+	"pm/internal/console"
+
 	"github.com/spf13/cobra"
 
 	"pm/internal/app"
@@ -15,8 +17,8 @@ var devCmd = &cobra.Command{
 	Short: "Control the managed dev servers of frontend sites",
 	Long: `Each linked frontend site gets a managed dev server (npm run dev)
 behind its .test domain. It starts with ` + "`mullion start`" + ` and stays up in
-the background. Stop one here when you don't need it — it stays stopped
-(and its domain shows a friendly hint) until you start it again.`,
+the background. Stop one when you don't need it — opening its link later
+wakes it automatically (a "starting…" page shows while it boots).`,
 }
 
 var devStartCmd = &cobra.Command{
@@ -40,20 +42,25 @@ var devStartCmd = &cobra.Command{
 
 var devStopCmd = &cobra.Command{
 	Use:   "stop [name]",
-	Short: "Stop a site's dev server and keep it stopped (frees RAM/CPU)",
+	Short: "Stop a site's dev server (frees RAM/CPU) — opening its link wakes it again",
 	Args:  cobra.MaximumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		a, site, err := devTarget(a2(), args)
 		if err != nil {
 			return err
 		}
+		if console.Interactive() &&
+			!askYesNo(fmt.Sprintf("Stop %s's dev server?", site.Name), true) {
+			fmt.Println("Kept running.")
+			return nil
+		}
 		site.DevPaused = true
 		devserver.Stop(a.Paths, site.Name)
 		if err := a.Apply(); err != nil {
 			return err
 		}
-		fmt.Printf("%s's dev server is stopped and will stay stopped (start again with `mullion dev start %s`).\n",
-			a.State.Host(*site), site.Name)
+		fmt.Printf("%s's dev server is stopped — opening %s wakes it again automatically.\n",
+			site.Name, a.State.Host(*site))
 		return nil
 	},
 }

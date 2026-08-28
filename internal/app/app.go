@@ -5,9 +5,11 @@ package app
 
 import (
 	"context"
+
 	"fmt"
 	"os"
 	"path/filepath"
+	"pm/internal/agent"
 	"sort"
 	"strings"
 	"time"
@@ -89,6 +91,7 @@ func (a *App) WriteCaddyfile(devPorts map[string]int) error {
 	var confs []caddy.SiteConf
 	for _, s := range a.State.Sites {
 		conf := caddy.SiteConf{
+			Name:   s.Name,
 			Host:   a.State.Host(s),
 			Kind:   s.Kind,
 			Secure: s.Secure,
@@ -102,7 +105,7 @@ func (a *App) WriteCaddyfile(devPorts map[string]int) error {
 			}
 			conf.ProxyPort = devPorts[s.Name]
 			conf.RewriteHost = usesVite(s.Path)
-			conf.Paused = s.DevPaused
+			conf.AgentPort = agent.Port
 		case "static":
 			conf.Root = filepath.Join(s.Path, s.BuildDir)
 		default: // php
@@ -235,6 +238,12 @@ func (a *App) Apply() error {
 	keep := func(err error) {
 		if err != nil && firstErr == nil {
 			firstErr = err
+		}
+	}
+	for _, s := range a.State.Sites {
+		if s.Kind == "node" {
+			keep(agent.Ensure(a.Paths))
+			break
 		}
 	}
 	keep(hosts.Sync(a.Hostnames()))

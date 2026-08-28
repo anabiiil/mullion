@@ -384,7 +384,7 @@
             <p class="muted" style="margin:10px 0 0">
               Mullion runs <span class="mono">npm run dev</span> for you behind the domain —
               switch a domain to <b>build</b> to serve the last production build instead
-              (it builds first when needed). Stopped dev servers stay stopped until you start them.
+              (it builds first when needed). Stopped dev servers wake automatically the next time you open their link.
             </p>
           </div>
         </section>
@@ -767,11 +767,8 @@ function renderFrontend(sites) {
       } else if (site.devPort) {
         status = `<span class="badge on" title="dev server port">:${site.devPort}</span>`;
         action = `<button class="sm" data-devstop="${site.name}" title="stop the dev server (frees RAM/CPU)">Stop</button>`;
-      } else if (site.devPaused) {
-        status = '<span class="badge off">paused</span>';
-        action = `<button class="sm" data-devstart="${site.name}">Start</button>`;
       } else {
-        status = '<span class="badge off">down</span>';
+        status = '<span class="badge off" title="starts automatically when you open the link">sleeping</span>';
         action = `<button class="sm" data-devstart="${site.name}">Start</button>`;
       }
     }
@@ -812,9 +809,11 @@ function wireSiteHandlers(tb) {
   tb.querySelectorAll('[data-devstart]').forEach(el => el.onclick = () =>
     act('Starting the dev server… (first start can take a minute)', '/api/dev/start',
         { name: el.dataset.devstart }, 'Started'));
-  tb.querySelectorAll('[data-devstop]').forEach(el => el.onclick = () =>
+  tb.querySelectorAll('[data-devstop]').forEach(el => el.onclick = () => {
+    if (!confirm('Stop the dev server for ' + el.dataset.devstop + '?\nOpening its link later wakes it automatically.')) return;
     act('Stopping the dev server…', '/api/dev/stop',
-        { name: el.dataset.devstop }, 'Stopped — it stays stopped until you start it'));
+        { name: el.dataset.devstop }, 'Stopped — opening the link wakes it again');
+  });
   tb.querySelectorAll('[data-secure]').forEach(el => el.onchange = () =>
     act(el.checked ? 'Securing…' : 'Unsecuring…', '/api/sites/secure',
         { name: el.dataset.secure, secure: el.checked }, 'Done'));
