@@ -384,7 +384,7 @@
             <p class="muted" style="margin:10px 0 0">
               Mullion runs <span class="mono">npm run dev</span> for you behind the domain —
               switch a domain to <b>build</b> to serve the last production build instead
-              (it builds first when needed). Stopped dev servers wake automatically the next time you open their link.
+              (it builds first when needed). Dev servers wake automatically when you open their link, and go back to sleep after 10 minutes with no open tab.
             </p>
           </div>
         </section>
@@ -768,7 +768,7 @@ function renderFrontend(sites) {
         status = `<span class="badge on" title="dev server port">:${site.devPort}</span>`;
         action = `<button class="sm" data-devstop="${site.name}" title="stop the dev server (frees RAM/CPU)">Stop</button>`;
       } else {
-        status = '<span class="badge off" title="starts automatically when you open the link">sleeping</span>';
+        status = '<span class="badge off" title="wakes automatically when you open the link; sleeps after 10 idle minutes">sleeping</span>';
         action = `<button class="sm" data-devstart="${site.name}">Start</button>`;
       }
     }

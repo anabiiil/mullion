@@ -120,3 +120,15 @@ func PrintStackHint(conflicts []Conflict) {}
 // stopConflict stops a conflicting listener; on Windows killing the
 // process (and its same-name parent) is what works.
 func StopConflict(c Conflict) { KillWithParent(c.PID) }
+
+// PortActive reports whether any ESTABLISHED TCP connection exists to
+// the local port (an open browser tab keeps its websocket alive).
+func PortActive(port int) bool {
+	out, err := proc.Quiet("powershell", "-NoProfile", "-Command",
+		fmt.Sprintf("(Get-NetTCPConnection -State Established -LocalPort %d -ErrorAction SilentlyContinue | Measure-Object).Count", port)).Output()
+	if err != nil {
+		return false
+	}
+	n := strings.TrimSpace(string(out))
+	return n != "" && n != "0"
+}

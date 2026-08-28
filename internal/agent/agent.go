@@ -6,15 +6,18 @@ package agent
 
 import (
 	"fmt"
+	"io"
 	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
-	"pm/internal/proc"
 	"pm/internal/pmdir"
+	"pm/internal/proc"
+	"pm/internal/version"
 )
 
 // Port is fixed and loopback-only; the dev-server ports assigned to
@@ -38,10 +41,17 @@ func Running() bool {
 	return true
 }
 
-// Ensure spawns the detached agent process when it isn't running.
+// Ensure spawns the detached agent process when it isn't running — and
+// replaces a running agent from an OLDER build, so upgrades take effect.
 func Ensure(paths pmdir.Paths) error {
 	if Running() {
-		return nil
+		if runningVersion() == version.Number {
+			return nil
+		}
+		Stop(paths)
+		for i := 0; i < 20 && Running(); i++ {
+			time.Sleep(100 * time.Millisecond)
+		}
 	}
 	exe, err := os.Executable()
 	if err != nil {
@@ -85,4 +95,19 @@ func Stop(paths pmdir.Paths) {
 		}
 	}
 	_ = os.Remove(pidFile(paths))
+}
+
+// runningVersion asks the live agent which build it is.
+func runningVersion() string {
+	client := &http.Client{Timeout: time.Second}
+	resp, err := client.Get(fmt.Sprintf("http://127.0.0.1:%d/__mullion-agent-version", Port))
+	if err != nil {
+		return ""
+	}
+	defer resp.Body.Close()
+	data, err := io.ReadAll(io.LimitReader(resp.Body, 64))
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(data))
 }

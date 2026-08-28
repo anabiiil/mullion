@@ -215,3 +215,15 @@ func stdinIsTerminal() bool {
 	info, err := os.Stdin.Stat()
 	return err == nil && info.Mode()&os.ModeCharDevice != 0
 }
+
+// PortActive reports whether any ESTABLISHED TCP connection exists to
+// the local port — a browser tab keeps its HMR websocket open through
+// Caddy, so this distinguishes "someone is looking at the site" from
+// idle. The listener itself doesn't count.
+func PortActive(port int) bool {
+	out, err := exec.Command("lsof", "-nP", "-iTCP:"+strconv.Itoa(port), "-sTCP:ESTABLISHED").Output()
+	if err != nil {
+		return false
+	}
+	return strings.Contains(string(out), "ESTABLISHED")
+}

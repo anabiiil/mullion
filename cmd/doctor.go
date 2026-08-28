@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"pm/internal/agent"
 	"pm/internal/caddy"
 	"pm/internal/devserver"
 	"pm/internal/fcgi"
@@ -79,6 +80,26 @@ var doctorCmd = &cobra.Command{
 		}
 		if v := a.State.Config.GlobalNode; v != "" {
 			fmt.Println("node default:", v)
+		}
+		hasNode := false
+		for _, s := range a.State.Sites {
+			if s.Kind == "node" {
+				hasNode = true
+				break
+			}
+		}
+		if hasNode {
+			fmt.Printf("wake agent: %s\n", ok(agent.Running()))
+			if data, err := os.ReadFile(filepath.Join(a.Paths.LogsDir(), "agent.log")); err == nil && len(data) > 0 {
+				lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+				if len(lines) > 4 {
+					lines = lines[len(lines)-4:]
+				}
+				fmt.Println("  agent log tail:")
+				for _, l := range lines {
+					fmt.Println("    " + l)
+				}
+			}
 		}
 
 		for _, site := range a.State.Sites {
