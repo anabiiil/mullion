@@ -55,9 +55,13 @@ func Generate(sites []SiteConf, logsDir string) string {
 			case s.ProxyPort > 0 && s.RewriteHost:
 				// localhost (not 127.0.0.1): dev servers often listen on
 				// ::1 only, and dialing localhost covers both families.
-				b.WriteString(fmt.Sprintf("\treverse_proxy localhost:%d {\n\t\theader_up Host {upstream_hostport}\n\t}\n", s.ProxyPort))
+				// keepalive off: pooled idle connections would look like
+				// an open tab and keep the idle watcher from ever
+				// sleeping the server — real tabs stay visible through
+				// their live websocket.
+				b.WriteString(fmt.Sprintf("\treverse_proxy localhost:%d {\n\t\theader_up Host {upstream_hostport}\n\t\ttransport http {\n\t\t\tkeepalive off\n\t\t}\n\t}\n", s.ProxyPort))
 			case s.ProxyPort > 0:
-				b.WriteString(fmt.Sprintf("\treverse_proxy localhost:%d\n", s.ProxyPort))
+				b.WriteString(fmt.Sprintf("\treverse_proxy localhost:%d {\n\t\ttransport http {\n\t\t\tkeepalive off\n\t\t}\n\t}\n", s.ProxyPort))
 			case s.AgentPort > 0:
 				// Dev server down: the agent wakes it and shows a
 				// self-refreshing "starting…" page in the meantime.

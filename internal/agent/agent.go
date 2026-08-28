@@ -17,6 +17,7 @@ import (
 
 	"pm/internal/pmdir"
 	"pm/internal/proc"
+	"pm/internal/sysproc"
 	"pm/internal/version"
 )
 
@@ -48,9 +49,20 @@ func Ensure(paths pmdir.Paths) error {
 		if runningVersion() == version.Number {
 			return nil
 		}
+		// A stale agent (older build, or one whose pid record is gone)
+		// must actually die — kill the PORT OWNER, not just the pid
+		// file, and never report success while it still answers.
 		Stop(paths)
-		for i := 0; i < 20 && Running(); i++ {
+		if pid, name := sysproc.PortOwner(Port); pid > 0 &&
+			strings.Contains(strings.ToLower(name), "mullion") {
+			sysproc.KillProcess(pid)
+		}
+		for i := 0; i < 30 && Running(); i++ {
 			time.Sleep(100 * time.Millisecond)
+		}
+		if Running() {
+			pid, name := sysproc.PortOwner(Port)
+			return fmt.Errorf("a stale process (%s, PID %d) is holding the agent port %d and could not be stopped", name, pid, Port)
 		}
 	}
 	exe, err := os.Executable()

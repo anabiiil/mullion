@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,9 +20,13 @@ import (
 	"pm/internal/version"
 )
 
-// idleStopAfter is how long a running dev server may sit with no open
-// tab and no requests before the agent puts it back to sleep.
-const idleStopAfter = 10 * time.Minute
+// Idle limits: with no tab open (no live connection) a dev server
+// sleeps fast; with a tab open it gets a longer grace, and any action —
+// a request through the domain OR a source-file edit — resets the clock.
+const (
+	idleNoTab   = 2 * time.Minute
+	idleWithTab = 10 * time.Minute
+)
 
 // agentCmd is the hidden background helper behind wake-on-demand:
 // Caddy proxies a down site's requests here; each page load shows a
@@ -96,15 +101,24 @@ var agentCmd = &cobra.Command{
 					if port == 0 {
 						continue
 					}
+					limit := idleNoTab
 					if sysproc.PortActive(port) {
-						continue // a tab is open (HMR websocket alive)
+						limit = idleWithTab // a tab is open (live websocket)
 					}
+					activity := time.Time{}
 					accessLog := filepath.Join(a.Paths.LogsDir(), a.State.Host(*site)+".log")
-					if info, err := os.Stat(accessLog); err == nil &&
-						time.Since(info.ModTime()) < idleStopAfter {
+					if info, err := os.Stat(accessLog); err == nil {
+						activity = info.ModTime()
+					}
+					// Editing code counts as action too — an active coding
+					// session must never be killed under the developer.
+					if t := latestSourceMtime(site.Path); t.After(activity) {
+						activity = t
+					}
+					if time.Since(activity) < limit {
 						continue
 					}
-					fmt.Printf("idle: stopping %s after %s of inactivity\n", site.Name, idleStopAfter)
+					fmt.Printf("idle: stopping %s after %s of inactivity\n", site.Name, limit)
 					site.DevPaused = true
 					devserver.Stop(a.Paths, site.Name)
 					changed = true
@@ -189,6 +203,37 @@ async function tick() {
 setTimeout(tick, 2000);
 </script>
 </body></html>`
+
+// latestSourceMtime finds the newest file change in a project, skipping
+// the heavy generated directories; the walk is capped so a minutely
+// check stays cheap.
+func latestSourceMtime(root string) time.Time {
+	skip := map[string]bool{
+		"node_modules": true, ".git": true, "dist": true, "build": true,
+		".output": true, ".next": true, ".nuxt": true, "vendor": true,
+	}
+	var newest time.Time
+	count := 0
+	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return nil
+		}
+		if d.IsDir() {
+			if skip[d.Name()] || strings.HasPrefix(d.Name(), ".") && d.Name() != "." && path != root {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if count++; count > 4000 {
+			return filepath.SkipAll
+		}
+		if info, err := d.Info(); err == nil && info.ModTime().After(newest) {
+			newest = info.ModTime()
+		}
+		return nil
+	})
+	return newest
+}
 
 func init() {
 	rootCmd.AddCommand(agentCmd)

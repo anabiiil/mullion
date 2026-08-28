@@ -143,6 +143,29 @@ var statusCmd = &cobra.Command{
 			fmt.Printf("%-9s %-10s port %d  %s\n", fcgiLabel+":", v, port, state)
 		}
 
+		if v := a.State.Config.GlobalNode; v != "" {
+			fmt.Printf("node:     %s (default)\n", v)
+		}
+		for _, site := range a.State.Sites {
+			if site.Kind != "node" {
+				continue
+			}
+			switch {
+			case site.Mode == "build":
+				fmt.Printf("dev:      %-24s serving the production build (%s/)\n", a.State.Host(site), site.BuildDir)
+			case devserver.Running(a.Paths, site.Name) > 0:
+				nodeLabel := ""
+				if dir, err := a.NodeVersionDirFor(site); err == nil {
+					nodeLabel = "  node " + filepath.Base(dir)
+				}
+				fmt.Printf("dev:      %-24s port %d  %s%s\n", a.State.Host(site),
+					devserver.Running(a.Paths, site.Name), term.Green("running"), nodeLabel)
+			default:
+				fmt.Printf("dev:      %-24s %s (wakes when you open the link)\n",
+					a.State.Host(site), term.Yellow("sleeping"))
+			}
+		}
+
 		if v := a.State.Config.MySQL; v != "" {
 			state := term.Red("stopped") + " (run `mullion mysql start`)"
 			if mysql.Running() {
