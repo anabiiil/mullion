@@ -1,16 +1,50 @@
-# Mullion — PHP version manager & local dev server
+# Mullion — the zero-setup local dev environment
 
-A local PHP development environment for **Windows 10/11** and **macOS**,
-shipped as a single binary with no dependencies — no Homebrew, no
-installers. It installs PHP versions (from windows.php.net on Windows,
-from [static-php.dev](https://static-php.dev)'s dependency-free static
-builds on macOS) and Node.js versions (official nodejs.org builds),
-switches them system-wide or per project, installs Composer and MySQL,
-serves your PHP **and frontend** projects on `.test` domains through
-[Caddy](https://caddyserver.com) — frontend projects get a managed
-`npm run dev` behind the scenes, so opening the link is all you do —
-and secures everything with trusted local HTTPS certificates, all
-driven from a desktop control panel or the terminal.
+One binary that runs your whole local development world on **Windows**
+and **macOS**: PHP backends, JavaScript frontends, Node versions, MySQL,
+`.test` domains, and trusted local HTTPS — with no Docker, no Homebrew
+dependencies, and no config files to learn.
+
+```
+cd my-laravel-api  && mullion link   →  https://my-laravel-api.test
+cd my-vite-app     && mullion link   →  https://my-vite-app.test
+```
+
+That's the entire workflow. Mullion picks the right PHP or Node version
+per project, runs `npm run dev` for you behind the scenes, wakes
+sleeping projects the moment you open their link, and puts idle ones
+back to sleep so your machine stays light.
+
+## What you get
+
+- **PHP version manager** — install any version, switch system-wide
+  (`mullion use 8.4`) or pin one project (`mullion isolate 7.4`); every
+  version runs side by side
+- **Node version manager** — same model (`mullion node use 24`,
+  `mullion node isolate 18`); the `node`/`npm` on your PATH resolve
+  per project automatically (pinned version → `.nvmrc` → default)
+- **Frontend dev servers, managed** — `mullion link` in a Vite/React/
+  Vue/Next project and you never type `npm run dev` again: opening the
+  link starts it (with a live "starting…" page), closing your tabs puts
+  it back to sleep after 2 minutes, an idle open tab after 10 —
+  requests and code edits keep it awake
+- **dev / build switch per domain** — flip a frontend domain between
+  the live dev server and the last production build (`mullion serve
+  build`, or a dropdown in the panel); Mullion builds the project
+  itself when there is no build yet
+- **`.test` domains + trusted HTTPS** for every project, via
+  [Caddy](https://caddyserver.com) and its local CA
+- **MySQL + phpMyAdmin** — installed, initialized, and running; manage
+  the root password and databases from the CLI or the panel; replacing
+  an existing server (Laragon, XAMPP, a brew service) always offers a
+  backup first and imports it into Mullion
+- **A real control panel** (`mullion ui`) — light/dark, with dedicated
+  pages for backend projects, frontend projects, PHP, Node, and the
+  database
+- **Self-healing** — `mullion doctor` diagnoses the whole stack;
+  services recover on their own, and competitors squatting your ports
+  (old stacks, resurrected brew services, stale processes) are detected
+  and replaced with consent
 
 ## Install
 
@@ -69,145 +103,153 @@ password once — for `/etc/hosts` entries and for trusting the local
 HTTPS certificate.
 
 One command sets up the whole stack: it creates the install directory
-(`C:\Mullion` on Windows, `~/.mullion` on macOS), downloads Caddy, copies
-the mullion binary into its `bin` folder, adds the right folders to your
-PATH, installs the **latest PHP** (and makes it the system default), the
-**latest Composer**, the **latest MySQL** (initialized and running on
-`127.0.0.1:3306`, user `root`, no password), and serves **phpMyAdmin**
-at `https://phpmyadmin.test` with a trusted certificate.
-**Open a new terminal afterwards**, and from then on plain `mullion` (and
-`php`, `composer`) work from any directory.
+(`C:\Mullion` on Windows, `~/.mullion` on macOS), downloads Caddy, puts
+mullion on your PATH, installs the **latest PHP** (system default), the
+**latest Composer**, the **latest Node LTS** (with npm), the **latest
+MySQL** (initialized and running on `127.0.0.1:3306`, user `root`, no
+password), and serves **phpMyAdmin** at `https://phpmyadmin.test` with a
+trusted certificate. **Open a new terminal afterwards**, and from then
+on plain `mullion` (and `php`, `composer`, `node`, `npm`) work from any
+directory.
 
 On Windows, setup asks for administrator rights **once** (a single UAC
-prompt) and continues in a new elevated window — no more prompt per
-step. On macOS the equivalent is a single sudo password prompt. Setup
-also asks whether Mullion should start automatically when you sign in
-(change it any time with `mullion autostart on|off`).
-
-Setup is idempotent — every step it finds already done is skipped, so
-re-running it is safe.
-
-> Double-clicking `mullion.exe` in Explorer also works: before setup it offers
-> to run setup for you; after setup it opens the **control panel** — a
-> desktop-style window for managing services, PHP versions, MySQL, and
-> sites (same as `mullion ui`).
+prompt). On macOS the equivalent is a single password prompt. Setup also
+asks whether Mullion should start automatically when you sign in, and
+offers to take over from existing stacks it finds — importing their
+databases before touching anything. It is idempotent: every step already
+done is skipped, so re-running it is always safe.
 
 ## Quick start
 
-After `mullion setup`, PHP, Composer, MySQL, and phpMyAdmin are already there —
-serving a project is all that's left:
+**A PHP project** (Laravel `public/` auto-detected):
 
 ```
-cd ~/code/myapp                # C:\code\myapp on Windows
-mullion link                   # serve at http://myapp.test (Laravel public/ auto-detected)
-mullion secure                 # upgrade to https://myapp.test (trusted local cert)
+cd ~/code/my-api               # C:\code\my-api on Windows
+mullion link                   # http://my-api.test
+mullion secure                 # https://my-api.test (trusted local cert)
 ```
 
-Frontend projects work the same way — Mullion runs the dev server for you:
+**A frontend project** — Mullion owns the dev server for you:
 
 ```
 cd ~/code/my-vite-app
-mullion link                   # http://my-vite-app.test — npm install + npm run dev are handled for you
-mullion link --build           # http://my-vite-app-build.test — serves dist/ (compare the last build against dev)
+mullion link                   # https://my-vite-app.test — deps installed, dev server managed
+mullion serve build            # the same domain serves the production build (builds it if needed)
+mullion serve dev              # back to the live dev server
+mullion link --build           # OR a separate <name>-build.test to compare build vs dev side by side
 ```
 
-Need another PHP version (e.g. a legacy project)?
+**Another runtime version for one legacy project:**
 
 ```
-mullion php install 7.4        # any version, even EOL ones
-mullion use 7.4                # switch the system default, or:
-mullion isolate 7.4            # pin just this project to it
+mullion php install 7.4  && mullion isolate 7.4        # this project runs PHP 7.4
+mullion node install 18  && mullion node isolate 18    # this project runs Node 18
 ```
+
+## How frontend sites live and sleep
+
+Opening a frontend link **always works** — that's the contract:
+
+- The domain's dev server is down? Caddy hands the request to Mullion's
+  tiny background agent, you see a live *"Starting…"* page for a few
+  seconds, and land in the app. If the server can't start, the page
+  shows the actual error and log tail instead of spinning.
+- No tab open on the site? It goes back to **sleep after 2 minutes**,
+  freeing RAM and CPU.
+- A tab is open but idle? **10 minutes** of no requests *and no code
+  edits* — an active coding session is never killed under you.
+- `mullion dev stop` (or the panel's Stop button, with confirmation)
+  puts a site to sleep immediately; opening the link wakes it again.
+
+`mullion status` shows each site's state: `running` (with its port and
+Node version), `sleeping`, or serving the production build.
 
 ## Commands
 
 | Command | What it does |
 |---|---|
-| `mullion setup` | Full first-time setup: PATH, Caddy, latest PHP + Composer + MySQL + phpMyAdmin |
-| `mullion php available` | List installable versions (windows.php.net / static-php.dev) |
-| `mullion php install <v>` | Install a version (`8.3`, `8.3.30`; on Windows even EOL ones like `7.4` — macOS builds start at 8.0) |
-| `mullion php list` | List installed versions (`*` = active) |
-| `mullion php uninstall <v>` | Remove an installed version |
-| `mullion use <v>` | Switch the **system-wide** PHP version |
-| `mullion isolate <v>` | Pin the **current project** to a version (e.g. legacy app on 7.4) |
-| `mullion unisolate` | Project follows the global version again |
-| `mullion node install [v]` | Install a Node version (`lts` by default; `latest`, `22`, `22.12.0`) |
-| `mullion node use <v>` / `list` / `available` / `uninstall <v>` | Manage Node versions (`node`/`npm` shims resolve per project: pinned → `.nvmrc` → default) |
-| `mullion node isolate <v>` / `unisolate` | Pin the current frontend project to a Node version |
+| `mullion setup` | Full first-time setup: PATH, Caddy, latest PHP + Composer + Node LTS + MySQL + phpMyAdmin |
+| `mullion link [name]` | Serve the current directory at `https://<name>.test` (project type auto-detected) |
+| `mullion link --build [--dir d]` | Serve the last production build as `<name>-build.test` (auto-detects dist/build/out) |
+| `mullion unlink` / `links` / `rename [old] <new>` | Remove, list, or rename sites (rename also lives in the panel) |
+| `mullion secure` / `unsecure [name]` | HTTPS with a locally-trusted cert / back to HTTP |
+| `mullion serve dev\|build [name]` | Switch what a frontend domain serves |
+| `mullion dev start` / `stop` / `restart` `[name]` | Control one dev server (`stop` asks, then it sleeps until the link wakes it) |
+| `mullion php install <v>` / `list` / `available` / `uninstall` | Manage PHP versions (windows.php.net / static-php.dev builds) |
+| `mullion use <v>` / `isolate <v>` / `unisolate` | System-wide PHP / pin one project / unpin |
+| `mullion php ext list\|enable\|disable\|get` | Extensions (toggling + PECL on Windows; compiled-in list on macOS) |
+| `mullion node install [v]` / `use` / `list` / `available` / `uninstall` | Manage Node versions (official nodejs.org builds) |
+| `mullion node isolate <v>` / `unisolate` / `which` | Pin a project's Node / unpin / explain what resolves here and why |
 | `mullion node npm <v> [node]` | Change the npm version inside a Node install |
-| `mullion link --build [--dir d]` | Serve the project's LAST production build as `<name>-build.test` (auto-detects dist/build/out) |
-| `mullion serve dev\|build [name]` | Switch what a frontend domain serves: the dev server, or the last production build |
-| `mullion dev start` / `stop` / `restart` `[name]` | Control one site's dev server — `stop` frees RAM/CPU and STAYS stopped until you start it |
-| `mullion link [name]` | Serve current directory at `http://<name>.test` |
-| `mullion unlink [name]` | Stop serving it |
-| `mullion links` | List all linked sites |
-| `mullion secure [name]` | Serve a site over HTTPS (locally-trusted cert) |
-| `mullion unsecure [name]` | Back to plain HTTP |
-| `mullion tld [tld]` | Show or change the domain suffix (default `.test`) |
-| `mullion mysql install [v]` | Install MySQL (newest 8.4 LTS by default; `latest`, a branch, or an exact version) — switching versions migrates your databases automatically. MariaDB: Windows only |
-| `mullion mysql start` / `stop` / `uninstall` | Control / remove the MySQL server |
-| `mullion mysql password [pw]` | Change the root password ('' removes it) — phpMyAdmin follows automatically |
-| `mullion db list` / `create <n>` / `drop <n>` | Manage databases (also available in the control panel) |
-| `mullion composer install [v]` | Install Composer (latest by default, or a specific version) |
-| `mullion phpmyadmin [v]` | Install phpMyAdmin (latest by default) at `https://phpmyadmin.test` |
-| `mullion heidisql` | Install (first use) and open the HeidiSQL desktop client (Windows only) |
-| `mullion start` / `stop` / `restart` / `status` | Control the background services |
-| `mullion autostart [on\|off]` | Start Mullion automatically at sign-in (Run key on Windows, launchd agent on macOS) |
-| `mullion ui` | Open the control panel window (double-clicking `mullion.exe` does the same once set up) |
-| `mullion uninstall` | Remove everything (offers a databases backup first; project folders untouched) |
+| `mullion mysql install [v]` | Install/switch MySQL (8.4 LTS default; databases migrate automatically; MariaDB on Windows) |
+| `mullion mysql password [pw]` / `start` / `stop` / `restore <f>` | Root password (phpMyAdmin follows) / control / import dumps |
+| `mullion db list` / `create <n>` / `drop <n>` | Manage databases (also in the panel) |
+| `mullion composer install [v]` / `phpmyadmin [v]` | Composer / phpMyAdmin at `https://phpmyadmin.test` |
+| `mullion heidisql` | HeidiSQL desktop client (Windows only) |
+| `mullion start` / `stop` / `restart` / `status` | Control the whole stack |
+| `mullion doctor` | Full diagnosis — paste its output when reporting a problem |
+| `mullion ui` | The control panel (runs in the background; your terminal stays free) |
+| `mullion tld [tld]` / `autostart [on\|off]` | Domain suffix / start at sign-in |
+| `mullion uninstall` | Remove everything (offers a database backup first; project folders untouched) |
+
+## The control panel
+
+`mullion ui` opens the panel in your default browser — no extra windows,
+no terminal held hostage. Light and dark themes, with dedicated pages:
+
+- **Overview** — stack health and one-click start/stop
+- **Backend / Frontend** — each project family on its own page: link,
+  rename, HTTPS, per-site PHP or Node version, dev/build dropdown,
+  dev-server Start/Stop
+- **PHP / Node** — install versions, switch defaults, manage extensions
+- **Database** — server control, root password, and a proper databases
+  table with create/drop
 
 ## How it works
 
-- Everything lives in one folder — `C:\Mullion\` on Windows, `~/.mullion/`
-  on macOS: PHP versions in `php/<version>`, Caddy and mullion in `bin/`,
-  logs in `logs/`.
-- **Global switching**: `php/current` is a directory junction (Windows) or
-  symlink (macOS) pointing at the active version; it is on your PATH, so
-  switching is instant and needs no admin rights.
-- **Per-project versions**: every PHP version runs its own FastCGI worker
+- Everything lives in one folder — `C:\Mullion\` on Windows,
+  `~/.mullion/` on macOS: PHP in `php/<version>`, Node in
+  `node/<version>`, Caddy and mullion in `bin/`, logs in `logs/`.
+- **Version switching**: `php/current` and `node/current` are junctions
+  (Windows) / symlinks (macOS) on your PATH — switching is instant, no
+  admin rights. `node`/`npm`/`npx` are smart shims that resolve the
+  right version for the directory you're in.
+- **PHP serving**: every PHP version runs its own FastCGI worker
   (`php-cgi` on Windows, `php-fpm` on macOS) on a version-derived port
-  (8.3 → 9083, 7.4 → 9074). Caddy routes each site to the port of *its*
-  version, so different projects run different PHP versions side by side.
-- **Domains**: linked sites get entries in the hosts file
-  (`C:\Windows\...\etc\hosts` / `/etc/hosts`), kept inside a
-  clearly-marked managed block. Writing it triggers one UAC prompt on
-  Windows, one sudo/password prompt on macOS.
-- **HTTPS**: Caddy's internal CA issues certificates for secured sites and
-  installs its root into the system trust store (one-time UAC/password
-  prompt), so browsers show a proper padlock.
-- **Frontend sites**: `mullion link` in a project with a package.json
-  starts a managed dev server (`npm run dev`, pnpm/yarn auto-detected,
-  dependencies installed on first run), detects the port it actually
-  opened, and reverse-proxies the `.test` domain to it — HMR/websockets
-  included. `--build` serves the production build directory as a
-  separate static site with SPA fallback.
-- **Node versions**: official nodejs.org builds under `node/<version>`.
-  The `node`/`npm`/`npx` on your PATH are Mullion shims that pick the
-  right version for the directory you are in: the site's pinned version,
-  the project's `.nvmrc`, or the global default.
-- **PHP builds**: Windows uses the official windows.php.net zips, with
-  per-extension enable/disable and PECL downloads (`mullion php ext ...`).
-  macOS uses static-php.dev's static builds, which have the common
-  extension set compiled in — including opcache, intl, imagick, redis,
-  sodium, and the pdo_mysql / pdo_sqlite / pdo_pgsql drivers — so there
-  is nothing to toggle (`mullion php ext list` shows what's built in).
+  (8.3 → 9083). Caddy routes each site to *its* version's port.
+- **Frontend serving**: Mullion runs the project's dev server (npm,
+  pnpm, or yarn — detected from the lockfile; dependencies installed on
+  first run), detects the port it actually opened, and reverse-proxies
+  the domain to it — HMR/websockets included. A tiny background agent
+  provides wake-on-demand and idle sleep. Build mode serves the output
+  directory statically with SPA fallback.
+- **Domains**: linked sites get entries in the hosts file, kept inside
+  a clearly-marked managed block (one UAC/password prompt).
+- **HTTPS**: Caddy's internal CA issues certificates and installs its
+  root into the system trust store once — browsers show a real padlock.
+- **PHP builds**: Windows uses official windows.php.net zips with
+  per-extension toggling and PECL downloads. macOS uses
+  [static-php.dev](https://static-php.dev)'s dependency-free static
+  builds with the common extension set compiled in — opcache, intl,
+  imagick, redis, sodium, and the pdo_mysql / pdo_sqlite / pdo_pgsql
+  drivers included.
 
 ## Troubleshooting
 
-**`php -v` still shows another version after `mullion use`.** Another PHP
-install sits earlier on your PATH. On Windows the culprit is usually a
-dev stack (Laragon, XAMPP, ...) in the *system* PATH, which is always
-searched before the user PATH where Mullion lives — remove that directory
-from the system Path (Settings > System > About > Advanced system
-settings > Environment Variables) and open a new terminal. On macOS it
-is usually a Homebrew or other php on the PATH — open a NEW terminal so
-Mullion's profile entry (prepended to PATH) takes effect. `mullion use`
-and `mullion status` detect the shadow and print the exact offending path.
+**Start with `mullion doctor`** — it checks the binary, ports and who
+owns them, Caddy's identity, PHP/Node/MySQL, the wake agent, and every
+site, marking problems in red with the fix.
 
-**A linked site doesn't open.** `mullion link` and `mullion secure` start the
-servers themselves, so this should not happen anymore; check `mullion status`
-and `logs/caddy.log` in the install directory. Sites also keep working
-after you close the terminal — Caddy runs fully detached.
+**`php -v` or `node -v` shows another version.** Another install sits
+earlier on your PATH (Laragon/XAMPP in the system PATH on Windows; nvm
+or Homebrew on macOS). `mullion use` / `mullion node use` detect the
+shadow and offer to disable the offending PATH entry for you — then
+open a NEW terminal. `mullion node which` explains exactly which Node
+resolves in the current directory and why.
+
+**A frontend link shows the error page instead of the app.** The real
+reason (with the dev server's log tail) is printed on that page; fix it
+and refresh. `mullion doctor` shows the same details.
 
 ## Building from source
 

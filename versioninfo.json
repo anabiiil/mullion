@@ -10,7 +10,7 @@
   },
   "StringFileInfo": {
     "CompanyName": "Mullion",
-    "FileDescription": "Mullion — PHP version manager & local dev server for Windows",
+    "FileDescription": "Mullion — the zero-setup local dev environment",
     "FileVersion": "1.7.3.0",
     "InternalName": "mullion",
     "LegalCopyright": "MIT License",

@@ -14,7 +14,7 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:   "mullion",
-	Short: "PHP version manager & local dev server",
+	Short: "The zero-setup local dev environment (PHP, Node, MySQL, .test domains, HTTPS)",
 	Long: `Mullion — a local PHP & frontend development environment for
 Windows and macOS.
 
