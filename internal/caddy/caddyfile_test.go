@@ -1,6 +1,7 @@
 package caddy
 
 import (
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -91,7 +92,7 @@ func TestGenerateAliases(t *testing.T) {
 		"\napp.test, *.app.test {\n\ttls internal\n",
 		"\nhttp://plain.test {\n",
 		// One log per site, named after the primary host.
-		`output file "/logs/shop.test.log"`,
+		`output file "` + filepath.Join("/logs", "shop.test.log") + `"`,
 	} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("generated Caddyfile misses %q:\n%s", want, out)

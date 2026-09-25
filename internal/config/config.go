@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	"pm/internal/pmdir"
 )
@@ -215,7 +216,8 @@ func (s *State) RemoveSite(name string) bool {
 }
 
 func readJSON(path string, v any) error {
-	data, err := os.ReadFile(path)
+	var data []byte
+	err := retryBusy(func() (e error) { data, e = os.ReadFile(path); return })
 	if errors.Is(err, os.ErrNotExist) {
 		return nil
 	}
@@ -250,9 +252,23 @@ func writeJSON(path string, v any) error {
 		os.Remove(tmp.Name())
 		return err
 	}
-	if err := os.Rename(tmp.Name(), path); err != nil {
+	if err := retryBusy(func() error { return os.Rename(tmp.Name(), path) }); err != nil {
 		os.Remove(tmp.Name())
 		return err
 	}
 	return nil
+}
+
+// retryBusy retries fn briefly while the file is momentarily locked.
+// Windows refuses to open a file that is being renamed over (and to
+// rename over one that is open) — the panel reads config on every
+// request while preference saves replace it — so a few short retries
+// ride out that window. Elsewhere isBusy is always false.
+func retryBusy(fn func() error) error {
+	err := fn()
+	for i := 0; i < 40 && err != nil && isBusy(err); i++ {
+		time.Sleep(time.Duration(2+i) * time.Millisecond)
+		err = fn()
+	}
+	return err
 }

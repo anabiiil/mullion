@@ -229,10 +229,13 @@ func TestDiff(t *testing.T) {
 	if !strings.Contains(d.Diff, "+a\n+b") || !strings.Contains(d.Diff, "new file") {
 		t.Errorf("untracked diff:\n%s", d.Diff)
 	}
-	// A pathspec-looking name is a literal file name.
-	writeFile(t, dir, ":(glob)*", "magic\n")
-	if d, err := Diff(ctx, dir, ":(glob)*", false); err != nil || !strings.Contains(d.Diff, "+magic") {
-		t.Errorf("literal pathspec diff: %v\n%s", err, d.Diff)
+	// A pathspec-looking name is a literal file name (":" and "*" are
+	// not valid in Windows file names, so only elsewhere).
+	if runtime.GOOS != "windows" {
+		writeFile(t, dir, ":(glob)*", "magic\n")
+		if d, err := Diff(ctx, dir, ":(glob)*", false); err != nil || !strings.Contains(d.Diff, "+magic") {
+			t.Errorf("literal pathspec diff: %v\n%s", err, d.Diff)
+		}
 	}
 	for _, bad := range []string{"", "../x", "/etc/passwd", "a/../../b"} {
 		if _, err := Diff(ctx, dir, bad, false); err == nil {

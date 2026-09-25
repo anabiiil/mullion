@@ -3,6 +3,7 @@ package app
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"pm/internal/config"
@@ -205,6 +206,9 @@ func TestNodeVersionsWithNpm(t *testing.T) {
 
 	for _, v := range []string{"20.18.0", "22.12.0"} {
 		npmDir := filepath.Join(a.Paths.NodeVersionDir(v), "lib", "node_modules", "npm")
+		if runtime.GOOS == "windows" {
+			npmDir = filepath.Join(a.Paths.NodeVersionDir(v), "node_modules", "npm")
+		}
 		if err := os.MkdirAll(npmDir, 0o755); err != nil {
 			t.Fatal(err)
 		}

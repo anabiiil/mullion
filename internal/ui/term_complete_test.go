@@ -3,6 +3,7 @@ package ui
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -79,7 +80,11 @@ func TestCompleteEmptyCommandWord(t *testing.T) {
 
 func TestPathExecutables(t *testing.T) {
 	bin := t.TempDir()
-	os.WriteFile(filepath.Join(bin, "mytool"), []byte("#!/bin/sh\n"), 0o755)
+	tool := "mytool"
+	if runtime.GOOS == "windows" {
+		tool += ".exe" // listed without the extension
+	}
+	os.WriteFile(filepath.Join(bin, tool), []byte("#!/bin/sh\n"), 0o755)
 	os.WriteFile(filepath.Join(bin, "notexec"), nil, 0o644)
 	names := pathExecutables(bin)
 	has := map[string]bool{}

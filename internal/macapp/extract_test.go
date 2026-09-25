@@ -99,7 +99,8 @@ func TestExtractTarGzPreservesModes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat extracted binary: %v", err)
 	}
-	if got := info.Mode().Perm(); got != 0o755 {
+	// Windows has no Unix permission bits (the app only installs on macOS).
+	if got := info.Mode().Perm(); runtime.GOOS != "windows" && got != 0o755 {
 		t.Fatalf("extracted binary mode = %o, want 0755", got)
 	}
 	if runtime.GOOS != "windows" && info.Mode()&0o111 == 0 {

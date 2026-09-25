@@ -49,6 +49,7 @@ func TestWriteConfigFollowsPort(t *testing.T) {
 			t.Fatal(err)
 		}
 		b, _ := os.ReadFile(paths.MysqlIni())
+		b = []byte(strings.ReplaceAll(string(b), "\r\n", "\n")) // my.ini uses CRLF on Windows
 		if !strings.Contains(string(b), "port="+strconv.Itoa(port)+"\n") {
 			t.Errorf("port %d: my.ini =\n%s", port, b)
 		}
