@@ -31,7 +31,10 @@ func readAll(t *testing.T, p *PTY, d time.Duration) string {
 }
 
 func TestEcho(t *testing.T) {
-	p, err := Start("/bin/echo", []string{"hi"}, "", nil, 80, 24)
+	// Linger briefly after printing: macOS may discard unread pty
+	// output once the slave side closes, so a bare /bin/echo can race
+	// the reader on a slow machine.
+	p, err := Start("/bin/sh", []string{"-c", "echo hi; sleep 0.5"}, "", nil, 80, 24)
 	if err != nil {
 		t.Fatal(err)
 	}
