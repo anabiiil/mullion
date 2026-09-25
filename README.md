@@ -1,7 +1,10 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/brand/mullion-logo-dark.svg">
-    <img src="docs/assets/brand/mullion-logo.svg" alt="Mullion" width="264">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="docs/assets/brand/mullion-logo-dark.svg">
+      <img src="docs/assets/brand/mullion-logo.svg" alt="Mullion" width="264">
+    </picture>
   </picture>
 </p>
 
