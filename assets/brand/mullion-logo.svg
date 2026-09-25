@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 132 32" width="132" height="32">
+  <title>Mullion</title>
+  <g transform="translate(0 2) scale(1.1667)">
+    <rect width="24" height="24" rx="6.5" fill="#FF6B4A"/>
+    <rect x="4.75" y="9.4" width="7" height="2" rx="1" fill="#1C2333" fill-opacity=".45"/>
+    <rect x="10.75" y="4.5" width="2.5" height="15" rx="1.25" fill="#1C2333"/>
+  </g>
+  <text x="37" y="23.5" fill="#1C2333" font-family="Inter, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif"
+        font-size="21" font-weight="700" letter-spacing="-.3">Mullion</text>
+</svg>

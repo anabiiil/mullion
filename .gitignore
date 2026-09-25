@@ -2,3 +2,4 @@ dist/*.exe
 *.exe
 .DS_Store
 .claude/
+internal/macapp/bundle/Mullion.app.tar.gz

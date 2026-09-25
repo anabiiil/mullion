@@ -1,0 +1,392 @@
+{
+ "versions": [
+  {
+   "version": "2.13.0-beta.1",
+   "downloads": [
+    {
+     "arch": "x86_64",
+     "distro": "darwin",
+     "targets": [
+      "macos"
+     ],
+     "archive": {
+      "type": "zip",
+      "url": "https://downloads.mongodb.com/compass/mongosh-2.12.0-darwin-x64.zip",
+      "sha256": "7515f20dd08e900572d67610f22509fe0dc2f004a52f7f3d0c2d5e0166955b07",
+      "sha1": "e89e92f6cc4f7fba6f442c2880710a5a1adb9668"
+     }
+    },
+    {
+     "arch": "arm64",
+     "distro": "darwin",
+     "targets": [
+      "macos"
+     ],
+     "archive": {
+      "type": "zip",
+      "url": "https://downloads.mongodb.com/compass/mongosh-2.12.0-darwin-arm64.zip",
+      "sha256": "1b385d3dd6e29624e94616e6d1015bc8e17eb337a187cc6db8a8a8a1d60763fe",
+      "sha1": "7799e32b9ace9cc0934b70571d96ff7cac6a2ec2"
+     }
+    },
+    {
+     "arch": "x86_64",
+     "distro": "win32",
+     "targets": [
+      "windows"
+     ],
+     "archive": {
+      "type": "zip",
+      "url": "https://downloads.mongodb.com/compass/mongosh-2.12.0-win32-x64.zip",
+      "sha256": "d9dfc366a8a6b6771fcb05fe582d4b1bfe567f7a1ed7a72194dcf5b8202e9db3",
+      "sha1": "66fbb04db8ce085b23638d0537a2cf7ff37b0598"
+     }
+    },
+    {
+     "arch": "x86_64",
+     "distro": "win32msi",
+     "targets": [
+      "windows"
+     ],
+     "archive": {
+      "type": "msi",
+      "url": "https://downloads.mongodb.com/compass/mongosh-2.12.0-x64.msi",
+      "sha256": "b3d9ceae08122bac51ae9ab697ab1555c354cce6f7b31e403e6914533b52a075",
+      "sha1": "50b8775d189fcfbd96a9559e4fe73cddde086034"
+     }
+    },
+    {
+     "arch": "x86_64",
+     "distro": "linux",
+     "targets": [
+      "rhel70",
+      "rhel71",
+      "rhel72",
+      "rhel80",
+      "rhel81",
+      "rhel82",
+      "rhel83",
+      "rhel90",
+      "rhel10",
+      "amazon",
+      "amazon2",
+      "amazon2023",
+      "rhel81",
+      "rhel82",
+      "rhel83",
+      "rhel90",
+      "rhel10",
+      "suse12",
+      "suse15",
+      "ubuntu1804",
+      "ubuntu1804",
+      "ubuntu2004",
+      "ubuntu2204",
+      "ubuntu2404",
+      "debian10",
+      "debian11",
+      "debian12",
+      "debian13"
+     ],
+     "archive": {
+      "type": "tgz",
+      "url": "https://downloads.mongodb.com/compass/mongosh-2.12.0-linux-x64.tgz",
+      "sha256": "aa42cb826b7b8e655c5481293f5365ddaf1a23e43af07520326e5bbc957838ad",
+      "sha1": "31c9a6b7b756268988e9f9319711c47271ce12a8"
+     }
+    }
+   ]
+  },
+  {
+   "version": "2.12.0",
+   "downloads": [
+    {
+     "arch": "x86_64",
+     "distro": "darwin",
+     "targets": [
+      "macos"
+     ],
+     "archive": {
+      "type": "zip",
+      "url": "https://downloads.mongodb.com/compass/mongosh-2.12.0-darwin-x64.zip",
+      "sha256": "7515f20dd08e900572d67610f22509fe0dc2f004a52f7f3d0c2d5e0166955b07",
+      "sha1": "e89e92f6cc4f7fba6f442c2880710a5a1adb9668"
+     }
+    },
+    {
+     "arch": "arm64",
+     "distro": "darwin",
+     "targets": [
+      "macos"
+     ],
+     "archive": {
+      "type": "zip",
+      "url": "https://downloads.mongodb.com/compass/mongosh-2.12.0-darwin-arm64.zip",
+      "sha256": "1b385d3dd6e29624e94616e6d1015bc8e17eb337a187cc6db8a8a8a1d60763fe",
+      "sha1": "7799e32b9ace9cc0934b70571d96ff7cac6a2ec2"
+     }
+    },
+    {
+     "arch": "x86_64",
+     "distro": "win32",
+     "targets": [
+      "windows"
+     ],
+     "archive": {
+      "type": "zip",
+      "url": "https://downloads.mongodb.com/compass/mongosh-2.12.0-win32-x64.zip",
+      "sha256": "d9dfc366a8a6b6771fcb05fe582d4b1bfe567f7a1ed7a72194dcf5b8202e9db3",
+      "sha1": "66fbb04db8ce085b23638d0537a2cf7ff37b0598"
+     }
+    },
+    {
+     "arch": "x86_64",
+     "distro": "win32msi",
+     "targets": [
+      "windows"
+     ],
+     "archive": {
+      "type": "msi",
+      "url": "https://downloads.mongodb.com/compass/mongosh-2.12.0-x64.msi",
+      "sha256": "b3d9ceae08122bac51ae9ab697ab1555c354cce6f7b31e403e6914533b52a075",
+      "sha1": "50b8775d189fcfbd96a9559e4fe73cddde086034"
+     }
+    },
+    {
+     "arch": "x86_64",
+     "distro": "linux",
+     "targets": [
+      "rhel70",
+      "rhel71",
+      "rhel72",
+      "rhel80",
+      "rhel81",
+      "rhel82",
+      "rhel83",
+      "rhel90",
+      "rhel10",
+      "amazon",
+      "amazon2",
+      "amazon2023",
+      "rhel81",
+      "rhel82",
+      "rhel83",
+      "rhel90",
+      "rhel10",
+      "suse12",
+      "suse15",
+      "ubuntu1804",
+      "ubuntu1804",
+      "ubuntu2004",
+      "ubuntu2204",
+      "ubuntu2404",
+      "debian10",
+      "debian11",
+      "debian12",
+      "debian13"
+     ],
+     "archive": {
+      "type": "tgz",
+      "url": "https://downloads.mongodb.com/compass/mongosh-2.12.0-linux-x64.tgz",
+      "sha256": "aa42cb826b7b8e655c5481293f5365ddaf1a23e43af07520326e5bbc957838ad",
+      "sha1": "31c9a6b7b756268988e9f9319711c47271ce12a8"
+     }
+    }
+   ]
+  },
+  {
+   "version": "2.11.1",
+   "downloads": [
+    {
+     "arch": "x86_64",
+     "distro": "darwin",
+     "targets": [
+      "macos"
+     ],
+     "archive": {
+      "type": "zip",
+      "url": "https://downloads.mongodb.com/compass/mongosh-2.11.1-darwin-x64.zip",
+      "sha256": "0c1523351c0129480ef27c6c1a8a6a3437f9c7c824258c8943561126b4b148d9",
+      "sha1": "cbfa0c1e2856ea7134449137b5a3fbce5d607862"
+     }
+    },
+    {
+     "arch": "arm64",
+     "distro": "darwin",
+     "targets": [
+      "macos"
+     ],
+     "archive": {
+      "type": "zip",
+      "url": "https://downloads.mongodb.com/compass/mongosh-2.11.1-darwin-arm64.zip",
+      "sha256": "1cc68a69b36c31306a55c5d2973a5558b7eceb11df40614e6a9240dd3ff7e21d",
+      "sha1": "55f31d499856df1b9bb88d0f89d0da2ceb05fe36"
+     }
+    },
+    {
+     "arch": "x86_64",
+     "distro": "win32",
+     "targets": [
+      "windows"
+     ],
+     "archive": {
+      "type": "zip",
+      "url": "https://downloads.mongodb.com/compass/mongosh-2.11.1-win32-x64.zip",
+      "sha256": "75958322cd2dec54f429793a9614d9ed542dd52eb8de8044c8bcdb95f53db348",
+      "sha1": "d170eb8d80c9627027a421ead4c421f2024a1fea"
+     }
+    },
+    {
+     "arch": "x86_64",
+     "distro": "win32msi",
+     "targets": [
+      "windows"
+     ],
+     "archive": {
+      "type": "msi",
+      "url": "https://downloads.mongodb.com/compass/mongosh-2.11.1-x64.msi",
+      "sha256": "fc34f1242d226a4a578baa4d122988c692e1cb2f8213c1452cc0e158e1159ab7",
+      "sha1": "c977ff0418c33d50b32eb2545c85495645a26c60"
+     }
+    },
+    {
+     "arch": "x86_64",
+     "distro": "linux",
+     "targets": [
+      "rhel70",
+      "rhel71",
+      "rhel72",
+      "rhel80",
+      "rhel81",
+      "rhel82",
+      "rhel83",
+      "rhel90",
+      "rhel10",
+      "amazon",
+      "amazon2",
+      "amazon2023",
+      "rhel81",
+      "rhel82",
+      "rhel83",
+      "rhel90",
+      "rhel10",
+      "suse12",
+      "suse15",
+      "ubuntu1804",
+      "ubuntu1804",
+      "ubuntu2004",
+      "ubuntu2204",
+      "ubuntu2404",
+      "debian10",
+      "debian11",
+      "debian12",
+      "debian13"
+     ],
+     "archive": {
+      "type": "tgz",
+      "url": "https://downloads.mongodb.com/compass/mongosh-2.11.1-linux-x64.tgz",
+      "sha256": "3cc12c23fcd1ad8da2663316966cfff6b0b6a99e764972e9e16771168a9f4c3a",
+      "sha1": "3ebe4ee76e08c12b93b6b0c1214322f8076d9e73"
+     }
+    }
+   ]
+  },
+  {
+   "version": "2.10.0",
+   "downloads": [
+    {
+     "arch": "x86_64",
+     "distro": "darwin",
+     "targets": [
+      "macos"
+     ],
+     "archive": {
+      "type": "zip",
+      "url": "https://downloads.mongodb.com/compass/mongosh-2.10.0-darwin-x64.zip",
+      "sha256": "8080bf32dc01a141f3286558435901a2d4b3df9dff61aa09ece53a3739195fce",
+      "sha1": "af387089da00a25cce5a6bc22ae350b3eb3b775a"
+     }
+    },
+    {
+     "arch": "arm64",
+     "distro": "darwin",
+     "targets": [
+      "macos"
+     ],
+     "archive": {
+      "type": "zip",
+      "url": "https://downloads.mongodb.com/compass/mongosh-2.10.0-darwin-arm64.zip",
+      "sha256": "cc2ba0059b462f6b3ef8d8080b84801450c8f37cf6a8549bbb6a9bec87cb557e",
+      "sha1": "ced5cf9889de9606a0852cf22b2ecfcc4faa31ab"
+     }
+    },
+    {
+     "arch": "x86_64",
+     "distro": "win32",
+     "targets": [
+      "windows"
+     ],
+     "archive": {
+      "type": "zip",
+      "url": "https://downloads.mongodb.com/compass/mongosh-2.10.0-win32-x64.zip",
+      "sha256": "4f52b0bb5a08374b8ceec19d2b8da7544985aab377d5799642f31a198554562a",
+      "sha1": "7343a6b495d01b61a20df9df3cc6258cf6e849da"
+     }
+    },
+    {
+     "arch": "x86_64",
+     "distro": "win32msi",
+     "targets": [
+      "windows"
+     ],
+     "archive": {
+      "type": "msi",
+      "url": "https://downloads.mongodb.com/compass/mongosh-2.10.0-x64.msi",
+      "sha256": "589a3abd551e97e32b0b91b9f868887d6bb0de8005a36c56cfc2ab0f7f4a4b58",
+      "sha1": "c660bb1abdccca6ef5685e99d7fe895806a927d3"
+     }
+    },
+    {
+     "arch": "x86_64",
+     "distro": "linux",
+     "targets": [
+      "rhel70",
+      "rhel71",
+      "rhel72",
+      "rhel80",
+      "rhel81",
+      "rhel82",
+      "rhel83",
+      "rhel90",
+      "rhel10",
+      "amazon",
+      "amazon2",
+      "amazon2023",
+      "rhel81",
+      "rhel82",
+      "rhel83",
+      "rhel90",
+      "rhel10",
+      "suse12",
+      "suse15",
+      "ubuntu1804",
+      "ubuntu1804",
+      "ubuntu2004",
+      "ubuntu2204",
+      "ubuntu2404",
+      "debian10",
+      "debian11",
+      "debian12",
+      "debian13"
+     ],
+     "archive": {
+      "type": "tgz",
+      "url": "https://downloads.mongodb.com/compass/mongosh-2.10.0-linux-x64.tgz",
+      "sha256": "42034ba0fc9a48fd65ddcc5150b2e9d8a777965019220744baee42ee9669d543",
+      "sha1": "373c325c8699ce281d849b6719ff8ab156789439"
+     }
+    }
+   ]
+  }
+ ]
+}

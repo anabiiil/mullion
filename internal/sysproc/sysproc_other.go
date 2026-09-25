@@ -11,6 +11,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"pm/internal/tty"
 )
 
 // portOwner resolves which process listens on the port.
@@ -212,8 +214,7 @@ func stopManagedService(procName string) {
 }
 
 func stdinIsTerminal() bool {
-	info, err := os.Stdin.Stat()
-	return err == nil && info.Mode()&os.ModeCharDevice != 0
+	return tty.IsTerminal(os.Stdin)
 }
 
 // PortActive reports whether any ESTABLISHED TCP connection exists to

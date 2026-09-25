@@ -33,6 +33,24 @@ type Config struct {
 	// MySQLPassword is the root password of Mullion's MySQL ("" = none).
 	// Stored in plain text: this is a LOCAL dev server bound to 127.0.0.1.
 	MySQLPassword string `json:"mysqlPassword,omitempty"`
+	// MySQLStopped records that the user stopped MySQL on purpose —
+	// Apply/self-heal/autostart must not resurrect it until they start
+	// it again. Starting MySQL clears this flag.
+	MySQLStopped bool `json:"mysqlStopped,omitempty"`
+	// Postgres is the installed server version ("" = not installed).
+	Postgres string `json:"postgres,omitempty"`
+	// PostgresPassword is the superuser password of Mullion's Postgres
+	// ("" = none). Stored in plain text: a LOCAL dev server bound to
+	// 127.0.0.1.
+	PostgresPassword string `json:"postgresPassword,omitempty"`
+	// PostgresStopped records that the user stopped Postgres on purpose
+	// — see MySQLStopped.
+	PostgresStopped bool `json:"postgresStopped,omitempty"`
+	// Mongo is the installed server version ("" = not installed).
+	Mongo string `json:"mongo,omitempty"`
+	// MongoStopped records that the user stopped MongoDB on purpose —
+	// see MySQLStopped.
+	MongoStopped bool `json:"mongoStopped,omitempty"`
 	// GlobalNode is the full Node version the node/current junction points at.
 	GlobalNode string `json:"globalNode,omitempty"`
 }

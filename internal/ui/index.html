@@ -5,144 +5,207 @@
 <title>Mullion — Local Dev Server</title>
 <link rel="icon" type="image/png" href="/favicon.png">
 <style>
+  /* Palette "Midnight + coral". Coral is the brand/primary colour only —
+     danger is a separate, deeper red. Text on coral uses the midnight ink
+     (white on #FF6B4A is under 3:1; midnight is ~5.6:1). */
   :root {
-    --accent: #4f63e6; --accent-deep: #4356ce; --accent-ink: #ffffff;
-    --accent-soft: rgba(79, 99, 230, .09);
-    --bg: #f6f7f9; --side: #ffffff; --card: #ffffff; --inset: #f1f2f6;
-    --text: #1a1d26; --muted: #737a8c; --faint: #a2a8b8;
-    --border: #e7e9f0; --border-strong: #d9dce6;
-    --ok: #189a52; --ok-bg: #e9f7ef; --bad: #d4373e; --bad-bg: #fdeeee;
-    --warn-bg: #fdf6e3; --warn-text: #8a6a12;
-    --shadow: 0 1px 2px rgba(20, 22, 32, .05);
-    --shadow-lg: 0 6px 24px rgba(20, 22, 32, .08);
-    --mono: "SF Mono", "Cascadia Code", Consolas, monospace;
+    color-scheme: light;
+    --accent: #ff6b4a; --accent-deep: #f0552f; --accent-ink: #1c2333;
+    --accent-soft: rgba(255, 107, 74, .10); --accent-ring: rgba(255, 107, 74, .24);
+    --accent-text: #c4452a;
+    --bg: #f3f4f7; --card: #ffffff; --inset: #f6f7fa; --input: #f7f8fa;
+    --text: #1a1f2b; --muted: #6b7385; --faint: #a3a9b7;
+    --border: #e6e8ee; --border-strong: #d7dae3; --row: #eef0f4; --row-hover: #f8f9fb;
+    --side: #1c2333; --side-border: #1c2333; --side-text: #aeb6c8; --side-dim: #6f7a93;
+    --side-hover: rgba(255, 255, 255, .06); --side-line: rgba(255, 255, 255, .08);
+    --ink-card: #1c2333; --ink-card-border: #1c2333;
+    --seg-active: #1c2333; --seg-active-text: #ffffff;
+    --ok: #1a9553; --ok-bg: #e6f5ec; --bad: #d93a3a; --bad-bg: #fdeded;
+    --bad-solid: #d93a3a; --bad-solid-deep: #bf2e2e;
+    --warn-bg: #fdf4e1; --warn-text: #8a5a0b; --warn-line: #f3dfb3;
+    --toast: #1c2333;
+    --shadow: 0 1px 2px rgba(22, 28, 45, .04), 0 2px 6px rgba(22, 28, 45, .03);
+    --shadow-lg: 0 14px 36px rgba(22, 28, 45, .12);
+    --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5l3 3 3-3' fill='none' stroke='%236b7385' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    --mono: "SF Mono", "Cascadia Code", ui-monospace, Consolas, monospace;
   }
   html[data-theme=dark] {
-    --accent: #7186ff; --accent-deep: #5f76f5; --accent-ink: #ffffff;
-    --accent-soft: rgba(113, 134, 255, .12);
-    --bg: #0c0e13; --side: #10131a; --card: #141822; --inset: #0f121a;
-    --text: #e7e9f1; --muted: #8d94a6; --faint: #5c6274;
-    --border: #222736; --border-strong: #2d3346;
-    --ok: #3ecf7a; --ok-bg: #10251a; --bad: #f07178; --bad-bg: #2a1719;
-    --warn-bg: #2b230c; --warn-text: #e5c15c;
-    --shadow: 0 1px 2px rgba(0, 0, 0, .4);
-    --shadow-lg: 0 8px 28px rgba(0, 0, 0, .45);
+    color-scheme: dark;
+    --accent: #ff7a5c; --accent-deep: #ff8e74; --accent-ink: #151b27;
+    --accent-soft: rgba(255, 122, 92, .12); --accent-ring: rgba(255, 122, 92, .28);
+    --accent-text: #ff8e74;
+    --bg: #0e121a; --card: #161c28; --inset: #121722; --input: #111620;
+    --text: #e8ebf2; --muted: #8c94a6; --faint: #5e6678;
+    --border: #232a38; --border-strong: #2e3647; --row: #1e2430; --row-hover: #1a2030;
+    --side: #151b27; --side-border: #232a38; --side-text: #aeb6c8; --side-dim: #69738a;
+    --side-hover: rgba(255, 255, 255, .05); --side-line: rgba(255, 255, 255, .07);
+    --ink-card: #202839; --ink-card-border: #2b3448;
+    --seg-active: #2a3347; --seg-active-text: #ffffff;
+    --ok: #3ecf7a; --ok-bg: rgba(62, 207, 122, .12); --bad: #f26d6d; --bad-bg: rgba(242, 109, 109, .12);
+    --bad-solid: #d93a3a; --bad-solid-deep: #e24848;
+    --warn-bg: rgba(229, 184, 92, .10); --warn-text: #e5b85c; --warn-line: rgba(229, 184, 92, .22);
+    --toast: #2a3347;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .35);
+    --shadow-lg: 0 16px 40px rgba(0, 0, 0, .5);
+    --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5l3 3 3-3' fill='none' stroke='%238c94a6' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text);
-         font: 13.5px/1.55 Inter, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+         font: 13.5px/1.55 Inter, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
          -webkit-font-smoothing: antialiased; }
 
-  .shell { display: flex; min-height: 100vh; }
+  .shell { display: flex; align-items: flex-start; min-height: 100vh; padding: 14px 0 14px 14px; }
 
   /* ── sidebar ─────────────────────────────────────────────── */
-  .side { width: 236px; flex: none; background: var(--side);
-          border-right: 1px solid var(--border);
-          display: flex; flex-direction: column; gap: 3px;
-          padding: 22px 14px 16px; position: sticky; top: 0; height: 100vh; }
-  .brand { display: flex; align-items: center; gap: 11px; padding: 0 8px 20px; }
+  /* A midnight card floating inside the window. Its right padding is 0 so
+     the active nav row can run to the card's edge and "break out" into the
+     page (see .nav a.active). */
+  .side { width: 236px; flex: none; align-self: flex-start;
+          background: var(--side); border: 1px solid var(--side-border);
+          border-radius: 24px; color: var(--side-text);
+          display: flex; flex-direction: column;
+          padding: 22px 0 18px 14px; position: sticky; top: 14px;
+          height: calc(100vh - 28px); }
+  .brand { display: flex; align-items: center; gap: 11px; padding: 0 14px 22px 8px; }
   .brand svg { width: 34px; height: 34px; flex: none; }
-  .brand b { font-size: 16.5px; font-weight: 700; letter-spacing: .2px; }
-  .brand span { display: block; font-size: 11px; color: var(--muted); margin-top: -2px; }
+  .brand b { font-size: 16.5px; font-weight: 700; letter-spacing: .1px; color: #fff; }
+  .brand span { display: block; font-size: 11px; color: var(--side-dim); margin-top: -2px; }
+  .nav { display: flex; flex-direction: column; gap: 2px; }
   .nav-label { font-size: 10.5px; font-weight: 700; letter-spacing: 1px;
-               text-transform: uppercase; color: var(--faint); padding: 12px 10px 5px; }
-  .nav a { display: flex; align-items: center; gap: 10px;
-           padding: 8.5px 11px; border-radius: 10px; text-decoration: none;
-           color: var(--muted); font-weight: 550; font-size: 13px;
+               text-transform: uppercase; color: var(--side-dim); padding: 14px 12px 6px; }
+  .nav a { display: flex; align-items: center; gap: 11px; margin-right: 14px;
+           padding: 9px 12px; border-radius: 12px; text-decoration: none;
+           color: var(--side-text); font-weight: 550; font-size: 13px;
            transition: background .12s, color .12s; position: relative; }
-  .nav a:hover { background: var(--inset); color: var(--text); }
-  .nav a.active { background: var(--accent); color: var(--accent-ink); font-weight: 650; }
-  .nav a.active svg { opacity: 1; }
-  .nav a svg { width: 16px; height: 16px; flex: none; opacity: .7; }
+  .nav a:hover { background: var(--side-hover); color: #fff; text-decoration: none; }
+  .nav a svg { width: 17px; height: 17px; flex: none; opacity: .8; }
+  /* The active row takes the page colour and runs past the card's right
+     edge (margin-right: -1px also covers the hairline border), and two
+     18px squares above and below it are filled with the page colour
+     except for a quarter circle — the concave "inverted" corners that make
+     the tab flow into the content area. Pure CSS, theme-aware via --bg. */
+  .nav a.active { background: var(--bg); color: var(--text); font-weight: 650;
+                  margin-right: -1px; padding-right: 27px;
+                  border-radius: 14px 0 0 14px; z-index: 1; }
+  .nav a.active svg { opacity: 1; color: var(--accent); }
+  .nav a.active::before, .nav a.active::after {
+    content: ""; position: absolute; right: 0; width: 18px; height: 18px; pointer-events: none; }
+  .nav a.active::before { top: -18px;
+    background: radial-gradient(circle at 0 0, transparent 17.5px, var(--bg) 18px); }
+  .nav a.active::after { bottom: -18px;
+    background: radial-gradient(circle at 0 100%, transparent 17.5px, var(--bg) 18px); }
   .nav a .count { margin-left: auto; font-size: 10.5px; font-weight: 700;
-                  background: var(--inset); color: var(--muted);
-                  border-radius: 999px; padding: 1px 8px; }
-  .nav a.active .count { background: rgba(0,0,0,.14); color: var(--accent-ink); }
-  .side-foot { margin-top: auto; padding: 14px 8px 0;
-               border-top: 1px solid var(--border);
-               display: flex; flex-direction: column; gap: 12px; }
-  .side-foot .ver { font-size: 11px; color: var(--faint); font-family: var(--mono); }
+                  background: var(--side-line); color: var(--side-text);
+                  border-radius: 999px; padding: 1px 8px; min-width: 22px; text-align: center; }
+  .nav a.active .count { background: var(--accent-soft); color: var(--accent-text); }
+  .side-foot { margin: auto 14px 0 0; padding: 16px 4px 0;
+               border-top: 1px solid var(--side-line);
+               display: flex; flex-direction: column; gap: 13px; }
+  .side-foot .ver { font-size: 11px; color: var(--side-dim); font-family: var(--mono); }
+  .side-foot label.toggle { color: var(--side-text); }
+  .side-foot .switch i { background: rgba(255, 255, 255, .16); }
 
   /* ── theme pill ──────────────────────────────────────────── */
-  .theme-pill { display: inline-flex; background: var(--inset);
-                border: 1px solid var(--border); border-radius: 999px; padding: 3px; }
-  .theme-pill button { border: none; background: transparent; box-shadow: none;
-                border-radius: 999px; padding: 5px 14px; font-size: 12px;
-                color: var(--muted); font-weight: 600; }
-  .theme-pill button:hover { color: var(--text); border: none; }
-  .theme-pill button.active { background: var(--card); color: var(--text);
-                box-shadow: var(--shadow); }
+  .theme-pill { display: flex; background: rgba(255, 255, 255, .05);
+                border: 1px solid var(--side-line); border-radius: 999px; padding: 3px; }
+  .theme-pill button { flex: 1; border: none; background: transparent; box-shadow: none;
+                border-radius: 999px; padding: 5px 10px; font-size: 12px;
+                color: var(--side-text); font-weight: 600; white-space: nowrap; }
+  .theme-pill button:hover { color: #fff; border: none; background: transparent; }
+  .theme-pill button.active { background: rgba(255, 255, 255, .13); color: #fff; }
+  .theme-pill .ti { display: inline-block; width: 1em; text-align: center; }
 
   /* ── content ─────────────────────────────────────────────── */
   .content { flex: 1; min-width: 0; }
-  .topbar { display: flex; align-items: center; gap: 12px;
-            padding: 20px 34px 6px; }
-  .topbar h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.3px; }
-  .topbar .sub { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
+  .topbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+            max-width: 1120px; margin: 0 auto; padding: 18px 32px 8px; }
+  .topbar h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.4px; line-height: 1.25; }
+  .topbar .sub { color: var(--muted); font-size: 13px; margin-top: 3px; }
   .spacer { flex: 1; }
 
-  main { max-width: 960px; width: 100%; margin: 0 auto;
-         padding: 16px 34px 48px; }
+  main { max-width: 1120px; width: 100%; margin: 0 auto;
+         padding: 16px 32px 48px; }
   .page { display: none; animation: rise .3s ease both; }
-  .page.active { display: grid; gap: 20px; }
+  .page.active { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
   @keyframes rise { from { opacity: 0; transform: translateY(8px); }
                     to   { opacity: 1; transform: none; } }
 
   section.card { background: var(--card); border: 1px solid var(--border);
-                 border-radius: 16px; box-shadow: var(--shadow); }
-  .card-head { display: flex; align-items: center; gap: 10px;
-               padding: 16px 22px; border-bottom: 1px solid var(--border); }
-  .card-head svg { width: 17px; height: 17px; color: var(--accent); flex: none; }
-  .card-head h2 { margin: 0; font-size: 14px; font-weight: 650; }
+                 border-radius: 20px; box-shadow: var(--shadow); }
+  .card-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+               padding: 16px 24px; border-bottom: 1px solid var(--row); }
+  .card-head > svg { width: 32px; height: 32px; padding: 7.5px; border-radius: 10px;
+                     background: var(--accent-soft); color: var(--accent); flex: none; }
+  .card-head h2 { margin: 0; font-size: 15px; font-weight: 650; letter-spacing: -.1px; }
   .card-head .hint { margin-left: auto; font-size: 12px; color: var(--muted); }
-  .card-body { padding: 18px 22px; }
+  .card-body { padding: 20px 24px 22px; overflow-x: auto; }
 
   .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .row + .row { margin-top: 14px; }
-  .label { font-size: 12.5px; color: var(--muted); font-weight: 550; }
+  .label { font-size: 12.5px; color: var(--muted); font-weight: 600; }
 
   /* ── stat cards ──────────────────────────────────────────── */
-  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; }
   .stat { background: var(--card); border: 1px solid var(--border);
-          border-radius: 16px; padding: 18px 20px; box-shadow: var(--shadow);
-          display: flex; flex-direction: column; gap: 5px; cursor: pointer;
+          border-radius: 20px; padding: 20px 22px 18px; box-shadow: var(--shadow);
+          display: flex; flex-direction: column; gap: 4px; cursor: pointer;
+          position: relative; overflow: hidden; min-height: 132px;
           transition: box-shadow .18s, transform .18s; }
-  .stat:hover { box-shadow: var(--shadow-lg); transform: translateY(-1px); }
-  .stat .k { font-size: 12px; color: var(--muted); font-weight: 600;
-             display: flex; align-items: center; gap: 7px; }
-  .stat .k svg { width: 14px; height: 14px; color: var(--accent); }
-  .stat .v { font-size: 21px; font-weight: 700; letter-spacing: -.4px;
+  .stat:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
+  .stat .k { font-size: 12.5px; color: var(--muted); font-weight: 600;
+             display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .stat .k svg { width: 30px; height: 30px; padding: 7px; border-radius: 10px;
+                 background: var(--accent-soft); color: var(--accent); flex: none; }
+  .stat .v { font-size: 25px; font-weight: 700; letter-spacing: -.6px; line-height: 1.2;
              font-variant-numeric: tabular-nums; }
-  .stat .d { font-size: 11.5px; color: var(--faint); }
+  .stat .v.mono { font-size: 22px; letter-spacing: -.3px; }
+  .stat .d { font-size: 12px; color: var(--muted); }
+  /* featured: the coral card and the midnight card */
+  .stat.feature { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .stat.feature .k, .stat.feature .d { color: var(--accent-ink); }
+  .stat.feature .k svg { background: rgba(28, 35, 51, .12); color: var(--accent-ink); }
+  .stat > * { position: relative; z-index: 1; }
+  .stat.feature::after, .stat.ink::after { content: ""; position: absolute; right: -44px; top: -54px;
+                         width: 132px; height: 132px; border-radius: 50%; pointer-events: none;
+                         border: 22px solid rgba(255, 255, 255, .16); }
+  .stat.ink { background: var(--ink-card); border-color: var(--ink-card-border); color: #fff; }
+  .stat.ink .k, .stat.ink .d { color: #aeb6c8; }
+  .stat.ink .k svg { background: rgba(255, 255, 255, .08); color: var(--accent); }
+  .stat.ink::after { border-color: rgba(255, 255, 255, .05); }
 
   /* ── controls ────────────────────────────────────────────── */
   button { border: 1px solid var(--border-strong); background: var(--card);
-           color: var(--text); border-radius: 10px; padding: 7.5px 16px;
-           cursor: pointer; font: inherit; font-size: 13px; font-weight: 600;
-           transition: border-color .12s, background .12s, transform .06s; }
-  button:hover { border-color: var(--accent); color: var(--accent); }
+           color: var(--text); border-radius: 10px; padding: 8px 16px;
+           cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; line-height: 1.35;
+           transition: border-color .12s, background .12s, color .12s, box-shadow .12s, transform .06s; }
+  button:hover { border-color: var(--accent); color: var(--accent-text); }
   button:active { transform: translateY(1px); }
+  button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-ring); }
   button.primary { background: var(--accent); border-color: var(--accent);
                    color: var(--accent-ink); }
   button.primary:hover { background: var(--accent-deep); border-color: var(--accent-deep);
                    color: var(--accent-ink); }
-  button.danger { color: var(--muted); }
-  button.danger:hover { border-color: var(--bad); color: var(--bad); }
+  button.danger { color: var(--bad); }
+  button.danger:hover { border-color: var(--bad); background: var(--bad-bg); color: var(--bad); }
   button.sm { padding: 5px 12px; font-size: 12px; border-radius: 8px; }
 
   select, input[type=text], input[type=password] {
-           border: 1px solid var(--border-strong); background: var(--inset);
-           color: var(--text); border-radius: 10px; padding: 7.5px 11px;
-           font: inherit; font-size: 13px; outline: none;
-           transition: border-color .12s, box-shadow .12s; }
-  select:focus, input:focus { border-color: var(--accent);
-           box-shadow: 0 0 0 3px var(--accent-soft); }
+           border: 1px solid var(--border); background: var(--input);
+           color: var(--text); border-radius: 10px; padding: 8px 12px;
+           font: inherit; font-size: 13px; outline: none; line-height: 1.35;
+           transition: border-color .12s, box-shadow .12s, background .12s; }
+  select { -webkit-appearance: none; appearance: none; cursor: pointer;
+           padding-right: 30px; background-image: var(--chevron);
+           background-repeat: no-repeat; background-position: right 10px center; background-size: 12px; }
+  select:hover, input[type=text]:hover, input[type=password]:hover { border-color: var(--border-strong); }
+  select:focus, input:focus { border-color: var(--accent); background-color: var(--card);
+           box-shadow: 0 0 0 3px var(--accent-ring); }
   input::placeholder { color: var(--faint); }
   .mono { font-family: var(--mono); font-size: 12.5px; }
 
   /* ── status ──────────────────────────────────────────────── */
   .pill { display: inline-flex; align-items: center; gap: 7px;
-          font-size: 12px; font-weight: 650; padding: 6px 14px;
+          font-size: 12px; font-weight: 650; padding: 6px 13px;
           border-radius: 999px; }
   .pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%;
                   background: currentColor; }
@@ -151,85 +214,200 @@
   .pill.off { color: var(--bad); background: var(--bad-bg); }
   @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ok) 40%, transparent); }
                      60%      { box-shadow: 0 0 0 5px transparent; } }
-  .badge { font-size: 11px; font-weight: 650; padding: 3px 10px;
-           border-radius: 999px; letter-spacing: .2px; }
-  .badge.on  { color: var(--ok);  background: var(--ok-bg); }
+  .badge { display: inline-block; font-size: 11px; font-weight: 650; padding: 3px 10px;
+           border-radius: 999px; letter-spacing: .2px; line-height: 1.4;
+           color: var(--muted); background: var(--inset); border: 1px solid var(--border);
+           font-family: inherit; vertical-align: middle; white-space: nowrap; }
+  .badge.on  { color: var(--ok);  background: var(--ok-bg); border-color: transparent; }
   .badge.off { color: var(--muted); background: var(--inset); }
   .muted { color: var(--muted); font-size: 12.5px; }
-  .warn { background: var(--warn-bg); color: var(--warn-text);
-          border-radius: 12px; padding: 12px 16px; font-size: 13px; }
-  .note { background: var(--accent-soft); color: var(--accent);
-          border-radius: 12px; padding: 12px 16px; font-size: 12.5px; font-weight: 550; }
+  .warn { background: var(--warn-bg); color: var(--warn-text); border: 1px solid var(--warn-line);
+          border-radius: 14px; padding: 12px 16px; font-size: 13px; font-weight: 550; }
+  .note { background: var(--accent-soft); color: var(--accent-text);
+          border-radius: 14px; padding: 12px 16px; font-size: 12.5px; font-weight: 550; }
 
   /* ── table ───────────────────────────────────────────────── */
   table { width: 100%; border-collapse: collapse; }
-  th { text-align: left; color: var(--faint); font-weight: 650;
+  th { text-align: left; color: var(--muted); font-weight: 650;
        font-size: 10.5px; text-transform: uppercase; letter-spacing: .8px;
-       padding: 4px 10px 9px; border-bottom: 1px solid var(--border); }
-  td { padding: 11px 10px; border-bottom: 1px solid var(--border);
-       vertical-align: middle; }
-  tbody tr:hover td { background: var(--inset); }
+       padding: 2px 12px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 12px; border-bottom: 1px solid var(--row); vertical-align: middle; }
+  tbody tr { transition: background .12s; }
+  tbody tr:hover td { background: var(--row-hover); }
   tr:last-child td { border-bottom: none; }
-  a { color: var(--accent); text-decoration: none; font-weight: 600; }
+  td.mono.muted { word-break: break-all; min-width: 160px; font-size: 12px; }
+  td select { padding-top: 6px; padding-bottom: 6px; font-size: 12px; }
+  a { color: var(--accent-text); text-decoration: none; font-weight: 600; }
   a:hover { text-decoration: underline; }
-  .empty { color: var(--faint); text-align: center; padding: 26px 0; font-size: 13px; }
+  .empty { color: var(--muted); text-align: center; padding: 34px 0 30px; font-size: 13px; }
+  tbody tr:hover td.empty { background: transparent; }
+  .empty::before { content: ""; display: block; width: 40px; height: 40px; margin: 0 auto 12px;
+                   border-radius: 12px; background-color: var(--accent-soft);
+                   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23ff6b4a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M22 12h-6l-2 3h-4l-2-3H2'/%3E%3Cpath d='M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z'/%3E%3C/svg%3E");
+                   background-repeat: no-repeat; background-position: center; background-size: 20px; }
 
   /* ── toggle switch ───────────────────────────────────────── */
-  .switch { position: relative; width: 34px; height: 19px; display: inline-block; }
+  .switch { position: relative; width: 36px; height: 20px; display: inline-block; flex: none; }
   .switch input { opacity: 0; width: 0; height: 0; }
   .switch i { position: absolute; inset: 0; border-radius: 999px;
-              background: var(--border-strong); transition: background .15s; }
+              background: var(--border-strong); transition: background .15s; cursor: pointer; }
   .switch i::after { content: ""; position: absolute; top: 2px; left: 2px;
-              width: 15px; height: 15px; border-radius: 50%; background: #fff;
+              width: 16px; height: 16px; border-radius: 50%; background: #fff;
               transition: transform .18s cubic-bezier(.34,1.56,.64,1);
-              box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+              box-shadow: 0 1px 3px rgba(0,0,0,.25); }
   .switch input:checked + i { background: var(--accent); }
-  .switch input:checked + i::after { transform: translateX(15px); }
-  label.toggle { display: flex; align-items: center; gap: 9px; cursor: pointer;
+  .switch input:checked + i::after { transform: translateX(16px); }
+  .switch input:focus-visible + i { box-shadow: 0 0 0 3px var(--accent-ring); }
+  label.toggle { display: flex; align-items: center; gap: 10px; cursor: pointer;
                  font-size: 12.5px; color: var(--muted); }
 
   /* ── extensions ──────────────────────────────────────────── */
   .ext-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-              gap: 2px 14px; margin-top: 14px; padding: 14px 16px;
+              gap: 2px 14px; margin-top: 16px; padding: 14px 18px;
               background: var(--inset); border: 1px solid var(--border);
-              border-radius: 12px; }
-  .ext-grid label { display: flex; align-items: center; gap: 8px; cursor: pointer;
-                    font-size: 12.5px; padding: 4px 0; font-family: var(--mono);
+              border-radius: 14px; }
+  .ext-grid label { display: flex; align-items: center; gap: 9px; cursor: pointer;
+                    font-size: 12.5px; padding: 5px 0; font-family: var(--mono);
                     color: var(--muted); }
   .ext-grid label:hover { color: var(--text); }
-  .ext-grid input { accent-color: var(--accent); }
-  .ext-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
+  .ext-grid input { accent-color: var(--accent); width: 14px; height: 14px; margin: 0; }
+  .ext-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 16px; }
   .ext-chips span { font-family: var(--mono); font-size: 11.5px; color: var(--muted);
                     background: var(--inset); border: 1px solid var(--border);
                     border-radius: 999px; padding: 4px 12px; }
 
+  /* ── ini settings ────────────────────────────────────────── */
+  .ini-grid { display: flex; flex-direction: column; margin-top: 16px;
+              border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .ini-row { display: flex; align-items: center; gap: 14px;
+             padding: 12px 18px; background: var(--card); transition: background .12s; }
+  .ini-row:hover { background: var(--row-hover); }
+  .ini-row + .ini-row { border-top: 1px solid var(--row); }
+  .ini-row .ini-label { flex: 1 1 auto; min-width: 0; }
+  .ini-row .ini-name { font-weight: 600; font-size: 13px; }
+  .ini-row .ini-key { display: block; font-family: var(--mono); font-size: 11px;
+                       color: var(--muted); margin-top: 1px; }
+  .ini-row .ini-control { flex: none; display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .ini-row .ini-control .mono { word-break: break-all; }
+  .ini-row input[type=text] { width: 150px; }
+  .ini-row select { min-width: 150px; }
+
+  /* ── database engine tabs ────────────────────────────────── */
+  .db-tabs { display: inline-flex; gap: 4px; justify-self: start;
+             background: var(--card); border: 1px solid var(--border);
+             border-radius: 999px; padding: 5px; box-shadow: var(--shadow); }
+  .db-tabs button { border: none; background: transparent; box-shadow: none;
+                     border-radius: 999px; padding: 7.5px 18px; font-size: 13px;
+                     font-weight: 600; color: var(--muted);
+                     display: inline-flex; align-items: center; gap: 8px; }
+  .db-tabs button:hover { color: var(--text); border: none; background: var(--inset); }
+  .db-tabs button.active { background: var(--seg-active); color: var(--seg-active-text); }
+  .eng-dot { width: 8px; height: 8px; border-radius: 50%; flex: none;
+             background: transparent; border: 1.5px solid var(--faint); box-sizing: border-box; }
+  .eng-dot.on { background: var(--ok); border-color: var(--ok);
+                box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 22%, transparent); }
+  .eng-dot.off { background: var(--muted); border-color: var(--muted); }
+  .eng-panel { display: none; flex-direction: column; gap: 20px; }
+  .eng-panel.active { display: flex; }
+
+  /* ── doctor ──────────────────────────────────────────────── */
+  #doctor-body > .row { padding: 10px 12px; border-radius: 12px; background: var(--inset);
+                        border: 1px solid var(--border); margin-top: 8px !important; }
+  #doctor-body > .row:first-child { margin-top: 0 !important; }
+  #doctor-body pre { background: var(--card) !important; }
+
   /* ── toast & busy ────────────────────────────────────────── */
-  #toast { position: fixed; bottom: 22px; left: 50%;
+  #toast { position: fixed; bottom: 24px; left: 50%;
            transform: translate(-50%, 12px);
-           background: var(--text); color: var(--card); padding: 11px 20px;
-           border-radius: 12px; font-size: 13px; opacity: 0;
+           background: var(--toast); color: #fff; padding: 12px 20px 12px 16px;
+           border-radius: 14px; font-size: 13px; font-weight: 550; opacity: 0;
+           display: flex; align-items: center; gap: 10px;
            transition: opacity .22s, transform .22s;
            pointer-events: none; max-width: 78%; box-shadow: var(--shadow-lg);
-           z-index: 30; }
-  #toast.show { opacity: .97; transform: translate(-50%, 0); }
-  #busy { position: fixed; inset: 0; background: rgba(8, 9, 14, .5); display: none;
-          align-items: center; justify-content: center; z-index: 20;
-          backdrop-filter: blur(3px); }
+           z-index: 60; }
+  #toast::before { content: ""; width: 8px; height: 8px; border-radius: 50%; flex: none;
+                   background: var(--accent); }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); }
+  #busy { position: fixed; inset: 0; background: rgba(14, 18, 26, .42); display: none;
+          align-items: center; justify-content: center; z-index: 55;
+          backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); padding: 20px; }
   #busy.show { display: flex; }
   #busy .box { background: var(--card); border: 1px solid var(--border);
-               border-radius: 14px; padding: 22px 30px;
-               display: flex; align-items: center; gap: 14px; box-shadow: var(--shadow-lg); }
-  .spin { width: 20px; height: 20px; border: 2.5px solid var(--border-strong);
+               border-radius: 18px; padding: 20px 26px; max-width: 520px;
+               display: flex; align-items: center; gap: 16px; box-shadow: var(--shadow-lg);
+               font-weight: 550; }
+  .spin { width: 22px; height: 22px; flex: none; border: 2.5px solid var(--accent-soft);
           border-top-color: var(--accent); border-radius: 50%;
           animation: spin .7s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  ::-webkit-scrollbar { width: 10px; }
+  /* ── modal ───────────────────────────────────────────────── */
+  .modal-backdrop { position: fixed; inset: 0; background: rgba(14, 18, 26, .5);
+          backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); display: flex; align-items: center;
+          justify-content: center; z-index: 50; opacity: 0;
+          transition: opacity .18s ease; padding: 20px; }
+  .modal-backdrop.show { opacity: 1; }
+  .modal-card { background: var(--card); border: 1px solid var(--border);
+          border-radius: 22px; box-shadow: var(--shadow-lg); width: 100%;
+          max-width: 440px; padding: 26px; max-height: calc(100vh - 40px);
+          overflow-y: auto; transform: scale(.96) translateY(6px); opacity: 0;
+          transition: transform .18s cubic-bezier(.22, .9, .3, 1.2), opacity .18s ease; }
+  .modal-backdrop.show .modal-card { transform: scale(1) translateY(0); opacity: 1; }
+  .modal-icon { width: 42px; height: 42px; border-radius: 13px; display: flex;
+          align-items: center; justify-content: center; margin-bottom: 16px; }
+  .modal-icon.danger { background: var(--bad-bg); color: var(--bad); }
+  .modal-icon svg { width: 21px; height: 21px; }
+  .modal-title { font-size: 16px; font-weight: 700; margin: 0 0 8px; letter-spacing: -.2px; }
+  .modal-message { font-size: 13px; color: var(--muted); line-height: 1.6; margin: 0; }
+  .modal-message .mono { color: var(--text); }
+  .modal-detail { font-size: 12px; color: var(--muted); background: var(--inset);
+          border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px;
+          margin-top: 14px; line-height: 1.5; }
+  .modal-input { margin-top: 16px; }
+  .modal-input label { display: block; font-size: 11px; font-weight: 700;
+          color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .6px; }
+  .modal-input input, .modal-input select { width: 100%; }
+  .modal-checks { margin-top: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .modal-check { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
+  .modal-check input { margin-top: 3px; width: 15px; height: 15px; flex: none; accent-color: var(--accent); }
+  .modal-check .ct { display: block; font-size: 13px; font-weight: 600; }
+  .modal-check .ch { display: block; font-size: 11.5px; color: var(--muted); margin-top: 1px; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+  .modal-actions button { padding: 9px 18px; }
+  .modal-actions button.danger { background: var(--bad-solid); border-color: var(--bad-solid); color: #fff; }
+  .modal-actions button.danger:hover { background: var(--bad-solid-deep); border-color: var(--bad-solid-deep); color: #fff; }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
   ::-webkit-scrollbar-thumb { background: var(--border-strong);
                               border-radius: 5px; border: 2px solid var(--bg); }
-  @media (max-width: 900px) {
-    .side { display: none; }
-    main, .topbar { padding-left: 18px; padding-right: 18px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  /* Short windows: tighten the sidebar so it still fits in 600px. */
+  @media (max-height: 720px) {
+    .side { padding-top: 16px; padding-bottom: 14px; }
+    .brand { padding-bottom: 12px; }
+    .nav-label { padding: 8px 12px 3px; }
+    .nav a { padding-top: 7px; padding-bottom: 7px; }
+    .side-foot { padding-top: 12px; gap: 10px; }
+  }
+  /* Narrow windows (the app's minimum is 900px): the sidebar collapses to
+     an icon rail; the active-tab break-out keeps working. */
+  @media (max-width: 1000px) {
+    .side { width: 76px; padding-left: 12px; }
+    .brand { justify-content: center; padding: 0 12px 18px 0; }
+    .brand > div { display: none; }
+    .nav-label { font-size: 0; padding: 0; height: 1px; margin: 10px 12px 10px 4px;
+                 background: var(--side-line); }
+    .nav a { justify-content: center; margin-right: 12px; padding: 10px 0; font-size: 0; gap: 0; }
+    .nav a.active { margin-right: -1px; padding-right: 13px; }
+    .nav a svg { width: 18px; height: 18px; }
+    .nav a .count { display: none; }
+    .side-foot { margin-right: 12px; padding: 14px 0 0; align-items: center; }
+    .theme-pill { flex-direction: column; border-radius: 14px; }
+    .theme-pill button { padding: 5px 8px; border-radius: 10px; }
+    .theme-pill .tl, #autostart-label, .side-foot .ver { display: none; }
+    .topbar { padding-left: 24px; padding-right: 24px; }
+    main { padding-left: 24px; padding-right: 24px; }
   }
 </style>
 </head>
@@ -238,51 +416,55 @@
 
   <aside class="side">
     <div class="brand">
-      <svg viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg">
-        <defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0" stop-color="#6366F1"/><stop offset="1" stop-color="#A855F7"/>
-        </linearGradient></defs>
-        <rect width="96" height="96" rx="22" fill="url(#lg)"/>
-        <rect x="25" y="21" width="46" height="54" rx="9" fill="none" stroke="#fff" stroke-width="6"/>
-        <line x1="48" y1="21" x2="48" y2="75" stroke="#fff" stroke-width="6"/>
-        <line x1="25" y1="43" x2="71" y2="43" stroke="#fff" stroke-width="6"/>
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs><clipPath id="brand-window"><rect width="24" height="24" rx="6.5"/></clipPath></defs>
+        <g clip-path="url(#brand-window)">
+          <rect width="24" height="24" fill="#FF6B4A"/>
+          <rect x="0" y="8.5" width="12" height="2" fill="#1C2333" fill-opacity=".34"/>
+          <rect x="10.75" y="0" width="2.5" height="24" fill="#1C2333"/>
+        </g>
       </svg>
       <div><b>Mullion</b><span>local dev server</span></div>
     </div>
 
     <nav class="nav">
-      <a href="#overview" data-page="overview">
+      <a href="#overview" data-page="overview" title="Overview">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>
         Overview
       </a>
       <div class="nav-label">Projects</div>
-      <a href="#backend" data-page="backend">
+      <a href="#backend" data-page="backend" title="Backend">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17l6-6-6-6"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
         Backend <span class="count" id="nav-be">0</span>
       </a>
-      <a href="#frontend" data-page="frontend">
+      <a href="#frontend" data-page="frontend" title="Frontend">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="18" x2="12" y2="21"/></svg>
         Frontend <span class="count" id="nav-fe">0</span>
       </a>
       <div class="nav-label">Runtimes</div>
-      <a href="#php" data-page="php">
+      <a href="#php" data-page="php" title="PHP">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
         PHP
       </a>
-      <a href="#node" data-page="node">
+      <a href="#node" data-page="node" title="Node">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l9 5v10l-9 5-9-5V7z"/><path d="M12 22V12"/><path d="M21 7l-9 5-9-5"/></svg>
         Node
       </a>
-      <a href="#database" data-page="database">
+      <a href="#database" data-page="database" title="Database">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
         Database
+      </a>
+      <div class="nav-label">General</div>
+      <a href="#settings" data-page="settings" title="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Settings
       </a>
     </nav>
 
     <div class="side-foot">
       <div class="theme-pill">
-        <button id="theme-light">☀ Light</button>
-        <button id="theme-dark">☾ Dark</button>
+        <button id="theme-light" title="Light theme"><span class="ti">☀</span><span class="tl"> Light</span></button>
+        <button id="theme-dark" title="Dark theme"><span class="ti">☾</span><span class="tl"> Dark</span></button>
       </div>
       <label class="toggle"><span class="switch"><input type="checkbox" id="autostart"><i></i></span> <span id="autostart-label">Start at sign-in</span></label>
       <span class="ver" id="ver">Mullion</span>
@@ -296,6 +478,9 @@
       <span id="svc-pill" class="pill off">…</span>
       <button id="btn-heidi" style="display:none">HeidiSQL</button>
       <button id="btn-pma" style="display:none">phpMyAdmin</button>
+      <button id="btn-pgadmin-top" style="display:none">pgAdmin</button>
+      <button id="btn-mongoexpress-top" style="display:none">mongo-express</button>
+      <button id="btn-restart-stack" style="display:none">Restart</button>
       <button id="btn-toggle" class="primary">Start</button>
     </header>
 
@@ -304,12 +489,12 @@
       <div class="page" id="page-overview">
         <div id="shadow-warn" class="warn" style="display:none"></div>
         <div class="stats">
-          <div class="stat" data-go="overview">
+          <div class="stat feature" data-go="overview">
             <span class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Services</span>
             <span class="v" id="st-services">…</span>
             <span class="d" id="st-services-d"></span>
           </div>
-          <div class="stat" data-go="backend">
+          <div class="stat ink" data-go="backend">
             <span class="k"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17l6-6-6-6"/><line x1="12" y1="19" x2="20" y2="19"/></svg> Backend</span>
             <span class="v" id="st-be">0</span>
             <span class="d">PHP projects on .test domains</span>
@@ -352,6 +537,7 @@
             </table>
             <div class="row" style="margin-top:16px">
               <input type="text" id="be-link-path" placeholder="full project path" style="flex:1; min-width:240px" class="mono">
+              <button id="btn-be-browse">Browse…</button>
               <input type="text" id="be-link-name" placeholder="name (optional)" size="13" class="mono">
               <button id="btn-be-link" class="primary">Link project</button>
             </div>
@@ -378,6 +564,7 @@
             </table>
             <div class="row" style="margin-top:16px">
               <input type="text" id="fe-link-path" placeholder="full project path" style="flex:1; min-width:240px" class="mono">
+              <button id="btn-fe-browse">Browse…</button>
               <input type="text" id="fe-link-name" placeholder="name (optional)" size="13" class="mono">
               <button id="btn-fe-link" class="primary">Link project</button>
             </div>
@@ -407,6 +594,24 @@
               <datalist id="php-avail"></datalist>
               <button id="btn-php-install" class="primary">Install</button>
             </div>
+            <table style="margin-top:14px">
+              <thead><tr><th>Installed</th><th style="text-align:right"></th></tr></thead>
+              <tbody id="php-versions-body"></tbody>
+            </table>
+          </div>
+        </section>
+        <section class="card">
+          <div class="card-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l2 7h7l-5.5 4.5L17 21l-5-4-5 4 1.5-7.5L3 9h7z"/></svg>
+            <h2>Composer</h2>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <span class="label">Version</span>
+              <span class="mono" id="composer-version" style="font-weight:650">not installed</span>
+              <span class="spacer"></span>
+              <button id="btn-composer-install">Install</button>
+            </div>
           </div>
         </section>
         <section class="card">
@@ -432,11 +637,28 @@
               </span>
             </div>
             <div id="ext-static-note" class="note" style="display:none; margin-top:14px">
-              These PHP builds are static: every extension below is compiled in and always on —
-              nothing to enable, disable, or download. (Includes opcache, intl, imagick, redis,
-              and the pdo_mysql / pdo_sqlite / pdo_pgsql drivers.)
+              These PHP builds are static: most extensions below are compiled in and always on —
+              nothing to enable, disable, or download. (Includes intl, imagick, redis, and the
+              pdo_mysql / pdo_sqlite / pdo_pgsql drivers.) OPcache and APCu are real switches,
+              though — their code is always resident, but you can turn their activity on or off
+              right here.
             </div>
             <div id="ext-panel" style="display:none"></div>
+          </div>
+        </section>
+        <section class="card">
+          <div class="card-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 1.4 1.4l3.6-3.6a1 1 0 0 0 0-1.4l-1.4-1.4a1 1 0 0 0-1.4 0l-3.6 3.6a1 1 0 0 0 0 1.4z"/><path d="M12.4 8.6L2.3 18.7a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0L15.4 11.6"/></svg>
+            <h2>Settings (php.ini)</h2>
+            <span class="hint" id="ini-hint"></span>
+            <button id="btn-ini-open" class="sm">Open php.ini</button>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <span class="label">PHP version</span>
+              <select id="ini-version" class="mono"></select>
+            </div>
+            <div id="ini-grid" class="ini-grid"></div>
           </div>
         </section>
       </div>
@@ -467,54 +689,246 @@
               a site's pinned version → the project's <span class="mono">.nvmrc</span> → this default.
               Pin a frontend project from its row in the Frontend page.
             </p>
+            <table style="margin-top:14px">
+              <thead><tr><th>Installed</th><th style="text-align:right"></th></tr></thead>
+              <tbody id="node-versions-body"></tbody>
+            </table>
           </div>
+        </section>
+        <section class="card">
+          <div class="card-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            <h2>Diagnostics</h2>
+            <span class="spacer"></span>
+            <button id="btn-node-diag" class="sm">Show</button>
+          </div>
+          <div class="card-body" id="node-diag-body" style="display:none"></div>
         </section>
       </div>
 
       <!-- ═══ DATABASE ═══ -->
       <div class="page" id="page-database">
+        <div class="db-tabs" id="db-tabs">
+          <button data-engtab="mysql"><span class="eng-dot" id="dot-mysql"></span>MySQL</button>
+          <button data-engtab="postgres"><span class="eng-dot" id="dot-postgres"></span>PostgreSQL</button>
+          <button data-engtab="mongo"><span class="eng-dot" id="dot-mongo"></span>MongoDB</button>
+        </div>
+
+        <!-- MySQL -->
+        <div class="eng-panel" id="eng-mysql">
+          <section class="card">
+            <div class="card-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+              <h2>Server</h2>
+              <span class="spacer"></span>
+              <button id="btn-pma-install" class="sm primary" style="display:none">Install phpMyAdmin</button>
+              <button id="btn-pma-card" class="sm" style="display:none">phpMyAdmin</button>
+              <button id="btn-pma-uninstall" class="sm danger" style="display:none">Uninstall</button>
+              <button id="btn-heidi-card" class="sm" style="display:none">HeidiSQL</button>
+              <button id="btn-mysql-restore" class="sm" style="display:none">Import .sql…</button>
+              <button id="btn-mysql-backup" class="sm" style="display:none">Back up now</button>
+              <button id="btn-mysql-uninstall" class="sm danger" style="display:none">Uninstall…</button>
+            </div>
+            <div class="card-body">
+              <div class="row" id="mysql-row"></div>
+              <div class="row">
+                <span class="label">Switch to</span>
+                <input type="text" id="mysql-new" list="mysql-avail" placeholder="8.4 / latest / mariadb" size="16" class="mono">
+                <datalist id="mysql-avail">
+                  <option value="8.4">newest MySQL LTS</option>
+                  <option value="latest">newest MySQL overall</option>
+                  <option value="mariadb">newest stable MariaDB</option>
+                  <option value="8.0"></option>
+                </datalist>
+                <button id="btn-mysql-switch">Switch</button>
+                <span class="muted">databases migrate automatically — backed up <span id="backups-dir"></span>first</span>
+              </div>
+              <div class="row" id="mysql-pass-row" style="display:none">
+                <span class="label">Root password</span>
+                <input type="password" id="mysql-pass" placeholder="new password (empty = none)" size="22" class="mono">
+                <button id="btn-mysql-pass">Set</button>
+                <span class="muted">phpMyAdmin follows automatically</span>
+              </div>
+            </div>
+          </section>
+          <section class="card" id="db-card" style="display:none">
+            <div class="card-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+              <h2>Databases</h2>
+              <span class="hint" id="db-count"></span>
+            </div>
+            <div class="card-body">
+              <table>
+                <thead><tr><th style="width:36px">#</th><th>Name</th><th style="text-align:right"></th></tr></thead>
+                <tbody id="db-body"></tbody>
+              </table>
+              <div class="row" style="margin-top:16px">
+                <input type="text" id="db-new" placeholder="new_database" size="22" class="mono">
+                <button id="btn-db-create" class="primary">Create database</button>
+              </div>
+            </div>
+          </section>
+          <section class="card" id="mysql-backups-card" style="display:none">
+            <div class="card-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
+              <h2>Backups</h2>
+              <span class="hint" id="mysql-backups-count"></span>
+            </div>
+            <div class="card-body">
+              <table>
+                <thead><tr><th>Name</th><th>Time</th><th>Size</th><th>Files</th><th style="text-align:right"></th></tr></thead>
+                <tbody id="mysql-backups-body"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <!-- PostgreSQL -->
+        <div class="eng-panel" id="eng-postgres">
+          <section class="card">
+            <div class="card-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+              <h2>Server</h2>
+              <span class="spacer"></span>
+              <button id="btn-pgadmin" class="sm" style="display:none">Open pgAdmin</button>
+              <button id="btn-pgadmin-uninstall" class="sm danger" style="display:none">Uninstall</button>
+              <button id="btn-pg-backup" class="sm" style="display:none">Back up now</button>
+              <button id="btn-pg-uninstall" class="sm danger" style="display:none">Uninstall…</button>
+            </div>
+            <div class="card-body">
+              <div class="row" id="pg-row"></div>
+              <div class="row" id="pg-install-row" style="display:none">
+                <span class="label">Version</span>
+                <select id="pg-version" class="mono"></select>
+                <button id="btn-pg-install" class="primary">Install</button>
+              </div>
+              <div class="row" id="pg-pass-row" style="display:none">
+                <span class="label">Superuser password</span>
+                <input type="password" id="pg-pass" placeholder="new password (empty = none)" size="22" class="mono">
+                <button id="btn-pg-pass">Set</button>
+                <span class="muted">pgAdmin follows automatically</span>
+              </div>
+            </div>
+          </section>
+          <section class="card" id="pg-db-card" style="display:none">
+            <div class="card-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+              <h2>Databases</h2>
+              <span class="hint" id="pg-db-count"></span>
+            </div>
+            <div class="card-body">
+              <table>
+                <thead><tr><th style="width:36px">#</th><th>Name</th><th style="text-align:right"></th></tr></thead>
+                <tbody id="pg-db-body"></tbody>
+              </table>
+              <div class="row" style="margin-top:16px">
+                <input type="text" id="pg-db-new" placeholder="new_database" size="22" class="mono">
+                <button id="btn-pg-db-create" class="primary">Create database</button>
+              </div>
+            </div>
+          </section>
+          <section class="card" id="pg-backups-card" style="display:none">
+            <div class="card-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
+              <h2>Backups</h2>
+              <span class="hint" id="pg-backups-count"></span>
+            </div>
+            <div class="card-body">
+              <table>
+                <thead><tr><th>Name</th><th>Time</th><th>Size</th><th>Files</th><th style="text-align:right"></th></tr></thead>
+                <tbody id="pg-backups-body"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <!-- MongoDB -->
+        <div class="eng-panel" id="eng-mongo">
+          <section class="card">
+            <div class="card-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+              <h2>Server</h2>
+              <span class="spacer"></span>
+              <button id="btn-mongoexpress" class="sm" style="display:none">Open mongo-express</button>
+              <button id="btn-mongoexpress-uninstall" class="sm danger" style="display:none">Uninstall</button>
+              <button id="btn-mongo-backup" class="sm" style="display:none">Back up now</button>
+              <button id="btn-mongo-uninstall" class="sm danger" style="display:none">Uninstall…</button>
+            </div>
+            <div class="card-body">
+              <div class="row" id="mongo-row"></div>
+              <div class="row" id="mongo-install-row" style="display:none">
+                <span class="label">Version</span>
+                <select id="mongo-version" class="mono"></select>
+                <button id="btn-mongo-install" class="primary">Install</button>
+              </div>
+            </div>
+          </section>
+          <section class="card" id="mongo-db-card" style="display:none">
+            <div class="card-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+              <h2>Databases</h2>
+              <span class="hint" id="mongo-db-count"></span>
+            </div>
+            <div class="card-body">
+              <table>
+                <thead><tr><th style="width:36px">#</th><th>Name</th><th style="text-align:right"></th></tr></thead>
+                <tbody id="mongo-db-body"></tbody>
+              </table>
+              <div class="row" style="margin-top:16px">
+                <input type="text" id="mongo-db-new" placeholder="new_database" size="22" class="mono">
+                <button id="btn-mongo-db-create" class="primary">Create database</button>
+              </div>
+            </div>
+          </section>
+          <section class="card" id="mongo-backups-card" style="display:none">
+            <div class="card-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
+              <h2>Backups</h2>
+              <span class="hint" id="mongo-backups-count"></span>
+            </div>
+            <div class="card-body">
+              <table>
+                <thead><tr><th>Name</th><th>Time</th><th>Size</th><th>Files</th><th style="text-align:right"></th></tr></thead>
+                <tbody id="mongo-backups-body"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <!-- ═══ SETTINGS ═══ -->
+      <div class="page" id="page-settings">
         <section class="card">
           <div class="card-head">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
-            <h2>Server</h2>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            <h2>Domain suffix</h2>
           </div>
           <div class="card-body">
-            <div class="row" id="mysql-row"></div>
             <div class="row">
-              <span class="label">Switch to</span>
-              <input type="text" id="mysql-new" list="mysql-avail" placeholder="8.4 / latest / mariadb" size="16" class="mono">
-              <datalist id="mysql-avail">
-                <option value="8.4">newest MySQL LTS</option>
-                <option value="latest">newest MySQL overall</option>
-                <option value="mariadb">newest stable MariaDB</option>
-                <option value="8.0"></option>
-              </datalist>
-              <button id="btn-mysql-switch">Switch</button>
-              <span class="muted">databases migrate automatically — backed up <span id="backups-dir"></span>first</span>
+              <span class="label">Current TLD</span>
+              <span class="mono" style="font-weight:650; font-size:14px">.<span id="settings-tld-current">test</span></span>
             </div>
-            <div class="row" id="mysql-pass-row" style="display:none">
-              <span class="label">Root password</span>
-              <input type="password" id="mysql-pass" placeholder="new password (empty = none)" size="22" class="mono">
-              <button id="btn-mysql-pass">Set</button>
-              <span class="muted">phpMyAdmin follows automatically</span>
+            <div class="row">
+              <span class="label">Change to</span>
+              <input type="text" id="settings-tld-new" placeholder="local, test, wtf…" size="16" class="mono">
+              <button id="btn-settings-tld" class="primary">Apply</button>
             </div>
+            <p class="muted" style="margin:12px 0 0">
+              Every linked site's domain changes at once — e.g. <span class="mono" id="settings-tld-example">myapp.test → myapp.local</span>.
+              Avoid real public TLDs like <span class="mono">.dev</span> or <span class="mono">.app</span>: browsers force
+              them to HTTPS, which breaks plain-HTTP local sites.
+            </p>
           </div>
         </section>
-        <section class="card" id="db-card" style="display:none">
+        <section class="card">
           <div class="card-head">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-            <h2>Databases</h2>
-            <span class="hint" id="db-count"></span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            <h2>Diagnostics</h2>
+            <span class="spacer"></span>
+            <button id="btn-doctor" class="sm primary">Run diagnostics</button>
           </div>
-          <div class="card-body">
-            <table>
-              <thead><tr><th style="width:36px">#</th><th>Name</th><th style="text-align:right"></th></tr></thead>
-              <tbody id="db-body"></tbody>
-            </table>
-            <div class="row" style="margin-top:16px">
-              <input type="text" id="db-new" placeholder="new_database" size="22" class="mono">
-              <button id="btn-db-create" class="primary">Create database</button>
-            </div>
+          <div class="card-body" id="doctor-body">
+            <p class="muted">Checks Caddy, PHP, MySQL, sites, and more — the same as <span class="mono">mullion doctor</span>.</p>
           </div>
         </section>
       </div>
@@ -546,6 +960,139 @@ $('theme-dark').onclick = () => applyTheme('dark');
   applyTheme(t);
 })();
 
+/* ── modal system ──────────────────────────────────────────── */
+// modal() replaces every native confirm()/alert()/prompt() in this page:
+// WKWebView (Mullion.app on macOS) renders those as native NSAlerts,
+// which look out of place and can't be styled or themed. This renders an
+// in-page dialog instead — dimmed+blurred backdrop, centered card, focus
+// trap, Esc to cancel, Enter to confirm — and resolves a Promise with the
+// result: null if cancelled, otherwise {input?, checks?}.
+let modalDepth = 0;
+function modal(opts) {
+  return new Promise((resolve) => {
+    const id = ++modalDepth;
+    const titleId = 'modal-title-' + id;
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    const card = document.createElement('div');
+    card.className = 'modal-card';
+    card.setAttribute('role', 'dialog');
+    card.setAttribute('aria-modal', 'true');
+    card.setAttribute('aria-labelledby', titleId);
+
+    let html = '';
+    if (opts.danger) {
+      html += '<div class="modal-icon danger"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+        '<path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>' +
+        '<line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>';
+    }
+    html += `<h3 class="modal-title" id="${titleId}">${opts.title || ''}</h3>`;
+    if (opts.message) html += `<p class="modal-message">${opts.message}</p>`;
+    if (opts.detail) html += `<div class="modal-detail">${opts.detail}</div>`;
+    if (opts.input) {
+      const inp = opts.input;
+      html += '<div class="modal-input">';
+      if (inp.label) html += `<label for="modal-field">${inp.label}</label>`;
+      if (inp.type === 'select') {
+        html += '<select id="modal-field" class="mono">' + (inp.options || []).map(o =>
+          `<option value="${String(o.value).replace(/"/g, '&quot;')}"${o.value === inp.value ? ' selected' : ''}>${o.label}</option>`
+        ).join('') + '</select>';
+      } else {
+        const v = inp.value != null ? String(inp.value).replace(/"/g, '&quot;') : '';
+        html += `<input type="${inp.type || 'text'}" id="modal-field" class="mono" value="${v}" placeholder="${inp.placeholder || ''}">`;
+      }
+      html += '</div>';
+    }
+    if (opts.checkboxes && opts.checkboxes.length) {
+      html += '<div class="modal-checks">' + opts.checkboxes.map(c =>
+        `<label class="modal-check"><input type="checkbox" id="modal-check-${c.id}"${c.checked ? ' checked' : ''}>` +
+        `<span><span class="ct">${c.label}</span>${c.hint ? `<span class="ch">${c.hint}</span>` : ''}</span></label>`
+      ).join('') + '</div>';
+    }
+    html += '<div class="modal-actions">';
+    if (opts.cancelText !== null) {
+      html += `<button id="modal-cancel">${opts.cancelText || 'Cancel'}</button>`;
+    }
+    html += `<button id="modal-confirm" class="${opts.danger ? 'danger' : 'primary'}">${opts.confirmText || 'OK'}</button>`;
+    html += '</div>';
+    card.innerHTML = html;
+    backdrop.appendChild(card);
+    document.body.appendChild(backdrop);
+
+    const prevFocus = document.activeElement;
+    const cancelBtn = card.querySelector('#modal-cancel');
+    const confirmBtn = card.querySelector('#modal-confirm');
+
+    function readResult() {
+      const result = {};
+      if (opts.input) {
+        const f = card.querySelector('#modal-field');
+        result.input = f ? f.value : '';
+      }
+      if (opts.checkboxes) {
+        result.checks = {};
+        opts.checkboxes.forEach(c => {
+          result.checks[c.id] = card.querySelector('#modal-check-' + c.id).checked;
+        });
+      }
+      return result;
+    }
+    function close(result) {
+      document.removeEventListener('keydown', onKey, true);
+      backdrop.classList.remove('show');
+      setTimeout(() => backdrop.remove(), 180);
+      if (prevFocus && prevFocus.focus) prevFocus.focus();
+      resolve(result);
+    }
+    function onKey(e) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        close(null);
+      } else if (e.key === 'Enter') {
+        const active = document.activeElement;
+        if (active && active.tagName === 'INPUT' && active.type === 'checkbox') return;
+        if (active === cancelBtn) return;
+        e.preventDefault();
+        close(readResult());
+      } else if (e.key === 'Tab') {
+        const focusables = Array.from(card.querySelectorAll('button, input, select')).filter(el => !el.disabled);
+        if (!focusables.length) return;
+        const first = focusables[0], last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    }
+    if (cancelBtn) cancelBtn.onclick = () => close(null);
+    confirmBtn.onclick = () => close(readResult());
+    backdrop.onclick = (e) => { if (e.target === backdrop) close(null); };
+    document.addEventListener('keydown', onKey, true);
+
+    requestAnimationFrame(() => {
+      backdrop.classList.add('show');
+      const field = card.querySelector('#modal-field');
+      const target = field || (opts.danger ? (cancelBtn || confirmBtn) : confirmBtn);
+      if (target) {
+        target.focus();
+        if (field && field.select) field.select();
+      }
+    });
+  });
+}
+// confirmModal resolves true/false — the common case (no input, no checkboxes).
+function confirmModal(opts) {
+  return modal(opts).then(r => r !== null);
+}
+// promptModal resolves the typed/selected value, or null if cancelled.
+function promptModal(opts) {
+  const input = opts.input || { value: opts.value, placeholder: opts.placeholder, label: opts.label, type: opts.type };
+  return modal({ confirmText: 'OK', ...opts, input }).then(r => r ? r.input : null);
+}
+// alertModal is a themed alert() — a single acknowledgement button.
+function alertModal(opts) {
+  if (typeof opts === 'string') opts = { message: opts };
+  return modal({ title: 'Notice', confirmText: 'OK', cancelText: null, ...opts }).then(() => undefined);
+}
+
 /* ── router ────────────────────────────────────────────────── */
 const TITLES = {
   overview: ['Overview', 'Your whole local stack at a glance'],
@@ -553,7 +1100,8 @@ const TITLES = {
   frontend: ['Frontend projects', 'Managed dev servers & production builds'],
   php:      ['PHP', 'Versions and extensions'],
   node:     ['Node', 'Versions — per project or global'],
-  database: ['Database', 'MySQL server, credentials, and databases'],
+  database: ['Database', 'MySQL, PostgreSQL, or MongoDB — pick an engine below'],
+  settings: ['Settings', 'General options for the whole panel'],
 };
 function showPage(name) {
   if (!TITLES[name]) name = 'overview';
@@ -563,8 +1111,31 @@ function showPage(name) {
     a.classList.toggle('active', a.dataset.page === name));
   $('page-title').textContent = TITLES[name][0];
   $('page-sub').textContent = TITLES[name][1];
-  if (name === 'database' && state && state.mysql.installed && state.mysql.running) loadDatabases(true);
+  if (name === 'database') showDbTab(dbTab, true);
+  if (name === 'php' && state) loadIni();
 }
+
+/* ── database engine tabs ──────────────────────────────────── */
+let dbTab = 'mysql';
+try { dbTab = localStorage.getItem('mullion-dbtab') || 'mysql'; } catch {}
+function setDot(id, installed, running) {
+  $(id).className = 'eng-dot' + (installed ? (running ? ' on' : ' off') : '');
+}
+function showDbTab(name, force) {
+  dbTab = name;
+  try { localStorage.setItem('mullion-dbtab', name); } catch {}
+  document.querySelectorAll('#db-tabs button').forEach(b =>
+    b.classList.toggle('active', b.dataset.engtab === name));
+  document.querySelectorAll('.eng-panel').forEach(p =>
+    p.classList.toggle('active', p.id === 'eng-' + name));
+  if (!state || !document.querySelector('#page-database').classList.contains('active')) return;
+  if (name === 'mysql' && state.mysql.installed && state.mysql.running) loadDatabases(force);
+  else if (name === 'postgres' && state.postgres.installed && state.postgres.running) loadPgDatabases(force);
+  else if (name === 'mongo' && state.mongo.installed && state.mongo.running) loadMongoDatabases(force);
+  if (state.mysql.installed || state.postgres.installed || state.mongo.installed) loadBackups(force);
+}
+document.querySelectorAll('#db-tabs button').forEach(b =>
+  b.onclick = () => showDbTab(b.dataset.engtab, true));
 window.addEventListener('hashchange', () => showPage(location.hash.slice(1)));
 document.querySelectorAll('[data-go]').forEach(el =>
   el.addEventListener('click', () => { location.hash = el.dataset.go; }));
@@ -599,6 +1170,37 @@ async function act(label, path, body, after) {
     refresh();
   }
 }
+// runJob drives a job-backed endpoint: it posts to start the job, then
+// polls /api/job once a second — showing the job's own status line in
+// the busy overlay — until it reports done. Long installs/downloads use
+// this instead of act() so a single HTTP request never has to stay open
+// for minutes (WKWebView, and some proxies, would time it out).
+async function runJob(label, path, body, after) {
+  $('busy-label').textContent = label;
+  $('busy').classList.add('show');
+  try {
+    const { job: id } = await api(path, body || {});
+    let result;
+    for (;;) {
+      await new Promise(r => setTimeout(r, 1000));
+      const st = await api('/api/job', { id });
+      if (st.log) $('busy-label').textContent = st.log;
+      if (st.done) {
+        if (st.error) throw new Error(st.error);
+        result = st.result;
+        break;
+      }
+    }
+    if (after) toast(typeof after === 'function' ? after(result) : after);
+    return result;
+  } catch (e) {
+    toast('Error: ' + e.message);
+    return undefined;
+  } finally {
+    $('busy').classList.remove('show');
+    refresh();
+  }
+}
 
 /* ── render ────────────────────────────────────────────────── */
 function render() {
@@ -608,7 +1210,12 @@ function render() {
   pill.className = 'pill ' + (on ? 'on' : 'off');
   pill.textContent = on ? 'Running' : 'Stopped';
   $('btn-toggle').textContent = on ? 'Stop' : 'Start';
+  $('btn-restart-stack').style.display = on ? '' : 'none';
   $('autostart').checked = s.autostart;
+  if (s.composer !== undefined) {
+    $('composer-version').textContent = s.composer || 'not installed';
+    $('btn-composer-install').textContent = s.composer ? 'Update' : 'Install';
+  }
   $('btn-pma').style.display = s.sites.some(x => x.name === 'phpmyadmin') ? '' : 'none';
   $('btn-heidi').style.display = s.heidisql ? '' : 'none';
   $('autostart-label').textContent = s.windows ? 'Start with Windows' : 'Start at login';
@@ -644,7 +1251,11 @@ function render() {
   $('st-node').textContent = s.globalNode || '—';
   $('st-node-d').textContent = s.nodeInstalled.length ? s.nodeInstalled.length + ' version' + (s.nodeInstalled.length === 1 ? '' : 's') + ' installed' : 'not installed yet';
   $('st-db').textContent = s.mysql.installed ? (s.mysql.label || 'MySQL') : '—';
-  $('st-db-d').textContent = s.mysql.installed ? (s.mysql.running ? 'running on :' + s.mysql.port : 'stopped') : 'not installed yet';
+  const dbBits = [];
+  if (s.mysql.installed) dbBits.push('MySQL ' + (s.mysql.running ? 'running' : 'stopped'));
+  if (s.postgres.installed) dbBits.push('Postgres ' + (s.postgres.running ? 'running' : 'stopped'));
+  if (s.mongo.installed) dbBits.push('Mongo ' + (s.mongo.running ? 'running' : 'stopped'));
+  $('st-db-d').textContent = dbBits.length ? dbBits.join(' · ') : 'not installed yet';
 
   /* php page */
   const sel = $('php-global');
@@ -672,7 +1283,24 @@ function render() {
   $('php-cgi').textContent = (s.phpCgi || []).map(c =>
     `${c.version} · :${c.port} · ${c.running ? 'running' : 'stopped'}`).join('    ') || '';
 
+  const iv = $('ini-version');
+  if (iv.dataset.versions !== want) {
+    const prev = iv.value;
+    iv.innerHTML = '';
+    for (const v of s.phpInstalled) {
+      const o = document.createElement('option');
+      o.value = v; o.textContent = v;
+      iv.appendChild(o);
+    }
+    iv.value = s.phpInstalled.includes(prev) ? prev : s.globalPhp;
+    iv.dataset.versions = want;
+  }
+  renderPhpVersions(s);
+
   /* database page */
+  setDot('dot-mysql', s.mysql.installed, s.mysql.running);
+  $('btn-pma-card').style.display = s.sites.some(x => x.name === 'phpmyadmin') ? '' : 'none';
+  $('btn-heidi-card').style.display = s.heidisql ? '' : 'none';
   const m = $('mysql-row');
   if (!s.mysql.installed) {
     m.innerHTML = '<span class="muted">Not installed yet — type a version below (e.g. <span class="mono">8.4</span>) and press Switch.</span>';
@@ -688,8 +1316,27 @@ function render() {
   }
   $('mysql-pass-row').style.display = s.mysql.installed ? '' : 'none';
   $('db-card').style.display = (s.mysql.installed && s.mysql.running) ? '' : 'none';
-  if (s.mysql.installed && s.mysql.running &&
+  $('btn-mysql-backup').style.display = s.mysql.installed ? '' : 'none';
+  $('btn-mysql-uninstall').style.display = s.mysql.installed ? '' : 'none';
+  $('btn-mysql-restore').style.display = s.mysql.installed ? '' : 'none';
+  if (s.mysql.installed && s.mysql.running && dbTab === 'mysql' &&
       document.querySelector('#page-database').classList.contains('active')) loadDatabases();
+
+  renderPostgres(s);
+  renderMongo(s);
+  renderAdminTools(s);
+
+  /* settings page */
+  if (s.tld) {
+    $('settings-tld-current').textContent = s.tld;
+    const exampleSite = (s.sites[0] && s.sites[0].name) || 'myapp';
+    $('settings-tld-example').textContent = `${exampleSite}.${s.tld} → ${exampleSite}.local`;
+  }
+
+  if (document.querySelector('#page-database').classList.contains('active') &&
+      (s.mysql.installed || s.postgres.installed || s.mongo.installed)) {
+    loadBackups();
+  }
 
   /* node page */
   const ng = $('node-global');
@@ -706,10 +1353,277 @@ function render() {
     }
     $('node-hint').textContent = s.nodeInstalled.length + ' installed';
   }
+  renderNodeVersions(s);
 
   renderBackend(beSites);
   renderFrontend(feSites);
 }
+
+function renderPostgres(s) {
+  const p = s.postgres;
+  setDot('dot-postgres', p.installed, p.running);
+  $('btn-pgadmin').style.display = p.installed ? '' : 'none';
+  const row = $('pg-row');
+  if (!p.installed) {
+    row.innerHTML = '<span class="muted">Not installed yet — pick a version below and press Install.</span>';
+    $('pg-install-row').style.display = '';
+  } else {
+    $('pg-install-row').style.display = 'none';
+    row.innerHTML = `<span style="font-weight:650; font-size:15px">${p.label}</span>
+      <span class="badge ${p.running ? 'on' : 'off'}">${p.running ? 'running' : 'stopped'}</span>
+      <span class="muted mono">127.0.0.1:${p.port} · postgres · ${p.hasPassword ? 'password set' : 'no password'}</span>
+      <span class="spacer"></span>
+      <button id="btn-pg-toggle">${p.running ? 'Stop' : 'Start'}</button>`;
+    $('btn-pg-toggle').onclick = () =>
+      act(p.running ? 'Stopping PostgreSQL…' : 'Starting PostgreSQL…',
+          p.running ? '/api/pg/stop' : '/api/pg/start');
+  }
+  $('pg-pass-row').style.display = p.installed ? '' : 'none';
+  $('pg-db-card').style.display = (p.installed && p.running) ? '' : 'none';
+  $('btn-pg-backup').style.display = p.installed ? '' : 'none';
+  $('btn-pg-uninstall').style.display = p.installed ? '' : 'none';
+  if (p.installed && p.running && dbTab === 'postgres' &&
+      document.querySelector('#page-database').classList.contains('active')) loadPgDatabases();
+}
+
+function renderMongo(s) {
+  const m = s.mongo;
+  setDot('dot-mongo', m.installed, m.running);
+  $('btn-mongoexpress').style.display = m.installed ? '' : 'none';
+  const row = $('mongo-row');
+  if (!m.installed) {
+    row.innerHTML = '<span class="muted">Not installed yet — pick a version below and press Install.</span>';
+    $('mongo-install-row').style.display = '';
+  } else {
+    $('mongo-install-row').style.display = 'none';
+    row.innerHTML = `<span style="font-weight:650; font-size:15px">${m.label}</span>
+      <span class="badge ${m.running ? 'on' : 'off'}">${m.running ? 'running' : 'stopped'}</span>
+      <span class="muted mono">127.0.0.1:${m.port}</span>
+      <span class="spacer"></span>
+      <button id="btn-mongo-toggle">${m.running ? 'Stop' : 'Start'}</button>`;
+    $('btn-mongo-toggle').onclick = () =>
+      act(m.running ? 'Stopping MongoDB…' : 'Starting MongoDB…',
+          m.running ? '/api/mongo/stop' : '/api/mongo/start');
+  }
+  $('mongo-db-card').style.display = (m.installed && m.running) ? '' : 'none';
+  $('btn-mongo-backup').style.display = m.installed ? '' : 'none';
+  $('btn-mongo-uninstall').style.display = m.installed ? '' : 'none';
+  if (m.installed && m.running && dbTab === 'mongo' &&
+      document.querySelector('#page-database').classList.contains('active')) loadMongoDatabases();
+}
+
+/* ── admin tools (pgAdmin, mongo-express, phpMyAdmin) ─────────── */
+// adminTools comes from getState — one entry per bundled admin UI, with
+// whether it's installed, whether its database engine is installed, and
+// (for a "site" kind tool) the URL it's reachable at. Kept separate from
+// the existing per-engine "Open ..." buttons below (which install-then-open
+// in one click and are left as-is) — these top-bar/uninstall buttons only
+// ever show once a tool is actually installed.
+function renderAdminTools(s) {
+  const byName = {};
+  (s.adminTools || []).forEach(t => { byName[t.name] = t; });
+  window.__adminTools = byName;
+
+  const pmaLinked = s.sites.some(x => x.name === 'phpmyadmin');
+  const pma = byName['phpmyadmin'];
+  $('btn-pma-uninstall').style.display = (pma && pma.installed) ? '' : 'none';
+  $('btn-pma-install').style.display = (!pmaLinked && pma && pma.engineInstalled) ? '' : 'none';
+
+  const pg = byName['pgadmin'];
+  $('btn-pgadmin-top').style.display = (pg && pg.installed) ? '' : 'none';
+  $('btn-pgadmin-uninstall').style.display = (pg && pg.installed) ? '' : 'none';
+
+  const me = byName['mongo-express'];
+  $('btn-mongoexpress-top').style.display = (me && me.installed) ? '' : 'none';
+  $('btn-mongoexpress-uninstall').style.display = (me && me.installed) ? '' : 'none';
+}
+function openAdminTool(name) {
+  const t = window.__adminTools && window.__adminTools[name];
+  if (!t) return;
+  if (t.kind === 'desktop') {
+    runJob('Opening ' + t.label + '…', '/api/pgadmin/open', {}, t.label + ' opened');
+  } else if (t.url) {
+    window.open(t.url, '_blank');
+  } else {
+    toast(t.label + ' is not linked yet');
+  }
+}
+$('btn-pgadmin-top').onclick = () => openAdminTool('pgadmin');
+$('btn-mongoexpress-top').onclick = () => openAdminTool('mongo-express');
+
+function wireToolUninstall(btnId, toolName) {
+  $(btnId).onclick = async () => {
+    const t = (window.__adminTools && window.__adminTools[toolName]) || { label: toolName };
+    const ok = await confirmModal({
+      title: 'Uninstall ' + t.label + '?',
+      message: `Remove <span class="mono">${t.label}</span>? This does not affect its database server or your data.`,
+      confirmText: 'Uninstall',
+      danger: true,
+    });
+    if (!ok) return;
+    act('Uninstalling ' + t.label + '…', '/api/admintool/uninstall', { tool: toolName }, t.label + ' uninstalled');
+  };
+}
+wireToolUninstall('btn-pma-uninstall', 'phpmyadmin');
+wireToolUninstall('btn-pgadmin-uninstall', 'pgadmin');
+wireToolUninstall('btn-mongoexpress-uninstall', 'mongo-express');
+$('btn-pma-install').onclick = () =>
+  runJob('Installing phpMyAdmin…', '/api/phpmyadmin/install', {}, 'phpMyAdmin installed');
+
+/* ── PHP versions (uninstall) ─────────────────────────────────── */
+function renderPhpVersions(s) {
+  const tb = $('php-versions-body');
+  tb.innerHTML = '';
+  s.phpInstalled.forEach(v => {
+    const isGlobal = v === s.globalPhp;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="mono" style="font-weight:600">${v}${isGlobal ? ' <span class="badge on">active</span>' : ''}</td>
+      <td style="text-align:right">
+        ${isGlobal
+          ? '<span class="muted" style="font-size:11.5px">switch to another version first to uninstall</span>'
+          : `<button class="danger sm" data-php-uninstall="${v}">Uninstall</button>`}
+      </td>`;
+    tb.appendChild(tr);
+  });
+  tb.querySelectorAll('[data-php-uninstall]').forEach(el => el.onclick = async () => {
+    const v = el.dataset.phpUninstall;
+    const ok = await confirmModal({
+      title: 'Uninstall PHP ' + v + '?',
+      message: `Remove PHP <span class="mono">${v}</span>? Any site pinned to it will break until you pin a different version.`,
+      confirmText: 'Uninstall',
+      danger: true,
+    });
+    if (!ok) return;
+    act('Uninstalling PHP ' + v + '…', '/api/php/uninstall', { version: v }, 'Removed PHP ' + v);
+  });
+}
+$('btn-composer-install').onclick = () =>
+  runJob(state && state.composer ? 'Updating Composer…' : 'Installing Composer…',
+      '/api/composer/install', { version: '' }, r => 'Composer ' + r + ' installed');
+
+/* ── Node versions (uninstall, npm, diagnostics) ──────────────── */
+function renderNodeVersions(s) {
+  const tb = $('node-versions-body');
+  tb.innerHTML = '';
+  s.nodeInstalled.forEach(v => {
+    const isDefault = v === s.globalNode;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="mono" style="font-weight:600">${v}${isDefault ? ' <span class="badge on">default</span>' : ''}</td>
+      <td style="text-align:right; white-space:nowrap">
+        <button class="sm" data-node-npm="${v}">npm…</button>
+        ${isDefault ? '' : `<button class="danger sm" data-node-uninstall="${v}">Uninstall</button>`}
+      </td>`;
+    tb.appendChild(tr);
+  });
+  tb.querySelectorAll('[data-node-npm]').forEach(el => el.onclick = async () => {
+    const v = el.dataset.nodeNpm;
+    const npm = await promptModal({
+      title: 'Set npm version',
+      message: `Install a specific npm release into Node <span class="mono">${v}</span>.`,
+      input: { placeholder: 'e.g. 10, latest' },
+      confirmText: 'Install',
+    });
+    if (!npm) return;
+    runJob('Installing npm ' + npm + ' into Node ' + v + '…', '/api/node/npm', { npm, node: v }, 'npm updated');
+  });
+  tb.querySelectorAll('[data-node-uninstall]').forEach(el => el.onclick = async () => {
+    const v = el.dataset.nodeUninstall;
+    const ok = await confirmModal({
+      title: 'Uninstall Node ' + v + '?',
+      message: `Remove Node <span class="mono">${v}</span>? Any site pinned to it will break until you pin a different version.`,
+      confirmText: 'Uninstall',
+      danger: true,
+    });
+    if (!ok) return;
+    act('Uninstalling Node ' + v + '…', '/api/node/uninstall', { version: v }, 'Removed Node ' + v);
+  });
+}
+function renderNodeInfo(info) {
+  if (info.error) return `<p class="muted">${info.error}</p>`;
+  const rows = [
+    ['Resolved version', info.version],
+    ['Why', info.reason],
+    ['Directory', info.dir],
+    ['Global default', info.globalDefault],
+    ['node', info.nodePath],
+    ['npm', info.npmPath],
+    ['npx', info.npxPath],
+    ['Shim on PATH', info.shimPath],
+    ['Resolved on PATH', info.resolvedPath],
+  ];
+  let html = '<div class="ini-grid">' + rows.map(([k, v]) => `
+    <div class="ini-row"><div class="ini-label"><span class="ini-name">${k}</span></div>
+    <div class="ini-control"><span class="mono">${v || '—'}</span></div></div>`).join('') + '</div>';
+  if (info.warning) {
+    html += `<div class="warn" style="margin-top:12px">⚠ ${info.warning}</div>`;
+  }
+  return html;
+}
+$('btn-node-diag').onclick = async () => {
+  const body = $('node-diag-body');
+  const btn = $('btn-node-diag');
+  if (body.style.display !== 'none') {
+    body.style.display = 'none';
+    btn.textContent = 'Show';
+    return;
+  }
+  body.style.display = '';
+  btn.textContent = 'Hide';
+  body.innerHTML = '<span class="muted">Loading…</span>';
+  try {
+    const info = await api('/api/node/info', {});
+    body.innerHTML = renderNodeInfo(info);
+  } catch (e) {
+    body.innerHTML = '<span class="muted">Error: ' + e.message + '</span>';
+  }
+};
+
+/* ── frontend dev servers, top-bar restart, MySQL import ──────── */
+$('btn-restart-stack').onclick = async () => {
+  const ok = await confirmModal({
+    title: 'Restart the stack?',
+    message: 'Stops and restarts Caddy, PHP workers, dev servers, and any configured databases.',
+    confirmText: 'Restart',
+  });
+  if (!ok) return;
+  runJob('Restarting the stack…', '/api/restart', {}, 'Restarted');
+};
+$('btn-mysql-restore').onclick = async () => {
+  const path = await pickFile('Choose a .sql or .sql.gz backup', ['sql', 'gz']);
+  if (!path) return;
+  const ok = await confirmModal({
+    title: 'Import backup?',
+    message: `Import <span class="mono">${path}</span> into MySQL? This can overwrite data in matching databases.`,
+    confirmText: 'Import',
+    danger: true,
+  });
+  if (!ok) return;
+  runJob('Importing backup…', '/api/mysql/restore', { path }, 'Imported');
+};
+
+/* ── doctor ────────────────────────────────────────────────── */
+function renderDoctor(checks) {
+  const colorVar = { ok: 'var(--ok)', warn: 'var(--warn-text)', fail: 'var(--bad)', '': 'var(--muted)' };
+  const icon = { ok: '✓', warn: '⚠', fail: '✕', '': '·' };
+  if (!checks || !checks.length) {
+    $('doctor-body').innerHTML = '<p class="muted">No output.</p>';
+    return;
+  }
+  $('doctor-body').innerHTML = checks.map(c => `
+    <div class="row" style="align-items:flex-start; ${c === checks[0] ? '' : 'margin-top:10px'}">
+      <span class="mono" style="width:16px; flex:none; color:${colorVar[c.status] || colorVar['']}">${icon[c.status] || icon['']}</span>
+      <div style="flex:1; min-width:0">
+        <div>${c.name}${c.detail ? ' — <span class="muted">' + c.detail + '</span>' : ''}</div>
+        ${c.fix ? `<pre class="mono" style="white-space:pre-wrap; background:var(--inset); border:1px solid var(--border); border-radius:8px; padding:8px 10px; margin-top:6px; font-size:11.5px">${c.fix}</pre>` : ''}
+      </div>
+    </div>`).join('');
+}
+$('btn-doctor').onclick = async () => {
+  const checks = await runJob('Running diagnostics…', '/api/doctor', {}, 'Diagnostics complete');
+  renderDoctor(checks || []);
+};
 
 function siteCell(site) {
   return `<a href="${site.url}" target="_blank">${site.host}</a>`;
@@ -766,7 +1680,8 @@ function renderFrontend(sites) {
         status = `<span class="badge" title="serving ${site.buildDir}/">${site.buildDir}/</span>`;
       } else if (site.devPort) {
         status = `<span class="badge on" title="dev server port">:${site.devPort}</span>`;
-        action = `<button class="sm" data-devstop="${site.name}" title="stop the dev server (frees RAM/CPU)">Stop</button>`;
+        action = `<button class="sm" data-devrestart="${site.name}" title="restart the dev server">Restart</button> ` +
+          `<button class="sm" data-devstop="${site.name}" title="stop the dev server (frees RAM/CPU)">Stop</button>`;
       } else {
         status = '<span class="badge off" title="wakes automatically when you open the link; sleeps after 2 idle minutes (10 with a tab open)">sleeping</span>';
         action = `<button class="sm" data-devstart="${site.name}">Start</button>`;
@@ -795,10 +1710,15 @@ function wireSiteHandlers(tb) {
   tb.querySelectorAll('[data-nodever]').forEach(el => el.onchange = () =>
     act('Switching Node version…', '/api/sites/node',
         { name: el.dataset.nodever, version: el.value }, 'Done'));
-  tb.querySelectorAll('[data-rename]').forEach(el => el.onclick = (e) => {
+  tb.querySelectorAll('[data-rename]').forEach(el => el.onclick = async (e) => {
     e.preventDefault();
     const oldName = el.dataset.rename;
-    const newName = prompt('New site name — the domain becomes <name>.' + (state.tld || 'test') + ':', oldName);
+    const newName = await promptModal({
+      title: 'Rename site',
+      message: `New name for <span class="mono">${oldName}</span> — the domain becomes &lt;name&gt;.${state.tld || 'test'}.`,
+      input: { value: oldName, placeholder: 'site-name' },
+      confirmText: 'Rename',
+    });
     if (!newName || newName === oldName) return;
     act('Renaming ' + oldName + ' → ' + newName + '…', '/api/sites/rename',
         { name: oldName, newName }, 'Renamed');
@@ -809,17 +1729,32 @@ function wireSiteHandlers(tb) {
   tb.querySelectorAll('[data-devstart]').forEach(el => el.onclick = () =>
     act('Starting the dev server… (first start can take a minute)', '/api/dev/start',
         { name: el.dataset.devstart }, 'Started'));
-  tb.querySelectorAll('[data-devstop]').forEach(el => el.onclick = () => {
-    if (!confirm('Stop the dev server for ' + el.dataset.devstop + '?\nOpening its link later wakes it automatically.')) return;
+  tb.querySelectorAll('[data-devrestart]').forEach(el => el.onclick = () =>
+    act('Restarting the dev server…', '/api/dev/restart',
+        { name: el.dataset.devrestart }, 'Restarted'));
+  tb.querySelectorAll('[data-devstop]').forEach(el => el.onclick = async () => {
+    const name = el.dataset.devstop;
+    const ok = await confirmModal({
+      title: 'Stop dev server?',
+      message: `Stop the dev server for <span class="mono">${name}</span>? Opening its link later wakes it automatically.`,
+      confirmText: 'Stop',
+    });
+    if (!ok) return;
     act('Stopping the dev server…', '/api/dev/stop',
-        { name: el.dataset.devstop }, 'Stopped — opening the link wakes it again');
+        { name }, 'Stopped — opening the link wakes it again');
   });
   tb.querySelectorAll('[data-secure]').forEach(el => el.onchange = () =>
     act(el.checked ? 'Securing…' : 'Unsecuring…', '/api/sites/secure',
         { name: el.dataset.secure, secure: el.checked }, 'Done'));
-  tb.querySelectorAll('[data-unlink]').forEach(el => el.onclick = () => {
-    if (confirm('Unlink ' + el.dataset.unlink + '?'))
-      act('Unlinking…', '/api/sites/unlink', { name: el.dataset.unlink }, 'Unlinked');
+  tb.querySelectorAll('[data-unlink]').forEach(el => el.onclick = async () => {
+    const name = el.dataset.unlink;
+    const ok = await confirmModal({
+      title: 'Unlink site?',
+      message: `Unlink <span class="mono">${name}</span>? Mullion stops serving this domain — your project files are untouched.`,
+      confirmText: 'Unlink',
+      danger: true,
+    });
+    if (ok) act('Unlinking…', '/api/sites/unlink', { name }, 'Unlinked');
   });
 }
 
@@ -833,6 +1768,30 @@ async function refresh() {
 }
 
 /* ── extensions ────────────────────────────────────────────── */
+// extToggleRow builds one checkbox row for a real, toggleable
+// extension — wired to /api/php/ext/set with the shared busy/toast
+// handling. Used by both the Windows grid (every extension) and the
+// non-Windows grid (just the ini-toggleable ones, e.g. opcache/apcu).
+function extToggleRow(e, version) {
+  const label = document.createElement('label');
+  label.innerHTML = `<input type="checkbox" ${e.enabled ? 'checked' : ''}> <span>${e.name}</span>`;
+  label.querySelector('input').onchange = async (ev) => {
+    const on = ev.target.checked;
+    $('busy-label').textContent = (on ? 'Enabling ' : 'Disabling ') + e.name + '…';
+    $('busy').classList.add('show');
+    try {
+      await api('/api/php/ext/set', { version, name: e.name, enabled: on });
+      toast(e.name + (on ? ' enabled' : ' disabled') + ' for PHP ' + version);
+    } catch (err) {
+      ev.target.checked = !on;
+      toast('Error: ' + err.message);
+    } finally {
+      $('busy').classList.remove('show');
+    }
+  };
+  return label;
+}
+
 async function loadExts() {
   const version = $('ext-version').value;
   if (!version) return;
@@ -842,41 +1801,126 @@ async function loadExts() {
   try {
     const exts = await api('/api/php/ext', { version });
     if (!state.windows) {
-      // Static builds: everything is compiled in — show, don't toggle.
+      // Static builds: most extensions are compiled in and always on,
+      // but a few (opcache, apcu) have a real ini on/off switch.
+      const toggleable = exts.filter(e => e.toggleable);
+      const fixed = exts.filter(e => !e.toggleable);
       $('ext-static-note').style.display = '';
-      $('ext-hint').textContent = exts.length + ' built in';
-      panel.className = 'ext-chips';
-      panel.innerHTML = exts.map(e => `<span>${e.name}</span>`).join('');
+      $('ext-hint').textContent = fixed.length + ' built in' +
+        (toggleable.length ? ' · ' + toggleable.length + ' switchable' : '');
+      panel.className = '';
+      panel.innerHTML = '';
+      if (toggleable.length) {
+        const grid = document.createElement('div');
+        grid.className = 'ext-grid';
+        toggleable.forEach(e => grid.appendChild(extToggleRow(e, version)));
+        panel.appendChild(grid);
+      }
+      const chips = document.createElement('div');
+      chips.className = 'ext-chips';
+      chips.innerHTML = fixed.map(e => `<span>${e.name}</span>`).join('');
+      panel.appendChild(chips);
       return;
     }
     panel.className = 'ext-grid';
     $('ext-hint').textContent = exts.filter(e => e.enabled).length + ' of ' + exts.length + ' enabled';
     panel.innerHTML = '';
-    for (const e of exts) {
-      const label = document.createElement('label');
-      label.innerHTML = `<input type="checkbox" ${e.enabled ? 'checked' : ''}> <span>${e.name}</span>`;
-      label.querySelector('input').onchange = async (ev) => {
-        const on = ev.target.checked;
-        $('busy-label').textContent = (on ? 'Enabling ' : 'Disabling ') + e.name + '…';
-        $('busy').classList.add('show');
-        try {
-          await api('/api/php/ext/set', { version, name: e.name, enabled: on });
-          toast(e.name + (on ? ' enabled' : ' disabled') + ' for PHP ' + version);
-        } catch (err) {
-          ev.target.checked = !on;
-          toast('Error: ' + err.message);
-        } finally {
-          $('busy').classList.remove('show');
-        }
-      };
-      panel.appendChild(label);
-    }
+    exts.forEach(e => panel.appendChild(extToggleRow(e, version)));
   } catch (e) {
     panel.innerHTML = '<span class="muted">Error: ' + e.message + '</span>';
   }
 }
 
+/* ── php.ini settings ──────────────────────────────────────── */
+// iniRow builds one row for a curated php.ini setting: a label/key on
+// the left, and a control on the right sized to its kind. Every control
+// saves through /api/php/ini/set with the shared busy/toast handling,
+// and reverts itself if the save fails.
+function iniRow(s, version) {
+  const row = document.createElement('div');
+  row.className = 'ini-row';
+  row.innerHTML = `<div class="ini-label"><span class="ini-name">${s.label}</span><span class="ini-key">${s.key}</span></div>`;
+  const wrap = document.createElement('div');
+  wrap.className = 'ini-control';
+  row.appendChild(wrap);
+
+  let current = s.value; // last known-good value, for reverting a failed save
+  const save = async (value, revert) => {
+    $('busy-label').textContent = 'Saving ' + s.key + '…';
+    $('busy').classList.add('show');
+    try {
+      await api('/api/php/ini/set', { version, key: s.key, value });
+      current = value;
+      toast(s.key + ' = ' + value + ' for PHP ' + version + ' (PHP restarted)');
+    } catch (e) {
+      revert();
+      toast('Error: ' + e.message);
+    } finally {
+      $('busy').classList.remove('show');
+    }
+  };
+
+  if (s.kind === 'bool') {
+    const sw = document.createElement('span');
+    sw.className = 'switch';
+    sw.innerHTML = `<input type="checkbox"${s.value === '1' ? ' checked' : ''}><i></i>`;
+    const input = sw.querySelector('input');
+    input.onchange = () => save(input.checked ? '1' : '0', () => { input.checked = current === '1'; });
+    wrap.appendChild(sw);
+  } else if (s.kind === 'select') {
+    const sel = document.createElement('select');
+    sel.className = 'mono';
+    (s.options || []).forEach(o => {
+      const op = document.createElement('option');
+      op.value = o; op.textContent = o;
+      if (o === s.value) op.selected = true;
+      sel.appendChild(op);
+    });
+    sel.onchange = () => save(sel.value, () => { sel.value = current; });
+    wrap.appendChild(sel);
+  } else {
+    // size | int | text: a plain input, saved on Enter or on blur if
+    // the value actually changed.
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'mono';
+    input.value = s.value;
+    input.onchange = () => {
+      if (input.value === current) return;
+      save(input.value, () => { input.value = current; });
+    };
+    input.onkeydown = (ev) => { if (ev.key === 'Enter') input.blur(); };
+    wrap.appendChild(input);
+  }
+
+  return row;
+}
+
+async function loadIni() {
+  const version = $('ini-version').value;
+  if (!version) return;
+  const grid = $('ini-grid');
+  grid.innerHTML = '<span class="muted" style="padding:12px 16px; display:block">Loading…</span>';
+  try {
+    const settings = await api('/api/php/ini', { version });
+    $('ini-hint').textContent = settings.length + ' setting' + (settings.length === 1 ? '' : 's');
+    grid.innerHTML = '';
+    settings.forEach(s => grid.appendChild(iniRow(s, version)));
+  } catch (e) {
+    grid.innerHTML = '<span class="muted">Error: ' + e.message + '</span>';
+  }
+}
+
 /* ── databases table ───────────────────────────────────────── */
+function confirmDropDb(name) {
+  return confirmModal({
+    title: 'Delete database?',
+    message: `Delete database <span class="mono">${name}</span> and ALL its data?`,
+    detail: 'This cannot be undone.',
+    confirmText: 'Delete',
+    danger: true,
+  });
+}
 let dbsLoadedAt = 0;
 async function loadDatabases(force) {
   if (!force && Date.now() - dbsLoadedAt < 4000) return;
@@ -906,14 +1950,202 @@ async function loadDatabases(force) {
       window.open('https://' + host + '/index.php?route=/database/structure&db=' +
         encodeURIComponent(el.dataset.opendb), '_blank');
     });
-    tb.querySelectorAll('[data-dropdb]').forEach(el => el.onclick = () => {
+    tb.querySelectorAll('[data-dropdb]').forEach(el => el.onclick = async () => {
       const name = el.dataset.dropdb;
-      if (!confirm(`Delete database "${name}" and ALL its data? This cannot be undone.`)) return;
+      if (!(await confirmDropDb(name))) return;
       dbsLoadedAt = 0;
       act('Dropping ' + name + '…', '/api/db/drop', { name }, 'Dropped');
     });
   } catch (e) { /* mysql not reachable yet */ }
 }
+
+let pgDbsLoadedAt = 0;
+async function loadPgDatabases(force) {
+  if (!force && Date.now() - pgDbsLoadedAt < 4000) return;
+  pgDbsLoadedAt = Date.now();
+  try {
+    const dbs = await api('/api/pg/db/list', {});
+    $('pg-db-count').textContent = dbs.length + (dbs.length === 1 ? ' database' : ' databases');
+    const tb = $('pg-db-body');
+    tb.innerHTML = '';
+    if (!dbs.length) {
+      tb.innerHTML = '<tr><td colspan="3" class="empty">No databases yet — create one below.</td></tr>';
+    }
+    dbs.forEach((db, i) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="muted">${i + 1}</td>
+        <td class="mono" style="font-weight:600">${db}</td>
+        <td style="text-align:right">
+          <button class="sm" data-pgopendb="${db}">Open</button>
+          <button class="danger sm" data-pgdropdb="${db}">Drop</button>
+        </td>`;
+      tb.appendChild(tr);
+    });
+    // Postgres has no per-database admin URL — opening any row just
+    // opens pgAdmin, where the server (and every database on it) is
+    // already registered.
+    tb.querySelectorAll('[data-pgopendb]').forEach(el => el.onclick = () =>
+      runJob(state.postgres.pgadminInstalled ? 'Opening pgAdmin…' : 'Downloading pgAdmin… (~290 MB, about a minute or two)',
+          '/api/pgadmin/open', {}, 'pgAdmin opened'));
+    tb.querySelectorAll('[data-pgdropdb]').forEach(el => el.onclick = async () => {
+      const name = el.dataset.pgdropdb;
+      if (!(await confirmDropDb(name))) return;
+      pgDbsLoadedAt = 0;
+      act('Dropping ' + name + '…', '/api/pg/db/drop', { name }, 'Dropped');
+    });
+  } catch (e) { /* postgres not reachable yet */ }
+}
+
+let mongoDbsLoadedAt = 0;
+async function loadMongoDatabases(force) {
+  if (!force && Date.now() - mongoDbsLoadedAt < 4000) return;
+  mongoDbsLoadedAt = Date.now();
+  try {
+    const dbs = await api('/api/mongo/db/list', {});
+    $('mongo-db-count').textContent = dbs.length + (dbs.length === 1 ? ' database' : ' databases');
+    const tb = $('mongo-db-body');
+    tb.innerHTML = '';
+    if (!dbs.length) {
+      tb.innerHTML = '<tr><td colspan="3" class="empty">No databases yet — create one below.</td></tr>';
+    }
+    dbs.forEach((db, i) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="muted">${i + 1}</td>
+        <td class="mono" style="font-weight:600">${db}</td>
+        <td style="text-align:right">
+          ${state.mongo.uiLinked ? `<button class="sm" data-mgopendb="${db}">Open</button> ` : ''}
+          <button class="danger sm" data-mgdropdb="${db}">Drop</button>
+        </td>`;
+      tb.appendChild(tr);
+    });
+    tb.querySelectorAll('[data-mgopendb]').forEach(el => el.onclick = () => {
+      const host = 'mongo.' + (state ? state.tld : 'test');
+      window.open('https://' + host + '/db/' + encodeURIComponent(el.dataset.mgopendb), '_blank');
+    });
+    tb.querySelectorAll('[data-mgdropdb]').forEach(el => el.onclick = async () => {
+      const name = el.dataset.mgdropdb;
+      if (!(await confirmDropDb(name))) return;
+      mongoDbsLoadedAt = 0;
+      act('Dropping ' + name + '…', '/api/mongo/db/drop', { name }, 'Dropped');
+    });
+  } catch (e) { /* mongo not reachable yet */ }
+}
+
+/* ── backups ───────────────────────────────────────────────── */
+function fmtSize(bytes) {
+  if (!bytes) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  let n = bytes, i = 0;
+  while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
+  return (i === 0 ? n : n.toFixed(1)) + ' ' + units[i];
+}
+let lastBackups = [];
+let backupsLoadedAt = 0;
+async function loadBackups(force) {
+  if (!force && Date.now() - backupsLoadedAt < 4000) return;
+  backupsLoadedAt = Date.now();
+  try {
+    lastBackups = await api('/api/backups', {});
+    renderBackupsTable('mysql', 'mysql-backups-card', 'mysql-backups-count', 'mysql-backups-body');
+    renderBackupsTable('postgres', 'pg-backups-card', 'pg-backups-count', 'pg-backups-body');
+    renderBackupsTable('mongo', 'mongo-backups-card', 'mongo-backups-count', 'mongo-backups-body');
+  } catch (e) { /* not reachable yet */ }
+}
+function renderBackupsTable(engine, cardId, countId, bodyId) {
+  const list = lastBackups.filter(b => b.engine === engine);
+  const engState = state && state[engine === 'mysql' ? 'mysql' : engine];
+  const show = list.length > 0 || (engState && engState.installed);
+  $(cardId).style.display = show ? '' : 'none';
+  if (!show) return;
+  $(countId).textContent = list.length + (list.length === 1 ? ' backup' : ' backups');
+  const tb = $(bodyId);
+  tb.innerHTML = '';
+  if (!list.length) {
+    tb.innerHTML = '<tr><td colspan="5" class="empty">No backups yet — use "Back up now" above.</td></tr>';
+    return;
+  }
+  list.forEach(b => {
+    const when = b.time ? new Date(b.time).toLocaleString() : '';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="mono" style="font-weight:600">${b.name}</td>
+      <td class="muted">${when}</td>
+      <td class="muted">${fmtSize(b.size)}</td>
+      <td class="muted">${(b.files || []).length}</td>
+      <td style="text-align:right; white-space:nowrap">
+        <button class="sm" data-act="restore">Restore…</button>
+        <button class="sm" data-act="show">Show in ${state && state.windows ? 'Explorer' : 'Finder'}</button>
+      </td>`;
+    tr.querySelector('[data-act="restore"]').onclick = () => restoreBackup(b);
+    tr.querySelector('[data-act="show"]').onclick = () => act('Opening…', '/api/open-path', { path: b.dir });
+    tb.appendChild(tr);
+  });
+}
+async function restoreBackup(b) {
+  const options = [{ value: '', label: 'All databases' }].concat(
+    (b.files || []).map(f => ({ value: f, label: f })));
+  const result = await modal({
+    title: 'Restore backup?',
+    message: `Restore from <span class="mono">${b.name}</span>? This overwrites the matching database(s) with the backed-up data.`,
+    detail: new Date(b.time || Date.now()).toLocaleString(),
+    input: { type: 'select', label: 'What to restore', value: '', options },
+    confirmText: 'Restore',
+    danger: true,
+  });
+  if (!result) return;
+  runJob('Restoring backup…', '/api/backups/restore', { dir: b.dir, db: result.input }, 'Restored');
+}
+function wireEngineUninstall(btnId, engine, label) {
+  $(btnId).onclick = async () => {
+    const result = await modal({
+      title: 'Uninstall ' + label + '?',
+      message: `Uninstall <span class="mono">${label}</span>? This stops the server and removes it.`,
+      checkboxes: [
+        { id: 'backup', label: 'Back up databases first', checked: true },
+        { id: 'deleteData', label: 'Delete data', hint: 'keeps the data folder so a reinstall picks it up', checked: false },
+      ],
+      confirmText: 'Uninstall',
+      danger: true,
+    });
+    if (!result) return;
+    const backupFirst = result.checks.backup;
+    const deleteData = result.checks.deleteData;
+    runJob(backupFirst ? 'Backing up…' : 'Removing ' + label + '…',
+        '/api/engine/uninstall', { engine, backupFirst, deleteData },
+        r => label + ' uninstalled' + (r ? ' — backed up to ' + r : ''));
+  };
+}
+wireEngineUninstall('btn-mysql-uninstall', 'mysql', 'MySQL');
+wireEngineUninstall('btn-pg-uninstall', 'postgres', 'PostgreSQL');
+wireEngineUninstall('btn-mongo-uninstall', 'mongo', 'MongoDB');
+$('btn-mysql-backup').onclick = () =>
+  runJob('Backing up MySQL…', '/api/engine/backup', { engine: 'mysql' }, r => 'Backed up to ' + r);
+$('btn-pg-backup').onclick = () =>
+  runJob('Backing up PostgreSQL…', '/api/engine/backup', { engine: 'postgres' }, r => 'Backed up to ' + r);
+$('btn-mongo-backup').onclick = () =>
+  runJob('Backing up MongoDB…', '/api/engine/backup', { engine: 'mongo' }, r => 'Backed up to ' + r);
+
+/* ── settings ──────────────────────────────────────────────── */
+$('btn-settings-tld').onclick = async () => {
+  const newTld = $('settings-tld-new').value.trim().toLowerCase().replace(/^\.+|\.+$/g, '');
+  if (!newTld) return toast('Type a new TLD first — e.g. local');
+  if (state && newTld === state.tld) return toast('That is already the current TLD');
+  const exampleSite = (state && state.sites[0] && state.sites[0].name) || 'myapp';
+  const curTld = state ? state.tld : 'test';
+  const ok = await confirmModal({
+    title: 'Change the domain suffix?',
+    message: `Every linked site's domain changes from <span class="mono">.${curTld}</span> to <span class="mono">.${newTld}</span> — ` +
+      `e.g. <span class="mono">${exampleSite}.${curTld}</span> becomes <span class="mono">${exampleSite}.${newTld}</span>.`,
+    detail: 'Updating the hosts file needs administrator rights — a password prompt may appear.',
+    confirmText: 'Change TLD',
+    danger: true,
+  });
+  if (!ok) return;
+  await runJob('Changing the domain suffix…', '/api/tld', { tld: newTld }, () => 'TLD is now .' + newTld);
+  $('settings-tld-new').value = '';
+};
 
 /* ── wiring ────────────────────────────────────────────────── */
 $('btn-toggle').onclick = () =>
@@ -951,6 +2183,12 @@ $('btn-ext-get').onclick = async () => {
     $('busy').classList.remove('show');
   }
 };
+$('ini-version').onchange = () => loadIni();
+$('btn-ini-open').onclick = () => {
+  const version = $('ini-version').value;
+  if (!version) return toast('Install a PHP version first');
+  act('Opening php.ini…', '/api/php/ini/open', { version }, 'Opened php.ini');
+};
 $('node-global').onchange = () =>
   act('Switching the default Node…', '/api/node/use', { version: $('node-global').value }, 'Switched');
 $('btn-node-install').onclick = () => {
@@ -958,11 +2196,14 @@ $('btn-node-install').onclick = () => {
   act('Downloading Node ' + v + '… (this can take a minute)', '/api/node/install', { version: v }, 'Installed');
   $('node-new').value = '';
 };
-$('btn-mysql-pass').onclick = () => {
+$('btn-mysql-pass').onclick = async () => {
   const password = $('mysql-pass').value;
-  if (!confirm(password
-    ? 'Set the MySQL root password? phpMyAdmin will be updated to match.'
-    : 'Remove the MySQL root password?')) return;
+  const ok = await confirmModal({
+    title: password ? 'Set root password?' : 'Remove root password?',
+    message: password ? 'Set the MySQL root password? phpMyAdmin will be updated to match.' : 'Remove the MySQL root password?',
+    confirmText: password ? 'Set password' : 'Remove password',
+  });
+  if (!ok) return;
   act('Updating the root password…', '/api/mysql/password', { password }, 'Password updated');
   $('mysql-pass').value = '';
 };
@@ -976,10 +2217,122 @@ $('btn-db-create').onclick = () => {
 $('btn-mysql-switch').onclick = () => {
   const v = $('mysql-new').value.trim();
   if (!v) return toast('Type a version first — e.g. 8.4, latest, or mariadb');
-  act('Switching the database… (downloading + migrating, this can take a few minutes)',
-      '/api/mysql/switch', { version: v }, 'Database switched');
+  runJob('Switching the database… (downloading + migrating, this can take a few minutes)',
+      '/api/mysql/switch', { version: v }, r => (r || 'Database') + ' switched');
   $('mysql-new').value = '';
 };
+function openPhpMyAdmin() {
+  const host = 'phpmyadmin.' + (state ? state.tld : 'test');
+  window.open('https://' + host, '_blank');
+}
+$('btn-pma-card').onclick = openPhpMyAdmin;
+$('btn-heidi-card').onclick = () =>
+  act('Opening HeidiSQL…', '/api/heidisql/open', {}, 'HeidiSQL opened');
+
+/* ── PostgreSQL ────────────────────────────────────────────── */
+$('btn-pg-install').onclick = () => {
+  const v = $('pg-version').value;
+  if (!v) return toast('Pick a version first');
+  runJob('Downloading PostgreSQL ' + v + '… (this can take a minute or two)',
+      '/api/pg/install', { version: v }, r => (r || 'PostgreSQL') + ' installed');
+};
+$('btn-pg-pass').onclick = async () => {
+  const password = $('pg-pass').value;
+  const ok = await confirmModal({
+    title: password ? 'Set superuser password?' : 'Remove superuser password?',
+    message: password ? 'Set the PostgreSQL superuser password? pgAdmin will be updated to match.' : 'Remove the PostgreSQL superuser password?',
+    confirmText: password ? 'Set password' : 'Remove password',
+  });
+  if (!ok) return;
+  act('Updating the superuser password…', '/api/pg/password', { password }, 'Password updated');
+  $('pg-pass').value = '';
+};
+$('btn-pg-db-create').onclick = () => {
+  const name = $('pg-db-new').value.trim();
+  if (!name) return;
+  pgDbsLoadedAt = 0;
+  act('Creating ' + name + '…', '/api/pg/db/create', { name }, 'Created');
+  $('pg-db-new').value = '';
+};
+$('btn-pgadmin').onclick = () =>
+  runJob(state && state.postgres.pgadminInstalled ? 'Opening pgAdmin…' : 'Downloading pgAdmin… (~290 MB, about a minute or two)',
+      '/api/pgadmin/open', {}, 'pgAdmin opened');
+
+/* ── MongoDB ───────────────────────────────────────────────── */
+$('btn-mongo-install').onclick = () => {
+  const v = $('mongo-version').value;
+  if (!v) return toast('Pick a version first');
+  runJob('Downloading MongoDB ' + v + '… (this can take a minute or two)',
+      '/api/mongo/install', { version: v }, r => (r || 'MongoDB') + ' installed');
+};
+$('btn-mongo-db-create').onclick = () => {
+  const name = $('mongo-db-new').value.trim();
+  if (!name) return;
+  mongoDbsLoadedAt = 0;
+  act('Creating ' + name + '…', '/api/mongo/db/create', { name }, 'Created');
+  $('mongo-db-new').value = '';
+};
+$('btn-mongoexpress').onclick = async () => {
+  const url = await runJob('Setting up mongo-express…', '/api/mongo-express/open', {}, 'mongo-express ready');
+  if (url) window.open(url, '_blank');
+};
+// pickFolder shows a native "choose a folder" dialog and resolves to the
+// chosen absolute path, or null if the user cancelled (or the pick
+// failed, after toasting the error). Inside Mullion.app the panel runs
+// in a WKWebView with a JS bridge to AppKit's NSOpenPanel; everywhere
+// else (a plain browser tab, the Windows Edge app window) it asks the
+// mullion process itself to show a native dialog.
+window.__mullionPickers = {};
+window.__mullionPicked = function (id, path) {
+  const resolve = window.__mullionPickers[id];
+  delete window.__mullionPickers[id];
+  if (resolve) resolve(path);
+};
+let mullionPickSeq = 0;
+function pickFolder(title) {
+  const bridge = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.mullion;
+  if (bridge) {
+    return new Promise((resolve) => {
+      const id = ++mullionPickSeq;
+      window.__mullionPickers[id] = resolve;
+      bridge.postMessage({ type: 'pickFolder', id: id, title: title });
+    });
+  }
+  return api('/api/pick-folder', { title: title }).catch((e) => {
+    toast('Error: ' + e.message);
+    return null;
+  });
+}
+// pickFile is pickFolder's sibling for a single file (e.g. a .sql backup
+// to import) — same native-bridge-or-server-dialog split. types is a
+// list of file extensions without the leading dot.
+function pickFile(title, types) {
+  const bridge = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.mullion;
+  if (bridge) {
+    return new Promise((resolve) => {
+      const id = ++mullionPickSeq;
+      window.__mullionPickers[id] = resolve;
+      bridge.postMessage({ type: 'pickFile', id: id, title: title, types: types || [] });
+    });
+  }
+  return api('/api/pick-file', { title: title, types: types || [] }).catch((e) => {
+    toast('Error: ' + e.message);
+    return null;
+  });
+}
+function browseFolder(pathId, nameId, title) {
+  return async () => {
+    const path = await pickFolder(title);
+    if (!path) return;
+    $(pathId).value = path;
+    if (!$(nameId).value.trim()) {
+      const base = path.replace(/[\\/]+$/, '').split(/[\\/]/).pop() || '';
+      $(nameId).value = base.toLowerCase().replace(/\s+/g, '-');
+    }
+  };
+}
+$('btn-be-browse').onclick = browseFolder('be-link-path', 'be-link-name', 'Choose the backend project folder');
+$('btn-fe-browse').onclick = browseFolder('fe-link-path', 'fe-link-name', 'Choose the frontend project folder');
 function linkProject(pathId, nameId) {
   return async () => {
     const path = $(pathId).value.trim();
@@ -1002,19 +2355,27 @@ $('btn-be-link').onclick = linkProject('be-link-path', 'be-link-name');
 $('btn-fe-link').onclick = linkProject('fe-link-path', 'fe-link-name');
 $('autostart').onchange = () =>
   act('Saving…', '/api/autostart', { enabled: $('autostart').checked }, 'Saved');
-$('btn-pma').onclick = () => {
-  const host = 'phpmyadmin.' + (state ? state.tld : 'test');
-  window.open('https://' + host, '_blank');
-};
+$('btn-pma').onclick = openPhpMyAdmin;
 $('btn-heidi').onclick = () =>
   act('Opening HeidiSQL…', '/api/heidisql/open', {}, 'HeidiSQL opened');
 
 (async () => {
   showPage(location.hash.slice(1) || 'overview');
   await refresh();
+  if ((location.hash.slice(1) || 'overview') === 'php') loadIni();
   try {
     const avail = await api('/api/php/available');
     $('php-avail').innerHTML = avail.map(v => `<option value="${v}">`).join('');
+  } catch {}
+  try {
+    const avail = await api('/api/pg/series');
+    $('pg-version').innerHTML = avail.map(v => `<option value="${v}">${v}</option>`).join('');
+    if (avail.includes('17')) $('pg-version').value = '17';
+  } catch {}
+  try {
+    const avail = await api('/api/mongo/series');
+    $('mongo-version').innerHTML = avail.map(v => `<option value="${v}">${v}</option>`).join('');
+    if (avail.includes('8.0')) $('mongo-version').value = '8.0';
   } catch {}
   setInterval(refresh, 5000);
 })();

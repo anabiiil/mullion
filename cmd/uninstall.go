@@ -2,11 +2,11 @@ package cmd
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/spf13/cobra"
 
@@ -19,8 +19,10 @@ import (
 	"pm/internal/elevate"
 	"pm/internal/fcgi"
 	"pm/internal/hosts"
+	"pm/internal/mongodb"
 	"pm/internal/mysql"
 	"pm/internal/pmdir"
+	"pm/internal/postgres"
 	"pm/internal/proc"
 	"pm/internal/shortcut"
 )
@@ -34,16 +36,17 @@ var (
 
 var uninstallCmd = &cobra.Command{
 	Use:   "uninstall",
-	Short: "Remove Mullion completely (PHP, MySQL, phpMyAdmin, Composer, config)",
+	Short: "Remove Mullion completely (PHP, MySQL, PostgreSQL, MongoDB, phpMyAdmin, Composer, config)",
 	Long: `Stops every service and removes everything Mullion put on this machine:
-~/.mullion (PHP versions, MySQL and its databases, phpMyAdmin, Composer),
-the hosts-file entries, the PATH entries, the trusted root certificate,
-and the autostart registration.
+~/.mullion (PHP versions, MySQL/PostgreSQL/MongoDB and their databases,
+phpMyAdmin, Composer), the hosts-file entries, the PATH entries, the
+trusted root certificate, and the autostart registration.
 
 Your project folders are NOT touched — Mullion only ever links to them.
 
-Before deleting, it offers to export all your MySQL databases to a
-backup .sql file in your user folder.`,
+Before deleting, it offers to export every installed database server's
+data (MySQL, PostgreSQL, MongoDB) to a timestamped backup folder next
+to ~/.mullion.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		err := runUninstall()
 		if uninstallPause {
@@ -69,8 +72,9 @@ func runUninstall() error {
 		if !console.Interactive() {
 			return fmt.Errorf("refusing to uninstall without confirmation; pass --yes")
 		}
-		fmt.Println("This removes Mullion completely: PHP versions, MySQL AND its databases,")
-		fmt.Println("phpMyAdmin, Composer, hosts entries, PATH entries, and autostart.")
+		fmt.Println("This removes Mullion completely: PHP versions, MySQL/PostgreSQL/MongoDB")
+		fmt.Println("AND their databases, phpMyAdmin, Composer, hosts entries, PATH entries,")
+		fmt.Println("and autostart.")
 		fmt.Println("Your project folders are NOT touched.")
 		if !askYesNo("Continue?", false) {
 			fmt.Println("Aborted — nothing was removed.")
@@ -78,11 +82,13 @@ func runUninstall() error {
 		}
 	}
 
+	hasAnyData := engineHasData(a, "mysql") || engineHasData(a, "postgres") || engineHasData(a, "mongo")
+
 	wantBackup := uninstallBackup
 	if !uninstallBackup && !uninstallNoBackup {
 		wantBackup = false
-		if a.State.Config.MySQL != "" && mysql.DataInitialized(a.Paths) && console.Interactive() {
-			wantBackup = askYesNo("Export your MySQL databases to a backup .sql file first?", true)
+		if hasAnyData && console.Interactive() {
+			wantBackup = askYesNo("Export your databases to a backup folder first?", true)
 		}
 	}
 
@@ -112,39 +118,30 @@ func runUninstall() error {
 }
 
 func doUninstall(a *app.App, wantBackup bool) error {
-	// 1. Database backup — a failed backup aborts the uninstall rather
+	// 1. Database backups — a failed backup aborts the uninstall rather
 	// than deleting data the user asked to keep.
-	if wantBackup && a.State.Config.MySQL != "" && mysql.DataInitialized(a.Paths) {
-		v := a.State.Config.MySQL
-		// Port 3306 answering while no Mullion mysqld runs means another
-		// server owns it — dumping would export THEIR data. Offer to
-		// stop it (via its manager) so Mullion's own data gets backed up.
-		if mysql.Running() && len(processesUnder(a.Paths.Home, pmdir.ExeName("mysqld"))) == 0 {
-			if !reclaimMysqlPort(a, false) {
-				return fmt.Errorf("another MySQL server is on port %d — stop it and re-run, or pass --no-backup", mysql.Port)
+	if wantBackup {
+		for _, engine := range []string{"mysql", "postgres", "mongo"} {
+			if !engineHasData(a, engine) {
+				continue
 			}
-		}
-		if !mysql.Running() {
-			fmt.Println("Starting MySQL to export your databases...")
-			if err := mysql.Start(a.Paths, v); err != nil {
-				return fmt.Errorf("could not start MySQL for the backup: %w (re-run with --no-backup to skip)", err)
+			// Port 3306 answering while no Mullion mysqld runs means
+			// another server owns it — dumping would export THEIR data.
+			// Offer to stop it (via its manager) so Mullion's own data
+			// gets backed up. (PostgreSQL/MongoDB have no equivalent: a
+			// foreign server on 5432/27017 would already have kept
+			// Mullion's own engine from starting at all.)
+			if engine == "mysql" && mysql.Running() && len(processesUnder(a.Paths.Home, pmdir.ExeName("mysqld"))) == 0 {
+				if !reclaimMysqlPort(a, false) {
+					return fmt.Errorf("another MySQL server is on port %d — stop it and re-run, or pass --no-backup", mysql.Port)
+				}
 			}
-		}
-		dbs, err := mysql.UserDatabases(a.Paths, v)
-		if err != nil {
-			return fmt.Errorf("backup failed: %w (re-run with --no-backup to skip)", err)
-		}
-		if len(dbs) > 0 {
-			dir := filepath.Join(a.Paths.BackupsDir(), time.Now().Format("2006-01-02_150405"))
-			fmt.Printf("Exporting %d database(s) to %s ...\n", len(dbs), dir)
-			if err := mysql.BackupTo(a.Paths, v, dbs, dir); err != nil {
-				return fmt.Errorf("backup failed: %w (re-run with --no-backup to skip)", err)
+			fmt.Printf("Backing up %s...\n", engineLabel(engine))
+			dir, err := a.BackupEngine(context.Background(), engine)
+			if err != nil {
+				return fmt.Errorf("%s backup failed: %w (re-run with --no-backup to skip)", engineLabel(engine), err)
 			}
 			fmt.Println("Backup saved:", dir)
-			fmt.Println("  one .sql per database + all-databases.sql")
-			fmt.Println("  restore later with: mullion mysql restore \"" + dir + "\"")
-		} else {
-			fmt.Println("No user databases found — nothing to back up.")
 		}
 	}
 
@@ -158,6 +155,12 @@ func doUninstall(a *app.App, wantBackup bool) error {
 	agent.Stop(a.Paths)
 	if v := a.State.Config.MySQL; v != "" && len(processesUnder(a.Paths.Home, pmdir.ExeName("mysqld"))) > 0 {
 		_ = mysql.Stop(a.Paths, v)
+	}
+	if v := a.State.Config.Postgres; v != "" {
+		_ = postgres.Stop(a.Paths, v)
+	}
+	if v := a.State.Config.Mongo; v != "" {
+		_ = mongodb.Stop(a.Paths, v)
 	}
 	for _, pid := range processesUnder(a.Paths.Home, "") {
 		// Never kill ourselves — this very process may run from the

@@ -131,3 +131,16 @@ func allowNoPassword(password string) string {
 	}
 	return "false"
 }
+
+// Installed reports whether phpMyAdmin's files are present.
+func Installed(paths pmdir.Paths) bool {
+	_, err := os.Stat(filepath.Join(paths.PhpMyAdminDir(), "index.php"))
+	return err == nil
+}
+
+// Remove deletes Mullion's phpMyAdmin install. It does not unlink the
+// "phpmyadmin" site or touch MySQL — callers that need the whole
+// teardown (e.g. `mullion phpmyadmin uninstall`) do that separately.
+func Remove(paths pmdir.Paths) error {
+	return os.RemoveAll(paths.PhpMyAdminDir())
+}

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"pm/internal/archive"
@@ -49,6 +50,17 @@ func Install(ctx context.Context, paths pmdir.Paths, rel Release) (string, error
 	}
 	if err := writeIni(destDir); err != nil {
 		return "", fmt.Errorf("writing php.ini: %w", err)
+	}
+
+	// LDAP is a bonus, not a requirement: only macOS knows how to build
+	// it (see ldap_darwin.go), and a failure here — missing Command Line
+	// Tools, a network hiccup, whatever — must never fail the PHP
+	// install itself. Skipped outright on Linux, where EnsureLdap always
+	// errors (see ldap_other.go) and there'd be nothing useful to try.
+	if runtime.GOOS == "darwin" {
+		if err := EnsureLdap(ctx, paths, rel.Version); err != nil {
+			fmt.Printf("note: LDAP was not added: %v\n", err)
+		}
 	}
 	return destDir, nil
 }

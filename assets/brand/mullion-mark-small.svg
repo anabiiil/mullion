@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16">
+  <title>Mullion (small-size variant, pixel-aligned for 16/24/32px)</title>
+  <defs><clipPath id="s-window"><rect width="16" height="16" rx="4"/></clipPath></defs>
+  <g clip-path="url(#s-window)">
+    <rect width="16" height="16" fill="#FF6B4A"/>
+    <rect x="0" y="6" width="8" height="1" fill="#1C2333" fill-opacity=".5"/>
+    <rect x="7" y="0" width="2" height="16" fill="#1C2333"/>
+  </g>
+</svg>

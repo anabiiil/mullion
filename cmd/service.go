@@ -11,8 +11,10 @@ import (
 	"pm/internal/caddy"
 	"pm/internal/devserver"
 	"pm/internal/fcgi"
+	"pm/internal/mongodb"
 	"pm/internal/mysql"
 	"pm/internal/phpver"
+	"pm/internal/postgres"
 	"pm/internal/term"
 )
 
@@ -91,8 +93,21 @@ var stopCmd = &cobra.Command{
 		}
 		devserver.StopAll(a.Paths)
 		agent.Stop(a.Paths)
+		// A whole-stack stop, same as MySQL above: this does NOT set the
+		// user's stopped flags, so a plain `mullion start` afterwards
+		// brings every configured engine back.
 		if v := a.State.Config.MySQL; v != "" {
 			if err := mysql.Stop(a.Paths, v); err != nil {
+				return err
+			}
+		}
+		if v := a.State.Config.Postgres; v != "" {
+			if err := postgres.Stop(a.Paths, v); err != nil {
+				return err
+			}
+		}
+		if v := a.State.Config.Mongo; v != "" {
+			if err := mongodb.Stop(a.Paths, v); err != nil {
 				return err
 			}
 		}
@@ -105,10 +120,12 @@ var restartCmd = &cobra.Command{
 	Use:   "restart",
 	Short: "Restart everything",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := stopCmd.RunE(cmd, nil); err != nil {
+		a := mustApp()
+		if err := a.RestartStack(cmd.Context()); err != nil {
 			return err
 		}
-		return startCmd.RunE(cmd, nil)
+		fmt.Println(term.Green("✓ Mullion is running."))
+		return statusCmd.RunE(cmd, nil)
 	},
 }
 
@@ -172,6 +189,26 @@ var statusCmd = &cobra.Command{
 				state = term.Green("running")
 			}
 			fmt.Printf("db:       %-14s port %d  %s\n", v, mysql.Port, state)
+		}
+
+		if v := a.State.Config.Postgres; v != "" {
+			state := term.Red("stopped") + " (run `mullion postgres start`)"
+			if postgres.Running() {
+				state = term.Green("running")
+			}
+			pw := "no password set"
+			if a.State.Config.PostgresPassword != "" {
+				pw = "password set"
+			}
+			fmt.Printf("db:       %-14s port %d  %s  (%s)\n", v, postgres.Port, state, pw)
+		}
+
+		if v := a.State.Config.Mongo; v != "" {
+			state := term.Red("stopped") + " (run `mullion mongo start`)"
+			if mongodb.Running() {
+				state = term.Green("running")
+			}
+			fmt.Printf("db:       %-14s port %d  %s\n", v, mongodb.Port, state)
 		}
 
 		fmt.Printf("sites:    %d linked (.%s)\n", len(a.State.Sites), a.State.Config.TLD)

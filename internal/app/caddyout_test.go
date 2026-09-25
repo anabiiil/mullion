@@ -55,6 +55,11 @@ func TestWriteCaddyfileModes(t *testing.T) {
 	if !strings.Contains(rSection, "reverse_proxy localhost:5173") {
 		t.Fatalf("running site wrong:\n%s", rSection)
 	}
+	// A burst of parallel module requests from the dev-server page must
+	// not overflow the upstream's accept queue and 502.
+	if !strings.Contains(rSection, "max_conns_per_host 64") {
+		t.Fatalf("running site missing max_conns_per_host cap:\n%s", rSection)
+	}
 }
 
 func section(out, host string) string {

@@ -1,0 +1,658 @@
+{
+ "versions": [
+  {
+   "version": "9.0.0-rc0",
+   "production_release": false,
+   "development_release": false,
+   "release_candidate": true,
+   "current": true,
+   "lts_release": true,
+   "date": "07/14/2026",
+   "downloads": [
+    {
+     "target": "macos",
+     "arch": "arm64",
+     "edition": "enterprise",
+     "archive": {
+      "url": "https://downloads.mongodb.com/osx/mongodb-macos-arm64-enterprise-9.0.0-rc0.tgz",
+      "sha256": "0ca6a12d80ba33cb0091555c883396265233a267ff690e4a4a128ead1192ef60"
+     }
+    },
+    {
+     "target": "macos",
+     "arch": "arm64",
+     "edition": "base",
+     "archive": {
+      "url": "https://fastdl.mongodb.org/osx/mongodb-macos-arm64-9.0.0-rc0.tgz",
+      "sha256": "8eafe504eb4e137c605f8ff38ac2b06b95bd22236c41357cc96bde9ee7c9ac52"
+     }
+    },
+    {
+     "target": "macos",
+     "arch": "x86_64",
+     "edition": "base",
+     "archive": {
+      "url": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-9.0.0-rc0.tgz",
+      "sha256": "90c7f42d411bef5a5f41d847e6101aa730d3220793da5cde1dff3263cbd57e8b"
+     }
+    },
+    {
+     "target": "windows",
+     "arch": "x86_64",
+     "edition": "base",
+     "archive": {
+      "url": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-9.0.0-rc0.zip",
+      "sha256": "b392407ec7104477f8d428d190882b2cb0653a0d8bd13337fd6694478fef2a5e"
+     }
+    },
+    {
+     "target": "windows",
+     "arch": "x86_64",
+     "edition": "enterprise",
+     "archive": {
+      "url": "https://downloads.mongodb.com/windows/mongodb-windows-x86_64-enterprise-9.0.0-rc0.zip",
+      "sha256": "3be2c8207610edd38734f00c7f98a193c912b24e3d56b21c9b82cadc81a19a3f"
+     }
+    },
+    {
+     "target": "macos",
+     "arch": "x86_64",
+     "edition": "enterprise",
+     "archive": {
+      "url": "https://downloads.mongodb.com/osx/mongodb-macos-x86_64-enterprise-9.0.0-rc0.tgz",
+      "sha256": "06275f45c19dbf49ff6ca3c50aadde0c42a1be9a4039c4b78fd367ae19c25972"
+     }
+    }
+   ]
+  },
+  {
+   "version": "8.3.11",
+   "production_release": true,
+   "development_release": false,
+   "release_candidate": false,
+   "current": true,
+   "lts_release": true,
+   "date": "09/03/2026",
+   "downloads": [
+    {
+     "target": "macos",
+     "arch": "arm64",
+     "edition": "enterprise",
+     "archive": {
+      "url": "https://downloads.mongodb.com/osx/mongodb-macos-arm64-enterprise-8.3.11.tgz",
+      "sha256": "712db6f1129830a71843339f79909c6c34e56eb20c3e441c6a707a31621a472a"
+     }
+    },
+    {
+     "target": "macos",
+     "arch": "arm64",
+     "edition": "base",
+     "archive": {
+      "url": "https://fastdl.mongodb.org/osx/mongodb-macos-arm64-8.3.11.tgz",
+      "sha256": "b586c3972880fcdea90690a6d22c22cd260b0972de717ca710c0bc77c64b039e"
+     }
+    },
+    {
+     "target": "macos",
+     "arch": "x86_64",
+     "edition": "base",
+     "archive": {
+      "url": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-8.3.11.tgz",
+      "sha256": "45b4a7913c1384d4b3ce32c81630a5c0e1993de2f6119f511995ec2324dec5c9"
+     }
+    },
+    {
+     "target": "windows",
+     "arch": "x86_64",
+     "edition": "base",
+     "archive": {
+      "url": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-8.3.11.zip",
+      "sha256": "55574b06b41848207213a5e69575dd3487abf3cf07ecfe01b3aef1bab0084241"
+     }
+    },
+    {
+     "target": "windows",
+     "arch": "x86_64",
+     "edition": "enterprise",
+     "archive": {
+      "url": "https://downloads.mongodb.com/windows/mongodb-windows-x86_64-enterprise-8.3.11.zip",
+      "sha256": "263dfff3f0c12660503a97d51996036958b01e62d97be439c0b3e149b44a4753"
+     }
+    },
+    {
+     "target": "macos",
+     "arch": "x86_64",
+     "edition": "enterprise",
+     "archive": {
+      "url": "https://downloads.mongodb.com/osx/mongodb-macos-x86_64-enterprise-8.3.11.tgz",
+      "sha256": "02a031ed62d0b50ce003de2852a5dc77983dfba1ace9dcd6890236cbe9a296d3"
+     }
+    }
+   ]
+  },
+  {
+   "version": "8.3.1-alpha0",
+   "production_release": false,
+   "development_release": true,
+   "release_candidate": false,
+   "current": false,
+   "lts_release": false,
+   "date": "04/23/2026",
+   "downloads": [
+    {
+     "target": "macos",
+     "arch": "arm64",
+     "edition": "enterprise",
+     "archive": {
+      "url": "https://downloads.mongodb.com/osx/mongodb-macos-arm64-enterprise-8.3.1-alpha0.tgz",
+      "sha256": "a3387597c0877632e9a4cba3ae352e478433e402ba60169944c3ac01751dab67"
+     }
+    },
+    {
+     "target": "macos",
+     "arch": "arm64",
+     "edition": "base",
+     "archive": {
+      "url": "https://fastdl.mongodb.org/osx/mongodb-macos-arm64-8.3.1-alpha0.tgz",
+      "sha256": "5f24cd84534260f5720b22975b1fa1aecf47acab2be4649dabad4801ec52cbdb"
+     }
+    },
+    {
+     "target": "macos",
+     "arch": "x86_64",
+     "edition": "base",
+     "archive": {
+      "url": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-8.3.1-alpha0.tgz",
+      "sha256": "0efc920a31c2ce86ada7f669b1fe2127b98b0f8ec65c9a4dafd43033fc788dcc"
+     }
+    },
+    {
+     "target": "windows",
+     "arch": "x86_64",
+     "edition": "base",
+     "archive": {
+      "url": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-8.3.1-alpha0.zip",
+      "sha256": "924ace3e69d1f9eda71882230b6aebaf78567b698aff7775a2a5b0510abdcdae"
+     }
+    },
+    {
+     "target": "windows",
+     "arch": "x86_64",
+     "edition": "enterprise",
+     "archive": {
+      "url": "https://downloads.mongodb.com/windows/mongodb-windows-x86_64-enterprise-8.3.1-alpha0.zip",
+      "sha256": "092ec4effbcebecf896ec238780ede44004d4be07dbff5080bf120c0fb8f5330"
+     }
+    },
+    {
+     "target": "macos",
+     "arch": "x86_64",
+     "edition": "enterprise",
+     "archive": {
+      "url": "https://downloads.mongodb.com/osx/mongodb-macos-x86_64-enterprise-8.3.1-alpha0.tgz",
+      "sha256": "7173df8d3f3cb0e179fe7b44236cc4c0c3cef668f4a6f329ea300bec9fb44717"
+     }
+    }
+   ]
+  },
+  {
+   "version": "8.2.12",
+   "production_release": true,
+   "development_release": false,
+   "release_candidate": false,
+   "current": true,
+   "lts_release": true,
+   "date": "06/26/2026",
+   "downloads": [
+    {
+     "target": "macos",
+     "arch": "arm64",
+     "edition": "enterprise",
+     "archive": {
+      "url": "https://downloads.mongodb.com/osx/mongodb-macos-arm64-enterprise-8.2.12.tgz",
+      "sha256": "591ebc7574f09645bea3b7525acdf171adea552763cec9788141b46eecb9230c"
+     }
+    },
+    {
+     "target": "macos",
+     "arch": "arm64",
+     "edition": "base",
+     "archive": {
+      "url": "https://fastdl.mongodb.org/osx/mongodb-macos-arm64-8.2.12.tgz",
+      "sha256": "8b1140dd745c23acafb812012fac3ff559c593065db631a5bec3dbafaf8dd1c2"
+     }
+    },
+    {
+     "target": "macos",
+     "arch": "x86_64",
+     "edition": "base",
+     "archive": {
+      "url": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-8.2.12.tgz",
+      "sha256": "6848e8a4925bb5dc08dbac6b1ae407366505447b5ab79c77106a5d892ce818d9"
+     }
+    },
+    {
+     "target": "windows",
+     "arch": "x86_64",
+     "edition": "base",
+     "archive": {
+      "url": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-8.2.12.zip",
+      "sha256": "a45fca0ea0ff5dd8ab00bc10b103df33177cb519839e05f36dfe841a84cd21cd"
+     }
+    },
+    {
+     "target": "windows",
+     "arch": "x86_64",
+     "edition": "enterprise",
+     "archive": {
+      "url": "https://downloads.mongodb.com/windows/mongodb-windows-x86_64-enterprise-8.2.12.zip",
+      "sha256": "7cfee9bde3e1ce045dd522645aee9b4c36b7ed15bc71988d3a583bb904d2e051"
+     }
+    },
+    {
+     "target": "macos",
+     "arch": "x86_64",
+     "edition": "enterprise",
+     "archive": {
+      "url": "https://downloads.mongodb.com/osx/mongodb-macos-x86_64-enterprise-8.2.12.tgz",
+      "sha256": "f1ea9ba90269c7a471109ca7293aaff0c1e4db6255e6acebf157e65cd31517ed"
+     }
+    }
+   ]
+  },
+  {
+   "version": "8.2.9",
+   "production_release": true,
+   "development_release": false,
+   "release_candidate": false,
+   "current": false,
+   "lts_release": true,
+   "date": "05/06/2026",
+   "user_warning": "critical issue (trimmed)",
+   "downloads": [
+    {
+     "target": "macos",
+     "arch": "arm64",
+     "edition": "enterprise",
+     "archive": {
+      "url": "https://downloads.mongodb.com/osx/mongodb-macos-arm64-enterprise-8.2.9.tgz",
+      "sha256": "254971f57da0dfcc2b59f98c48359bfc1adf50c3b3812706bc4d19643e73e974"
+     }
+    },
+    {
+     "target": "macos",
+     "arch": "arm64",
+     "edition": "base",
+     "archive": {
+      "url": "https://fastdl.mongodb.org/osx/mongodb-macos-arm64-8.2.9.tgz",
+      "sha256": "bf2a23fa247f07cb9d5120c036ed7f2736539169dc673b561095943c8a55b61b"
+     }
+    },
+    {
+     "target": "macos",
+     "arch": "x86_64",
+     "edition": "base",
+     "archive": {
+      "url": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-8.2.9.tgz",
+      "sha256": "7658be79904f24b88027f299a330a9e59f473dc6ad0bbe5cf8e7a7902748cb3e"
+     }
+    },
+    {
+     "target": "windows",
+     "arch": "x86_64",
+     "edition": "base",
+     "archive": {
+      "url": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-8.2.9.zip",
+      "sha256": "8da2dbadc3ab58ab87ec039a6d9f207c8cd7ebabdd6b7ae54dff48f2737f5c53"
+     }
+    },
+    {
+     "target": "windows",
+     "arch": "x86_64",
+     "edition": "enterprise",
+     "archive": {
+      "url": "https://downloads.mongodb.com/windows/mongodb-windows-x86_64-enterprise-8.2.9.zip",
+      "sha256": "8a9c9203c1ecf6fbcd41178831f75cb63b34b2326aa12d7eb3395d9b92820f33"
+     }
+    },
+    {
+     "target": "macos",
+     "arch": "x86_64",
+     "edition": "enterprise",
+     "archive": {
+      "url": "https://downloads.mongodb.com/osx/mongodb-macos-x86_64-enterprise-8.2.9.tgz",
+      "sha256": "0d59b844bf7c840ef8ee7cc00c593d065559c725ce00c5af9f294a97023584fa"
+     }
+    }
+   ]
+  },
+  {
+   "version": "8.0.32",
+   "production_release": true,
+   "development_release": false,
+   "release_candidate": false,
+   "current": true,
+   "lts_release": true,
+   "date": "09/03/2026",
+   "downloads": [
+    {
+     "target": "macos",
+     "arch": "arm64",
+     "edition": "enterprise",
+     "archive": {
+      "url": "https://downloads.mongodb.com/osx/mongodb-macos-arm64-enterprise-8.0.32.tgz",
+      "sha256": "6674b9694a72dbe53703e880f31e8c6696ef89cb5e1f153d4e7259428d18435c"
+     }
+    },
+    {
+     "target": "macos",
+     "arch": "arm64",
+     "edition": "base",
+     "archive": {
+      "url": "https://fastdl.mongodb.org/osx/mongodb-macos-arm64-8.0.32.tgz",
+      "sha256": "f81cb258434d548dca7244d599c82eb339043d8dedd0b1b807870c9d263117f2"
+     }
+    },
+    {
+     "target": "macos",
+     "arch": "x86_64",
+     "edition": "base",
+     "archive": {
+      "url": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-8.0.32.tgz",
+      "sha256": "4073d96f1a83ecae289997cb1f9ace5258a740fdb9b8b06ee00098ec342d1bce"
+     }
+    },
+    {
+     "target": "windows",
+     "arch": "x86_64",
+     "edition": "base",
+     "archive": {
+      "url": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-8.0.32.zip",
+      "sha256": "5a0675fdec49b544cd5d374ad50a9a594cf5b3278b5ace658aa51cbb4df17177"
+     }
+    },
+    {
+     "target": "windows",
+     "arch": "x86_64",
+     "edition": "enterprise",
+     "archive": {
+      "url": "https://downloads.mongodb.com/windows/mongodb-windows-x86_64-enterprise-8.0.32.zip",
+      "sha256": "11b1cb454487bfaa31de397f2ead4293f00ed38965de9e79401bd0f042b54386"
+     }
+    },
+    {
+     "target": "macos",
+     "arch": "x86_64",
+     "edition": "enterprise",
+     "archive": {
+      "url": "https://downloads.mongodb.com/osx/mongodb-macos-x86_64-enterprise-8.0.32.tgz",
+      "sha256": "1df796444472baecc3d84bcb824785da56efc7c4cdea659543b870ad2af0439d"
+     }
+    }
+   ]
+  },
+  {
+   "version": "8.0.23",
+   "production_release": true,
+   "development_release": false,
+   "release_candidate": false,
+   "current": false,
+   "lts_release": true,
+   "date": "05/06/2026",
+   "user_warning": "critical issue (trimmed)",
+   "downloads": [
+    {
+     "target": "macos",
+     "arch": "arm64",
+     "edition": "enterprise",
+     "archive": {
+      "url": "https://downloads.mongodb.com/osx/mongodb-macos-arm64-enterprise-8.0.23.tgz",
+      "sha256": "87d24940db27a6aecd7264a0fe4b87de80239c7ca8d72cf0300879645c7463d7"
+     }
+    },
+    {
+     "target": "macos",
+     "arch": "arm64",
+     "edition": "base",
+     "archive": {
+      "url": "https://fastdl.mongodb.org/osx/mongodb-macos-arm64-8.0.23.tgz",
+      "sha256": "811f2341b8458fe30105aff470b7cf4df75c2b9659729217ec48dd2c4cc8d64c"
+     }
+    },
+    {
+     "target": "macos",
+     "arch": "x86_64",
+     "edition": "base",
+     "archive": {
+      "url": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-8.0.23.tgz",
+      "sha256": "f5d803151258e8c304af630c070db149bd00883fbf7c70fdf8925f3b31e360dd"
+     }
+    },
+    {
+     "target": "windows",
+     "arch": "x86_64",
+     "edition": "base",
+     "archive": {
+      "url": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-8.0.23.zip",
+      "sha256": "1f9e46916eea8f84c341143321dec8aa2c7e5cf18d46fa185f854ebb7031ad13"
+     }
+    },
+    {
+     "target": "windows",
+     "arch": "x86_64",
+     "edition": "enterprise",
+     "archive": {
+      "url": "https://downloads.mongodb.com/windows/mongodb-windows-x86_64-enterprise-8.0.23.zip",
+      "sha256": "b8cd3105c2c0b5e4b1b3989aedbea18083762362bea484960f0a01add056512b"
+     }
+    },
+    {
+     "target": "macos",
+     "arch": "x86_64",
+     "edition": "enterprise",
+     "archive": {
+      "url": "https://downloads.mongodb.com/osx/mongodb-macos-x86_64-enterprise-8.0.23.tgz",
+      "sha256": "298533fe796c09c97b5a76d47a0ac5921a7e6668cf44fcec3d6301a16697933c"
+     }
+    }
+   ]
+  },
+  {
+   "version": "7.0.43",
+   "production_release": true,
+   "development_release": false,
+   "release_candidate": false,
+   "current": true,
+   "lts_release": true,
+   "date": "09/03/2026",
+   "downloads": [
+    {
+     "target": "macos",
+     "arch": "arm64",
+     "edition": "enterprise",
+     "archive": {
+      "url": "https://downloads.mongodb.com/osx/mongodb-macos-arm64-enterprise-7.0.43.tgz",
+      "sha256": "bd380428bcc04cbac1408b839cd27bc28017cae1930673d19a912026fb50d659"
+     }
+    },
+    {
+     "target": "macos",
+     "arch": "arm64",
+     "edition": "base",
+     "archive": {
+      "url": "https://fastdl.mongodb.org/osx/mongodb-macos-arm64-7.0.43.tgz",
+      "sha256": "764137ddb0eada62eee1a23129e8c32cb197eb2d7f64b63cc89a56a96d7e3cc7"
+     }
+    },
+    {
+     "target": "macos",
+     "arch": "x86_64",
+     "edition": "base",
+     "archive": {
+      "url": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-7.0.43.tgz",
+      "sha256": "9a939ec78ddbb60cb1f36f0c5f6591964087d59ba8108ca0391de64421577c8c"
+     }
+    },
+    {
+     "target": "windows",
+     "arch": "x86_64",
+     "edition": "base",
+     "archive": {
+      "url": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-7.0.43.zip",
+      "sha256": "09b7893dc07fbb6d67d4c2690f6d1fa5b3039a0b3b5de34fb1d9096d55a2230f"
+     }
+    },
+    {
+     "target": "windows",
+     "arch": "x86_64",
+     "edition": "enterprise",
+     "archive": {
+      "url": "https://downloads.mongodb.com/windows/mongodb-windows-x86_64-enterprise-7.0.43.zip",
+      "sha256": "fc3ddb1d4f737ed2d18dd02eae22a2f59680f6727e0ba60617f9f9e8cb913016"
+     }
+    },
+    {
+     "target": "macos",
+     "arch": "x86_64",
+     "edition": "enterprise",
+     "archive": {
+      "url": "https://downloads.mongodb.com/osx/mongodb-macos-x86_64-enterprise-7.0.43.tgz",
+      "sha256": "3afb9784c6490309eeabb9c9ff77115c850a2cf06e49bafef0f982e8dac2c717"
+     }
+    }
+   ]
+  },
+  {
+   "version": "6.0.29",
+   "production_release": true,
+   "development_release": false,
+   "release_candidate": false,
+   "current": true,
+   "lts_release": true,
+   "date": "06/10/2026",
+   "downloads": [
+    {
+     "target": "macos",
+     "arch": "arm64",
+     "edition": "enterprise",
+     "archive": {
+      "url": "https://downloads.mongodb.com/osx/mongodb-macos-arm64-enterprise-6.0.29.tgz",
+      "sha256": "666335bdc6bee59c0cab882cb4975fdde52113aeb5f83a9a9e46e90a7553fc97"
+     }
+    },
+    {
+     "target": "macos",
+     "arch": "arm64",
+     "edition": "base",
+     "archive": {
+      "url": "https://fastdl.mongodb.org/osx/mongodb-macos-arm64-6.0.29.tgz",
+      "sha256": "f195f69114ec4f26655c4afa699fd84029427dd423f46155bb24239044d4798a"
+     }
+    },
+    {
+     "target": "macos",
+     "arch": "x86_64",
+     "edition": "base",
+     "archive": {
+      "url": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-6.0.29.tgz",
+      "sha256": "119f3eb6020e4e0e62c20082a50fc280d4ae06e33cd48209537e8e69830dafb6"
+     }
+    },
+    {
+     "target": "windows",
+     "arch": "x86_64",
+     "edition": "base",
+     "archive": {
+      "url": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-6.0.29.zip",
+      "sha256": "abfd03e5e02c962004e0b46d47777cdd3bca767b1a200dcafc2194cc5415cd55"
+     }
+    },
+    {
+     "target": "windows",
+     "arch": "x86_64",
+     "edition": "enterprise",
+     "archive": {
+      "url": "https://downloads.mongodb.com/windows/mongodb-windows-x86_64-enterprise-6.0.29.zip",
+      "sha256": "abd6bd648832af8f86c13affb5f3f0b5692937756add1cd5bab3cbe94ea3d247"
+     }
+    },
+    {
+     "target": "macos",
+     "arch": "x86_64",
+     "edition": "enterprise",
+     "archive": {
+      "url": "https://downloads.mongodb.com/osx/mongodb-macos-x86_64-enterprise-6.0.29.tgz",
+      "sha256": "2e8df23a40460900df2f69532e57e874f967232556dd47338d6867a3ca76d63b"
+     }
+    }
+   ]
+  },
+  {
+   "version": "5.0.34",
+   "production_release": true,
+   "development_release": false,
+   "release_candidate": false,
+   "current": true,
+   "lts_release": true,
+   "date": "06/10/2026",
+   "downloads": [
+    {
+     "target": "windows",
+     "arch": "x86_64",
+     "edition": "base",
+     "archive": {
+      "url": "https://fastdl.mongodb.org/windows/mongodb-windows-x86_64-5.0.34.zip",
+      "sha256": "9840e97271cabcdc228d6ed08e4488608d980cc2b7c78cb14c2a48af6b1b8823"
+     }
+    },
+    {
+     "target": "windows",
+     "arch": "x86_64",
+     "edition": "enterprise",
+     "archive": {
+      "url": "https://downloads.mongodb.com/windows/mongodb-windows-x86_64-enterprise-5.0.34.zip",
+      "sha256": "682ebd8257e72809a6fb609d3ddad8dd14e53dd4d9da4c71f267a762dd9dd002"
+     }
+    }
+   ]
+  },
+  {
+   "version": "4.2.25",
+   "production_release": true,
+   "development_release": false,
+   "release_candidate": false,
+   "current": false,
+   "lts_release": true,
+   "date": "10/16/2023",
+   "downloads": [
+    {
+     "target": "macos",
+     "arch": "x86_64",
+     "edition": "base",
+     "archive": {
+      "url": "https://fastdl.mongodb.org/osx/mongodb-macos-x86_64-4.2.25.tgz",
+      "sha256": "1ee0cc13757b433b2a5b41265001e179f19a3cda4c38e06031792c24022831a0"
+     }
+    },
+    {
+     "target": "windows",
+     "arch": "x86_64",
+     "edition": "enterprise",
+     "archive": {
+      "url": "https://downloads.mongodb.com/win32/mongodb-win32-x86_64-enterprise-windows-64-4.2.25.zip",
+      "sha256": "a6b242ee9d29138321fe220f1b12f7b64f679cbd2d03b4531463d56ec297147b"
+     }
+    },
+    {
+     "target": "macos",
+     "arch": "x86_64",
+     "edition": "enterprise",
+     "archive": {
+      "url": "https://downloads.mongodb.com/osx/mongodb-macos-x86_64-enterprise-4.2.25.tgz",
+      "sha256": "3b8a0b7d33827c9505c09a851cd8294c458d74f019390c91851c5255ed9dbf8c"
+     }
+    }
+   ]
+  }
+ ]
+}

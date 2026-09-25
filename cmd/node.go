@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -13,7 +12,6 @@ import (
 	"pm/internal/config"
 	"pm/internal/devserver"
 	"pm/internal/nodever"
-	"pm/internal/proc"
 )
 
 var nodeCmd = &cobra.Command{
@@ -139,24 +137,7 @@ var nodeUninstallCmd = &cobra.Command{
 	Short: "Remove an installed Node version",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		a := mustApp()
-		full, err := nodever.FindInstalled(a.Paths, args[0])
-		if err != nil {
-			return err
-		}
-		if full == a.State.Config.GlobalNode {
-			return fmt.Errorf("Node %s is the default; switch first with `mullion node use <other>`", full)
-		}
-		for _, s := range a.State.Sites {
-			if s.Node == full {
-				return fmt.Errorf("site %q is pinned to Node %s; run `mullion node isolate <other>` there first", s.Name, full)
-			}
-		}
-		if err := os.RemoveAll(a.Paths.NodeVersionDir(full)); err != nil {
-			return err
-		}
-		fmt.Println("Removed Node", full)
-		return nil
+		return mustApp().UninstallNode(args[0])
 	},
 }
 
@@ -209,31 +190,11 @@ var nodeNpmCmd = &cobra.Command{
 	Short: "Change the npm version bundled with a Node install (latest, 10, 10.9.2)",
 	Args:  cobra.RangeArgs(1, 2),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		a := mustApp()
-		target := ""
+		nodeVersion := ""
 		if len(args) == 2 {
-			target = args[1]
-		} else if a.State.Config.GlobalNode == "" {
-			return fmt.Errorf("no Node installed yet (run: mullion node install lts)")
-		} else {
-			target = a.State.Config.GlobalNode
+			nodeVersion = args[1]
 		}
-		full, err := nodever.FindInstalled(a.Paths, target)
-		if err != nil {
-			return err
-		}
-		dir := a.Paths.NodeVersionDir(full)
-		spec := "npm@" + strings.TrimPrefix(args[0], "npm@")
-		fmt.Printf("Installing %s into Node %s...\n", spec, full)
-		c := proc.Quiet(nodever.Tool(dir, "npm"), "install", "-g", spec)
-		c.Env = append(os.Environ(), "PATH="+nodever.BinDir(dir)+string(os.PathListSeparator)+os.Getenv("PATH"))
-		c.Stdout = os.Stdout
-		c.Stderr = os.Stderr
-		if err := c.Run(); err != nil {
-			return err
-		}
-		fmt.Printf("Done — Node %s now ships that npm.\n", full)
-		return nil
+		return mustApp().SetNpmVersion(cmd.Context(), args[0], nodeVersion)
 	},
 }
 
@@ -241,24 +202,21 @@ var nodeWhichCmd = &cobra.Command{
 	Use:   "which",
 	Short: "Explain which Node version this directory gets, and why",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		a := mustApp()
-		dir, reason, err := resolveNodeDirForCwd(a)
-		if err != nil {
-			return err
+		info := mustApp().NodeInfo()
+		if info.Error != "" {
+			return fmt.Errorf("%s", info.Error)
 		}
-		fmt.Printf("Here, Node %s runs — decided by %s.\n", filepath.Base(dir), reason)
-		if g := a.State.Config.GlobalNode; g != "" {
-			fmt.Printf("Global default: %s\n", g)
+		fmt.Printf("Here, Node %s runs — decided by %s.\n", info.Version, info.Reason)
+		if info.GlobalDefault != "" {
+			fmt.Printf("Global default: %s\n", info.GlobalDefault)
 		}
 
 		// Is the `node` on the PATH actually Mullion's shim?
-		found, err := exec.LookPath("node")
-		if err != nil {
-			fmt.Println("warning: no `node` on this terminal's PATH — open a NEW terminal.")
+		if info.Warning != "" {
+			fmt.Println("warning:", info.Warning)
 			return nil
 		}
-		shim := filepath.Join(a.Paths.BinDir(), "node")
-		if filepath.Clean(found) != filepath.Clean(shim) {
+		if info.Shadowed {
 			fmt.Printf(`
 WARNING: in THIS terminal `+"`node`"+` resolves to
   %s
@@ -266,7 +224,7 @@ which is NOT Mullion's — another Node install (nvm? Homebrew?) is
 earlier on the PATH, so `+"`node -v`"+` here ignores Mullion entirely.
 Fix: run `+"`mullion node use %s`"+` (re-asserts the PATH) and open a
 NEW terminal.
-`, found, filepath.Base(dir))
+`, info.ResolvedPath, info.Version)
 		}
 		return nil
 	},
@@ -293,40 +251,10 @@ var nodeBinCmd = &cobra.Command{
 // resolveNodeDirForCwd resolves the Node version directory for the
 // current directory: a linked site's pin, a .nvmrc walking up (stopping
 // at the home directory), then the global default. The reason explains
-// the choice to a human.
+// the choice to a human. The core logic lives on App (ResolveNodeForCwd)
+// so the control panel can use it too.
 func resolveNodeDirForCwd(a *app.App) (dir, reason string, err error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return "", "", err
-	}
-	home, _ := os.UserHomeDir()
-	for d := cwd; ; d = filepath.Dir(d) {
-		if site := a.State.FindSiteByPath(d); site != nil {
-			verDir, err := a.NodeVersionDirFor(*site)
-			why := fmt.Sprintf("linked site %q", site.Name)
-			if site.Node == "" {
-				why += " (.nvmrc / global)"
-			} else {
-				why += " (pinned)"
-			}
-			return verDir, why, err
-		}
-		if data, err := os.ReadFile(filepath.Join(d, ".nvmrc")); err == nil {
-			full, err := nodever.FindInstalled(a.Paths, strings.TrimSpace(string(data)))
-			if err != nil {
-				return "", "", err
-			}
-			return a.Paths.NodeVersionDir(full), filepath.Join(d, ".nvmrc"), nil
-		}
-		if d == home || filepath.Dir(d) == d {
-			break
-		}
-	}
-	full, err := nodever.FindInstalled(a.Paths, a.State.Config.GlobalNode)
-	if err != nil {
-		return "", "", err
-	}
-	return a.Paths.NodeVersionDir(full), "the global default", nil
+	return a.ResolveNodeForCwd()
 }
 
 // activateNode makes a version the default (junction, shims, PATH).

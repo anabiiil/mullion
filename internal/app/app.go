@@ -20,15 +20,26 @@ import (
 	"pm/internal/fcgi"
 	"pm/internal/hosts"
 	"pm/internal/junction"
+	"pm/internal/mongodb"
 	"pm/internal/mysql"
 	"pm/internal/nodever"
 	"pm/internal/phpver"
 	"pm/internal/pmdir"
+	"pm/internal/postgres"
 )
 
 type App struct {
 	Paths pmdir.Paths
 	State *config.State
+
+	// skipApply is set only by this package's own tests, never by New()
+	// or any production code path. Apply() reconciles the REAL machine —
+	// the system hosts file and the global Caddy admin API — regardless
+	// of Paths.Home, so a test that points Paths at a sandbox directory
+	// must still route through applyIfEnabled() instead of calling
+	// Apply() directly, or it would edit the developer's actual
+	// /etc/hosts and running Caddy instance.
+	skipApply bool
 }
 
 func New() (*App, error) {
@@ -44,6 +55,7 @@ func New() (*App, error) {
 		return nil, err
 	}
 	mysql.RootPassword = state.Config.MySQLPassword
+	postgres.Password = state.Config.PostgresPassword
 	return &App{Paths: paths, State: state}, nil
 }
 
@@ -220,6 +232,19 @@ func (a *App) ActivateNode(fullVersion string) error {
 	return EnsureUserPath(a.Paths.BinDir(), a.Paths.CurrentPhp())
 }
 
+// applyIfEnabled is Apply(), skipped in favor of a plain state save when
+// skipApply is set (this package's own tests over a sandbox Paths.Home —
+// see the field's doc comment). Every call site that reconciles the
+// machine after a backup/restore/uninstall goes through this instead of
+// Apply() directly, so a test never touches the real hosts file or the
+// global Caddy admin API.
+func (a *App) applyIfEnabled() error {
+	if a.skipApply {
+		return a.State.Save()
+	}
+	return a.Apply()
+}
+
 // Apply converges everything after a state change: config files, hosts
 // entries, php-cgi processes, and Caddy — started if any site needs
 // serving, merely reloaded otherwise.
@@ -250,12 +275,29 @@ func (a *App) Apply() error {
 	for _, v := range a.NeededVersions() {
 		keep(fcgi.Ensure(a.Paths, v))
 	}
-	// Self-heal MySQL too: any mullion command brings it back if it died.
-	if v := a.State.Config.MySQL; v != "" {
+	// Self-heal MySQL, Postgres and MongoDB too: any mullion command
+	// brings a configured server back if it died — unless the user
+	// stopped it on purpose (shouldSelfHeal), in which case an explicit
+	// stop must stick until they start it again.
+	if v := a.State.Config.MySQL; shouldSelfHeal(v, a.State.Config.MySQLStopped) {
 		if err := mysql.EnsureInitialized(a.Paths, v); err != nil {
 			keep(err)
 		} else {
 			keep(mysql.Start(a.Paths, v))
+		}
+	}
+	if v := a.State.Config.Postgres; shouldSelfHeal(v, a.State.Config.PostgresStopped) {
+		if err := postgres.EnsureInitialized(a.Paths, v); err != nil {
+			keep(err)
+		} else {
+			keep(postgres.Start(a.Paths, v))
+		}
+	}
+	if v := a.State.Config.Mongo; shouldSelfHeal(v, a.State.Config.MongoStopped) {
+		if err := mongodb.EnsureInitialized(a.Paths, v); err != nil {
+			keep(err)
+		} else {
+			keep(mongodb.Start(a.Paths, v))
 		}
 	}
 	if len(a.State.Sites) > 0 {

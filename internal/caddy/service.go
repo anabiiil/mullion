@@ -16,6 +16,7 @@ import (
 	"pm/internal/pmdir"
 	"pm/internal/proc"
 	"pm/internal/sysproc"
+	"pm/internal/tty"
 )
 
 const adminEndpoint = "http://127.0.0.1:2019"
@@ -227,6 +228,5 @@ func TrustCA(paths pmdir.Paths) error {
 }
 
 func stdinIsTerminal() bool {
-	info, err := os.Stdin.Stat()
-	return err == nil && info.Mode()&os.ModeCharDevice != 0
+	return tty.IsTerminal(os.Stdin)
 }

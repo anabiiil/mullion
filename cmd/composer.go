@@ -4,8 +4,6 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-
-	"pm/internal/composer"
 )
 
 var composerCmd = &cobra.Command{
@@ -23,14 +21,11 @@ var composerInstallCmd = &cobra.Command{
 		if len(args) == 1 {
 			version = args[0]
 		}
-		if err := composer.Install(cmd.Context(), a.Paths, version); err != nil {
+		installed, err := a.InstallComposer(cmd.Context(), version)
+		if err != nil {
 			return err
 		}
-		label := "latest stable"
-		if version != "" {
-			label = version
-		}
-		fmt.Printf("Composer (%s) installed — available as `composer` in any new terminal.\n", label)
+		fmt.Printf("Composer (%s) installed — available as `composer` in any new terminal.\n", installed)
 		return nil
 	},
 }

@@ -60,6 +60,8 @@ func TestGenerateKinds(t *testing.T) {
 		"reverse_proxy localhost:5173",
 		"reverse_proxy localhost:5199 {",
 		"header_up Host {upstream_hostport}",
+		"keepalive off",
+		"max_conns_per_host 64",
 		"respond ",
 		"reverse_proxy 127.0.0.1:42999",
 		`header_up X-Mullion-Wake "down"`,

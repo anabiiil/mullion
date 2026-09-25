@@ -2,7 +2,11 @@
 
 package console
 
-import "os"
+import (
+	"os"
+
+	"pm/internal/tty"
+)
 
 func LaunchedFromExplorer() bool { return false }
 
@@ -13,8 +17,7 @@ func Interactive() bool {
 }
 
 func isTerminal(f *os.File) bool {
-	info, err := f.Stat()
-	return err == nil && info.Mode()&os.ModeCharDevice != 0
+	return tty.IsTerminal(f)
 }
 
 func HideWindow() {}

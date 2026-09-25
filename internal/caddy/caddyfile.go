@@ -59,9 +59,17 @@ func Generate(sites []SiteConf, logsDir string) string {
 				// an open tab and keep the idle watcher from ever
 				// sleeping the server — real tabs stay visible through
 				// their live websocket.
-				b.WriteString(fmt.Sprintf("\treverse_proxy localhost:%d {\n\t\theader_up Host {upstream_hostport}\n\t\ttransport http {\n\t\t\tkeepalive off\n\t\t}\n\t}\n", s.ProxyPort))
+				// max_conns_per_host 64: a Vite page's initial module
+				// graph can fire hundreds of requests over HTTP/2 at
+				// once; without keepalive, Caddy would dial that many
+				// upstream connections simultaneously and overflow the
+				// dev server's accept queue (macOS somaxconn=128),
+				// causing "connection reset by peer" 502s. Capping
+				// concurrent dials queues the rest instead of dropping
+				// them.
+				b.WriteString(fmt.Sprintf("\treverse_proxy localhost:%d {\n\t\theader_up Host {upstream_hostport}\n\t\ttransport http {\n\t\t\tkeepalive off\n\t\t\tmax_conns_per_host 64\n\t\t}\n\t}\n", s.ProxyPort))
 			case s.ProxyPort > 0:
-				b.WriteString(fmt.Sprintf("\treverse_proxy localhost:%d {\n\t\ttransport http {\n\t\t\tkeepalive off\n\t\t}\n\t}\n", s.ProxyPort))
+				b.WriteString(fmt.Sprintf("\treverse_proxy localhost:%d {\n\t\ttransport http {\n\t\t\tkeepalive off\n\t\t\tmax_conns_per_host 64\n\t\t}\n\t}\n", s.ProxyPort))
 			case s.AgentPort > 0:
 				// Dev server down: the agent wakes it and shows a
 				// self-refreshing "starting…" page in the meantime.

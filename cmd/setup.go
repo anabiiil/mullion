@@ -19,6 +19,7 @@ import (
 	"pm/internal/console"
 	"pm/internal/elevate"
 	"pm/internal/heidisql"
+	"pm/internal/macapp"
 	"pm/internal/mysql"
 	"pm/internal/nodever"
 	"pm/internal/phpver"
@@ -169,10 +170,15 @@ func doSetup(cmd *cobra.Command, wantAutostart bool, dbChoice string) error {
 		}
 
 		// Desktop shortcut to the installed copy — the file setup was
-		// launched from may get deleted later (Windows only).
-		if runtime.GOOS == "windows" {
+		// launched from may get deleted later (Windows only). On macOS
+		// this installs Mullion.app into Applications instead.
+		if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
 			if err := shortcut.CreateDesktop(a.Paths); err != nil {
 				fmt.Println("note:", err)
+			} else if runtime.GOOS == "darwin" {
+				if macapp.Available() {
+					fmt.Println("Mullion.app installed in Applications.")
+				}
 			} else {
 				fmt.Println("Desktop shortcut created.")
 			}

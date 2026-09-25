@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"runtime"
 
 	"github.com/spf13/cobra"
@@ -91,28 +90,7 @@ var phpUninstallCmd = &cobra.Command{
 	Short: "Remove an installed PHP version",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		a := mustApp()
-		sel, err := phpver.ParseSelector(args[0])
-		if err != nil {
-			return err
-		}
-		full, err := phpver.FindInstalled(a.Paths, sel)
-		if err != nil {
-			return err
-		}
-		if full == a.State.Config.GlobalPHP {
-			return fmt.Errorf("PHP %s is the active global version; switch first with `mullion use <other>`", full)
-		}
-		for _, s := range a.State.Sites {
-			if s.PHP == full {
-				return fmt.Errorf("site %q is isolated to PHP %s; run `mullion unisolate` there first", s.Name, full)
-			}
-		}
-		if err := os.RemoveAll(a.Paths.PhpVersionDir(full)); err != nil {
-			return err
-		}
-		fmt.Println("Removed PHP", full)
-		return nil
+		return mustApp().UninstallPhp(args[0])
 	},
 }
 

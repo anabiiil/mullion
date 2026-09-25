@@ -18,7 +18,7 @@ import (
 var defaultExtensions = []string{
 	"curl", "fileinfo", "gd", "intl", "mbstring", "exif", "mysqli",
 	"openssl", "pdo_mysql", "pdo_pgsql", "pdo_sqlite", "sqlite3",
-	"sodium", "zip",
+	"sodium", "zip", "ldap",
 }
 
 // Install downloads and unpacks a release into ~/.mullion/php/<version> and

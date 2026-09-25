@@ -56,6 +56,9 @@ jobs:
       - name: Test
         run: go test ./...
 
+      - name: Build macOS app bundle
+        run: VERSION="${TAG#v}" bash macapp/build.sh
+
       - name: Build (arm64 + amd64)
         run: |
           GOARCH=arm64 go build -trimpath -o mullion-arm64 .

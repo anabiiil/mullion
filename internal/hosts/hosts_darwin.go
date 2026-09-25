@@ -7,6 +7,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+
+	"pm/internal/tty"
 )
 
 func filePath() string { return "/etc/hosts" }
@@ -63,6 +65,5 @@ func writeElevated(path, content string) error {
 }
 
 func stdinIsTerminal() bool {
-	info, err := os.Stdin.Stat()
-	return err == nil && info.Mode()&os.ModeCharDevice != 0
+	return tty.IsTerminal(os.Stdin)
 }

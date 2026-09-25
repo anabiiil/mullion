@@ -74,13 +74,7 @@ var devRestartCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		site.DevPaused = false
-		devserver.Stop(a.Paths, site.Name)
-		if err := a.Apply(); err != nil {
-			return err
-		}
-		fmt.Printf("%s's dev server restarted.\n", a.State.Host(*site))
-		return nil
+		return a.RestartDevServer(site.Name)
 	},
 }
 

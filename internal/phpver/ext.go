@@ -4,9 +4,10 @@ import "strings"
 
 // Ext is one extension of an installed PHP version.
 type Ext struct {
-	Name    string `json:"name"`
-	Enabled bool   `json:"enabled"`
-	Zend    bool   `json:"zend"`
+	Name       string `json:"name"`
+	Enabled    bool   `json:"enabled"`
+	Zend       bool   `json:"zend"`
+	Toggleable bool   `json:"toggleable"`
 }
 
 func normalizeExtName(name string) string {

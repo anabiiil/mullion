@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -99,53 +98,7 @@ whole backup folder — when the folder contains all-databases.sql that
 one file is imported, otherwise every .sql file in it is.`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		a, version, err := mustMysql()
-		if err != nil {
-			return err
-		}
-		if err := mysql.EnsureInitialized(a.Paths, version); err != nil {
-			return err
-		}
-		if err := mysql.Start(a.Paths, version); err != nil {
-			return err
-		}
-
-		path := strings.Trim(strings.TrimSpace(args[0]), `"`)
-		info, err := os.Stat(path)
-		if err != nil {
-			return fmt.Errorf("%s does not exist", path)
-		}
-
-		var files []string
-		if info.IsDir() {
-			if _, err := os.Stat(filepath.Join(path, "all-databases.sql")); err == nil {
-				files = []string{filepath.Join(path, "all-databases.sql")}
-			} else {
-				entries, err := os.ReadDir(path)
-				if err != nil {
-					return err
-				}
-				for _, e := range entries {
-					if !e.IsDir() && strings.EqualFold(filepath.Ext(e.Name()), ".sql") {
-						files = append(files, filepath.Join(path, e.Name()))
-					}
-				}
-				if len(files) == 0 {
-					return fmt.Errorf("no .sql files in %s", path)
-				}
-			}
-		} else {
-			files = []string{path}
-		}
-
-		for _, f := range files {
-			fmt.Println("Importing", filepath.Base(f), "...")
-			if err := mysql.RestoreFile(a.Paths, version, f); err != nil {
-				return err
-			}
-		}
-		fmt.Printf("Done — %d file(s) imported into MySQL %s.\n", len(files), version)
-		return nil
+		return mustApp().RestoreMySQL(cmd.Context(), args[0])
 	},
 }
 
@@ -277,7 +230,7 @@ var mysqlStartCmd = &cobra.Command{
 			return err
 		}
 		reclaimMysqlPort(a, false)
-		if err := mysql.Start(a.Paths, version); err != nil {
+		if err := a.StartMySQL(); err != nil {
 			return err
 		}
 		restorePendingDump(a)
@@ -290,11 +243,11 @@ var mysqlStopCmd = &cobra.Command{
 	Use:   "stop",
 	Short: "Stop the MySQL server",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		a, version, err := mustMysql()
+		a, _, err := mustMysql()
 		if err != nil {
 			return err
 		}
-		if err := mysql.Stop(a.Paths, version); err != nil {
+		if err := a.StopMySQL(); err != nil {
 			return err
 		}
 		fmt.Println("MySQL stopped.")
@@ -302,25 +255,60 @@ var mysqlStopCmd = &cobra.Command{
 	},
 }
 
+var mysqlBackupCmd = &cobra.Command{
+	Use:   "backup",
+	Short: "Export all your MySQL databases to a timestamped backup folder",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		a := mustApp()
+		dir, err := a.BackupEngine(cmd.Context(), "mysql")
+		if err != nil {
+			return err
+		}
+		fmt.Println("Backup saved:", dir)
+		fmt.Println("  restore with: mullion mysql restore \"" + dir + "\"")
+		return nil
+	},
+}
+
+var (
+	mysqlUninstallYes      bool
+	mysqlUninstallKeepData bool
+	mysqlUninstallNoBackup bool
+)
+
 var mysqlUninstallCmd = &cobra.Command{
 	Use:   "uninstall",
-	Short: "Stop MySQL and remove its binaries (the data directory is kept)",
+	Short: "Stop MySQL, back it up, and remove it (binaries, data, and phpMyAdmin)",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		a, version, err := mustMysql()
 		if err != nil {
 			return err
 		}
-		if err := mysql.Stop(a.Paths, version); err != nil {
+		question := fmt.Sprintf("Uninstall MySQL %s", version)
+		if mysqlUninstallKeepData {
+			question += " (binaries and phpMyAdmin only — your databases are kept)?"
+		} else {
+			question += " AND delete all its databases?"
+		}
+		proceed, err := confirmDestructive(mysqlUninstallYes, question)
+		if err != nil {
 			return err
 		}
-		if err := os.RemoveAll(a.Paths.MysqlVersionDir(version)); err != nil {
+		if !proceed {
+			fmt.Println("Aborted.")
+			return nil
+		}
+		dir, err := a.UninstallEngine(cmd.Context(), "mysql", !mysqlUninstallNoBackup, !mysqlUninstallKeepData)
+		if err != nil {
 			return err
 		}
-		a.State.Config.MySQL = ""
-		if err := a.State.Save(); err != nil {
-			return err
+		if dir != "" {
+			fmt.Println("Backup saved:", dir)
 		}
-		fmt.Printf("MySQL %s removed. Your databases remain in %s.\n", version, a.Paths.MysqlDataDir())
+		fmt.Println("MySQL removed.")
+		if mysqlUninstallKeepData {
+			fmt.Println("Your databases remain in", a.Paths.MysqlDataDir())
+		}
 		return nil
 	},
 }

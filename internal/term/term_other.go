@@ -2,12 +2,12 @@
 
 package term
 
-import "os"
+import (
+	"os"
+
+	"pm/internal/tty"
+)
 
 func initPlatform() bool {
-	info, err := os.Stdout.Stat()
-	if err != nil {
-		return false
-	}
-	return info.Mode()&os.ModeCharDevice != 0
+	return tty.IsTerminal(os.Stdout)
 }

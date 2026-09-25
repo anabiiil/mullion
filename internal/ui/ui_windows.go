@@ -19,6 +19,18 @@ func openTab(url string) {
 	_ = proc.Quiet("cmd", "/c", "start", "", url).Start()
 }
 
+// openIniFile opens path in Notepad. Quiet just hides the console
+// Notepad itself doesn't spawn, keeping this consistent with every
+// other short-lived helper Mullion shells out to.
+func openIniFile(path string) error {
+	return proc.Quiet("notepad.exe", path).Start()
+}
+
+// openInFileManager reveals path in Explorer, with it selected.
+func openInFileManager(path string) error {
+	return proc.Quiet("explorer.exe", "/select,"+path).Start()
+}
+
 // chromiumBrowsers are the browsers that support --app windows.
 var chromiumBrowsers = map[string]bool{
 	"msedge.exe": true, "chrome.exe": true, "brave.exe": true,
@@ -45,6 +57,81 @@ func defaultBrowser() (string, bool) {
 		return "", false
 	}
 	return exe, true
+}
+
+// pickFolder shows a native folder-choose dialog and returns the chosen
+// absolute path, or "" if the user cancelled. FolderBrowserDialog needs
+// an STA thread, hence -STA; the hidden TopMost owner form is what
+// makes the dialog come to the front of the Edge app window instead of
+// popping up behind it.
+func pickFolder(title string) (string, error) {
+	if title == "" {
+		title = "Choose a folder"
+	}
+	script := fmt.Sprintf(`
+Add-Type -AssemblyName System.Windows.Forms
+$owner = New-Object System.Windows.Forms.Form
+$owner.StartPosition = 'CenterScreen'
+$owner.Size = New-Object System.Drawing.Size(0, 0)
+$owner.ShowInTaskbar = $false
+$owner.TopMost = $true
+$owner.Show() | Out-Null
+$owner.Activate() | Out-Null
+$dlg = New-Object System.Windows.Forms.FolderBrowserDialog
+$dlg.Description = %s
+$dlg.ShowNewFolderButton = $true
+if ($dlg.ShowDialog($owner) -eq [System.Windows.Forms.DialogResult]::OK) {
+	Write-Output $dlg.SelectedPath
+}
+$owner.Close()`, psQuote(title))
+	out, err := proc.Quiet("powershell", "-NoProfile", "-STA", "-Command", script).Output()
+	if err != nil {
+		return "", fmt.Errorf("choosing folder: %v", err)
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+// pickFile shows a native file-choose dialog and returns the chosen
+// absolute path, or "" if the user cancelled. types are file extensions
+// without the leading dot (e.g. "sql", "gz") — empty/nil allows any file.
+func pickFile(title string, types []string) (string, error) {
+	if title == "" {
+		title = "Choose a file"
+	}
+	filter := "All files (*.*)|*.*"
+	if len(types) > 0 {
+		exts := make([]string, len(types))
+		for i, t := range types {
+			exts[i] = "*." + t
+		}
+		filter = strings.ToUpper(strings.Join(types, "/")) + " files (" + strings.Join(exts, "; ") + ")|" + strings.Join(exts, ";")
+	}
+	script := fmt.Sprintf(`
+Add-Type -AssemblyName System.Windows.Forms
+$owner = New-Object System.Windows.Forms.Form
+$owner.StartPosition = 'CenterScreen'
+$owner.Size = New-Object System.Drawing.Size(0, 0)
+$owner.ShowInTaskbar = $false
+$owner.TopMost = $true
+$owner.Show() | Out-Null
+$owner.Activate() | Out-Null
+$dlg = New-Object System.Windows.Forms.OpenFileDialog
+$dlg.Title = %s
+$dlg.Filter = %s
+$dlg.Multiselect = $false
+if ($dlg.ShowDialog($owner) -eq [System.Windows.Forms.DialogResult]::OK) {
+	Write-Output $dlg.FileName
+}
+$owner.Close()`, psQuote(title), psQuote(filter))
+	out, err := proc.Quiet("powershell", "-NoProfile", "-STA", "-Command", script).Output()
+	if err != nil {
+		return "", fmt.Errorf("choosing file: %v", err)
+	}
+	return strings.TrimSpace(string(out)), nil
+}
+
+func psQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", "''") + "'"
 }
 
 // openAppWindow launches the panel as a standalone app-mode window — in

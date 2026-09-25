@@ -3,7 +3,9 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"os/signal"
 	"runtime"
+	"syscall"
 
 	"github.com/spf13/cobra"
 
@@ -13,6 +15,7 @@ import (
 )
 
 var uiDetached bool
+var uiWindowHost bool
 
 var uiCmd = &cobra.Command{
 	Use:   "ui",
@@ -21,6 +24,15 @@ var uiCmd = &cobra.Command{
 status, PHP versions, Node, MySQL, and the linked sites — all clickable.
 The panel runs in the background: closing this terminal does not close it.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if uiWindowHost {
+			// Mullion.app runs us as a child process and owns our
+			// lifetime via stdin — no self-update chatter, no
+			// detaching, no window/tab of our own. cobra doesn't wire
+			// cmd.Context() to signals, so handle them here.
+			ctx, stop := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
+			defer stop()
+			return ui.RunHost(ctx, os.Stdin, os.Stdout)
+		}
 		if a, err := app.New(); err == nil && a.State.Config.GlobalPHP != "" {
 			selfUpdateIfNeeded(a)
 		}
@@ -45,5 +57,7 @@ The panel runs in the background: closing this terminal does not close it.`,
 func init() {
 	uiCmd.Flags().BoolVar(&uiDetached, "detached", false, "internal: already detached from the terminal")
 	_ = uiCmd.Flags().MarkHidden("detached")
+	uiCmd.Flags().BoolVar(&uiWindowHost, "window-host", false, "internal: serve the panel for the native app host (Mullion.app)")
+	_ = uiCmd.Flags().MarkHidden("window-host")
 	rootCmd.AddCommand(uiCmd)
 }

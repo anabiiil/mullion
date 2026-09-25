@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"pm/internal/caddy"
 	"pm/internal/config"
 	"pm/internal/nodever"
 	"pm/internal/pmdir"
@@ -74,6 +75,16 @@ func Ensure(paths pmdir.Paths, site config.Site, host, nodeDir string) (int, err
 		"__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS="+host,
 		"DANGEROUSLY_DISABLE_HOST_CHECK=true",
 	)
+	// Let server-side code in the dev server (SSR, a Nitro/Vite proxy
+	// rule) trust Caddy's local CA when it calls another https://*.test
+	// site — without this, that self-signed chain fails verification.
+	// Never force NODE_TLS_REJECT_UNAUTHORIZED=0 instead: that disables
+	// TLS verification globally rather than trusting just this one CA.
+	if os.Getenv("NODE_EXTRA_CA_CERTS") == "" {
+		if _, err := os.Stat(caddy.RootCertPath()); err == nil {
+			env = append(env, "NODE_EXTRA_CA_CERTS="+caddy.RootCertPath())
+		}
+	}
 
 	// A fresh clone has no node_modules — installing for the user is
 	// what "the link just opens" means.

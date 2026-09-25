@@ -7,8 +7,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"pm/internal/app"
-	"pm/internal/caddy"
-	"pm/internal/config"
 	"pm/internal/phpmyadmin"
 )
 
@@ -37,34 +35,43 @@ https://phpmyadmin.<tld>.`,
 }
 
 // ensurePhpMyAdmin installs phpMyAdmin, links it as a secured site, and
-// converges the machine. Shared by `mullion phpmyadmin` and `mullion setup`.
+// converges the machine. Shared by `mullion phpmyadmin` and `mullion setup`;
+// the reusable work lives in internal/phpmyadmin.EnsureLinked so the
+// control panel can call it too without importing cmd.
 func ensurePhpMyAdmin(ctx context.Context, a *app.App, version string) error {
-	if a.State.Config.GlobalPHP == "" {
-		return fmt.Errorf("phpMyAdmin needs PHP: run `mullion php install 8.4` and `mullion use 8.4` first")
-	}
-
-	if err := phpmyadmin.Install(ctx, a.Paths, version, a.State.Config.MySQLPassword); err != nil {
+	url, err := phpmyadmin.EnsureLinked(ctx, a, version)
+	if err != nil {
 		return err
 	}
-	if site := a.State.FindSite("phpmyadmin"); site == nil {
-		a.State.AddSite(config.Site{Name: "phpmyadmin", Path: a.Paths.PhpMyAdminDir(), Secure: true})
-	} else {
-		site.Secure = true
-	}
-	if err := a.Apply(); err != nil {
-		return err
-	}
-	// Make sure Caddy's local root CA is in the system trust store so
-	// browsers show the padlock (one-time confirmation prompt).
-	if err := caddy.TrustCA(a.Paths); err != nil {
-		fmt.Println("note:", err)
-		fmt.Println("If the browser warns about the certificate, run `mullion start` again as administrator once.")
-	}
-
-	fmt.Printf("phpMyAdmin is ready: https://phpmyadmin.%s\n", a.State.Config.TLD)
+	fmt.Printf("phpMyAdmin is ready: %s\n", url)
 	return nil
 }
 
+var phpmyadminUninstallYes bool
+
+var phpmyadminUninstallCmd = &cobra.Command{
+	Use:   "uninstall",
+	Short: "Remove phpMyAdmin (the MySQL server itself is untouched)",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		a := mustApp()
+		proceed, err := confirmDestructive(phpmyadminUninstallYes, "Remove phpMyAdmin?")
+		if err != nil {
+			return err
+		}
+		if !proceed {
+			fmt.Println("Aborted.")
+			return nil
+		}
+		if err := a.UninstallAdminTool("phpmyadmin"); err != nil {
+			return err
+		}
+		fmt.Println("phpMyAdmin removed.")
+		return nil
+	},
+}
+
 func init() {
+	phpmyadminUninstallCmd.Flags().BoolVar(&phpmyadminUninstallYes, "yes", false, "do not ask for confirmation")
+	phpmyadminCmd.AddCommand(phpmyadminUninstallCmd)
 	rootCmd.AddCommand(phpmyadminCmd)
 }

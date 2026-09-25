@@ -2,9 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/spf13/cobra"
+
+	"pm/internal/app"
 )
 
 var tldCmd = &cobra.Command{
@@ -22,15 +23,14 @@ Avoid real public TLDs like .dev or .app: browsers force them to HTTPS
 			fmt.Println(a.State.Config.TLD)
 			return nil
 		}
-		tld := strings.Trim(strings.ToLower(args[0]), ".")
-		if tld == "" || tld != slugify(tld) {
-			return fmt.Errorf("invalid TLD %q (letters, digits and dashes only)", args[0])
+		tld, err := app.ValidateTLD(args[0])
+		if err != nil {
+			return err
 		}
 		if tld == "dev" || tld == "app" {
 			fmt.Printf("warning: .%s is HSTS-preloaded — browsers will force HTTPS on it\n", tld)
 		}
-		a.State.Config.TLD = tld
-		if err := a.Apply(); err != nil {
+		if err := a.SetTLD(tld); err != nil {
 			return err
 		}
 		fmt.Printf("TLD is now .%s — sites are served as <name>.%s\n", tld, tld)

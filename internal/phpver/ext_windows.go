@@ -32,7 +32,7 @@ func ListExtensions(paths pmdir.Paths, version string) ([]Ext, error) {
 			continue
 		}
 		name = strings.TrimSuffix(strings.TrimPrefix(name, "php_"), ".dll")
-		out = append(out, Ext{Name: name, Enabled: enabled[name], Zend: name == "opcache"})
+		out = append(out, Ext{Name: name, Enabled: enabled[name], Zend: name == "opcache", Toggleable: true})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	return out, nil

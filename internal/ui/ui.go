@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -28,11 +29,15 @@ import (
 	"pm/internal/devserver"
 	"pm/internal/fcgi"
 	"pm/internal/heidisql"
+	"pm/internal/mongodb"
+	"pm/internal/mongoexpress"
 	"pm/internal/mysql"
 	"pm/internal/nodever"
+	"pm/internal/pgadmin"
 	"pm/internal/phpmyadmin"
 	"pm/internal/phpver"
 	"pm/internal/pmdir"
+	"pm/internal/postgres"
 	"pm/internal/sysproc"
 	"pm/internal/version"
 )
@@ -47,50 +52,65 @@ var indexHTML []byte
 //go:embed favicon.png
 var faviconPNG []byte
 
-// Run serves the control panel and blocks until its window is closed
-// (or ctx is cancelled when no app window could be opened).
-func Run(ctx context.Context) error {
-	// Opening the panel means "I want my stack": bring the services up in
-	// the background while the window appears, instead of greeting the
-	// user with "Stopped" and a button to press.
-	go func() {
-		a, err := app.New()
-		if err != nil || a.State.Config.GlobalPHP == "" {
-			return
-		}
-		if caddy.Running() {
-			return
-		}
-		_ = caddy.EnsureInstalled(context.Background(), a.Paths)
-		_ = a.Apply()
-		_ = caddy.Start(a.Paths)
-		if v := a.State.Config.MySQL; v != "" {
-			_ = mysql.Start(a.Paths, v)
-		}
-	}()
+// bringServicesUp starts the configured stack in the background:
+// opening the panel means "I want my stack", so the window/tab (or, in
+// window-host mode, the app) appears with things already starting up
+// instead of greeting the user with "Stopped" and a button to press.
+func bringServicesUp() {
+	a, err := app.New()
+	if err != nil || a.State.Config.GlobalPHP == "" {
+		return
+	}
+	if caddy.Running() {
+		return
+	}
+	_ = caddy.EnsureInstalled(context.Background(), a.Paths)
+	_ = a.Apply()
+	_ = caddy.Start(a.Paths)
+	if v := a.State.Config.MySQL; v != "" {
+		_ = mysql.Start(a.Paths, v)
+	}
+}
+
+// startPanel brings the stack up in the background and serves the
+// control panel on an ephemeral 127.0.0.1 port. It's shared by Run and
+// RunHost; callers are responsible for shutting srv down.
+func startPanel() (srv *http.Server, url string, lastSeen *atomic.Int64, err error) {
+	go bringServicesUp()
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
-		return err
+		return nil, "", nil, err
 	}
 	token, err := newToken()
 	if err != nil {
-		return err
+		return nil, "", nil, err
 	}
 
 	// Track requests so tab-mode (no window to watch) can shut the
 	// server down once the page is gone — it polls every 5 seconds.
-	var lastSeen atomic.Int64
+	lastSeen = &atomic.Int64{}
 	lastSeen.Store(time.Now().Unix())
 	mux := newMux(token)
-	srv := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv = &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		lastSeen.Store(time.Now().Unix())
 		mux.ServeHTTP(w, r)
 	})}
 	go srv.Serve(ln)
+
+	url = fmt.Sprintf("http://%s/?t=%s", ln.Addr().String(), token)
+	return srv, url, lastSeen, nil
+}
+
+// Run serves the control panel and blocks until its window is closed
+// (or ctx is cancelled when no app window could be opened).
+func Run(ctx context.Context) error {
+	srv, url, lastSeen, err := startPanel()
+	if err != nil {
+		return err
+	}
 	defer srv.Shutdown(context.Background())
 
-	url := fmt.Sprintf("http://%s/?t=%s", ln.Addr().String(), token)
 	done, err := openAppWindow(url)
 	if err != nil {
 		// The default browser can't do app windows (Firefox etc.):
@@ -115,6 +135,36 @@ func Run(ctx context.Context) error {
 	case <-ctx.Done():
 		return nil
 	}
+}
+
+// RunHost serves the same control panel for the native Mullion.app
+// window host, which runs `mullion ui --window-host` as a child
+// process and drives its own window against the printed URL. Unlike
+// Run: no browser/window is opened, exactly one line —
+// "MULLION_UI_URL=<url>" — goes to out (stdout; everything else must
+// go to stderr), and the panel keeps serving until stdin reaches EOF
+// or ctx is cancelled, instead of exiting on idle polling or a closed
+// window.
+func RunHost(ctx context.Context, stdin io.Reader, out io.Writer) error {
+	srv, url, _, err := startPanel()
+	if err != nil {
+		return err
+	}
+	defer srv.Shutdown(context.Background())
+
+	fmt.Fprintf(out, "MULLION_UI_URL=%s\n", url)
+
+	stdinClosed := make(chan struct{})
+	go func() {
+		io.Copy(io.Discard, stdin)
+		close(stdinClosed)
+	}()
+
+	select {
+	case <-stdinClosed:
+	case <-ctx.Done():
+	}
+	return nil
 }
 
 func newToken() (string, error) {
@@ -264,21 +314,64 @@ func newMux(token string) *http.ServeMux {
 		// Restart the version's php-cgi so running sites see the change.
 		return nil, a.RestartPhp(in.Version)
 	})
+	api("/api/php/ini", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Version string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		return phpver.ListIni(a.Paths, in.Version)
+	})
+	api("/api/php/ini/set", func(a *app.App, r *http.Request) (any, error) {
+		var in struct {
+			Version string
+			Key     string
+			Value   string
+		}
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		if err := phpver.SetIni(a.Paths, in.Version, in.Key, in.Value); err != nil {
+			return nil, err
+		}
+		// Restart the version's php-fpm/php-cgi so running sites see the change.
+		return nil, a.RestartPhp(in.Version)
+	})
+	api("/api/php/ini/open", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Version string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		iniPath := filepath.Join(a.Paths.PhpVersionDir(in.Version), "php.ini")
+		return nil, openIniFile(iniPath)
+	})
 	api("/api/mysql/switch", func(a *app.App, r *http.Request) (any, error) {
 		var in struct{ Version string }
 		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
 			return nil, err
 		}
-		version, err := mysql.ResolveVersionArg(r.Context(), in.Version)
+		id, err := jobs.startInstall(func(setStatus func(string)) (any, error) {
+			setStatus("Resolving " + in.Version + "…")
+			a2, err := app.New()
+			if err != nil {
+				return nil, err
+			}
+			version, err := mysql.ResolveVersionArg(context.Background(), in.Version)
+			if err != nil {
+				return nil, err
+			}
+			setStatus("Switching to " + mysql.Label(version) + "… (downloading + migrating)")
+			// From the panel there is no prompt: migrating the databases
+			// is always the safe choice (everything is backed up first
+			// anyway).
+			if _, err := app.SwitchDatabase(context.Background(), a2, version, true); err != nil {
+				return nil, err
+			}
+			return mysql.Label(version), nil
+		})
 		if err != nil {
 			return nil, err
 		}
-		// From the panel there is no prompt: migrating the databases is
-		// always the safe choice (everything is backed up first anyway).
-		if _, err := app.SwitchDatabase(r.Context(), a, version, true); err != nil {
-			return nil, err
-		}
-		return mysql.Label(version), nil
+		return map[string]string{"job": id}, nil
 	})
 	api("/api/mysql/start", func(a *app.App, r *http.Request) (any, error) {
 		v := a.State.Config.MySQL
@@ -296,7 +389,7 @@ func newMux(token string) *http.ServeMux {
 		if err := mysql.EnsureInitialized(a.Paths, v); err != nil {
 			return nil, err
 		}
-		return nil, mysql.Start(a.Paths, v)
+		return nil, a.StartMySQL()
 	})
 	api("/api/mysql/password", func(a *app.App, r *http.Request) (any, error) {
 		var in struct{ Password string }
@@ -366,11 +459,10 @@ func newMux(token string) *http.ServeMux {
 		return nil, mysql.DropDatabase(a.Paths, v, in.Name)
 	})
 	api("/api/mysql/stop", func(a *app.App, r *http.Request) (any, error) {
-		v := a.State.Config.MySQL
-		if v == "" {
+		if a.State.Config.MySQL == "" {
 			return nil, nil
 		}
-		return nil, mysql.Stop(a.Paths, v)
+		return nil, a.StopMySQL()
 	})
 	api("/api/sites/link", func(a *app.App, r *http.Request) (any, error) {
 		var in struct{ Path, Name string }
@@ -620,6 +712,13 @@ func newMux(token string) *http.ServeMux {
 		}
 		return nil, heidisql.Launch(a.Paths)
 	})
+	api("/api/pick-folder", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Title string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		return pickFolder(in.Title)
+	})
 	api("/api/autostart", func(a *app.App, r *http.Request) (any, error) {
 		var in struct{ Enabled bool }
 		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
@@ -630,6 +729,427 @@ func newMux(token string) *http.ServeMux {
 		}
 		return nil, autostart.Disable()
 	})
+	api("/api/job", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Id string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		st, ok := jobs.get(in.Id)
+		if !ok {
+			return nil, fmt.Errorf("no such job %q (it may have finished more than 10 minutes ago)", in.Id)
+		}
+		return st, nil
+	})
+
+	api("/api/pg/series", func(a *app.App, r *http.Request) (any, error) {
+		return a.PostgresSeries(r.Context())
+	})
+	api("/api/pg/install", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Version string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		id, err := jobs.startInstall(func(setStatus func(string)) (any, error) {
+			setStatus("Downloading PostgreSQL " + in.Version + "…")
+			a2, err := app.New()
+			if err != nil {
+				return nil, err
+			}
+			version, err := a2.InstallPostgres(context.Background(), in.Version)
+			if err != nil {
+				return nil, err
+			}
+			return postgres.Label(version), nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{"job": id}, nil
+	})
+	api("/api/pg/start", func(a *app.App, r *http.Request) (any, error) {
+		return nil, a.StartPostgres()
+	})
+	api("/api/pg/stop", func(a *app.App, r *http.Request) (any, error) {
+		return nil, a.StopPostgres()
+	})
+	api("/api/pg/password", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Password string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		return nil, a.SetPostgresPassword(in.Password)
+	})
+	api("/api/pg/db/list", func(a *app.App, r *http.Request) (any, error) {
+		if a.State.Config.Postgres == "" || !postgres.Running() {
+			return []string{}, nil
+		}
+		dbs, err := a.PostgresDatabases()
+		if err != nil {
+			return nil, err
+		}
+		if dbs == nil {
+			dbs = []string{}
+		}
+		return dbs, nil
+	})
+	api("/api/pg/db/create", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Name string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		return nil, a.CreatePostgresDB(in.Name)
+	})
+	api("/api/pg/db/drop", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Name string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		return nil, a.DropPostgresDB(in.Name)
+	})
+	api("/api/pgadmin/open", func(a *app.App, r *http.Request) (any, error) {
+		if a.State.Config.Postgres == "" {
+			return nil, errors.New("PostgreSQL is not installed (install it first, above)")
+		}
+		id, err := jobs.startInstall(func(setStatus func(string)) (any, error) {
+			a2, err := app.New()
+			if err != nil {
+				return nil, err
+			}
+			if !pgadmin.Installed(a2.Paths) {
+				setStatus("Downloading pgAdmin… (~290 MB, about a minute or two)")
+				if err := pgadmin.Install(context.Background(), a2.Paths, a2.State.Config.Postgres); err != nil {
+					return nil, err
+				}
+			}
+			setStatus("Opening pgAdmin…")
+			if err := pgadmin.Launch(a2.Paths); err != nil {
+				return nil, err
+			}
+			return nil, nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{"job": id}, nil
+	})
+
+	api("/api/mongo/series", func(a *app.App, r *http.Request) (any, error) {
+		return a.MongoSeries(r.Context())
+	})
+	api("/api/mongo/install", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Version string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		id, err := jobs.startInstall(func(setStatus func(string)) (any, error) {
+			setStatus("Downloading MongoDB " + in.Version + "…")
+			a2, err := app.New()
+			if err != nil {
+				return nil, err
+			}
+			version, err := a2.InstallMongo(context.Background(), in.Version)
+			if err != nil {
+				return nil, err
+			}
+			return mongodb.Label(version), nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{"job": id}, nil
+	})
+	api("/api/mongo/start", func(a *app.App, r *http.Request) (any, error) {
+		return nil, a.StartMongo()
+	})
+	api("/api/mongo/stop", func(a *app.App, r *http.Request) (any, error) {
+		return nil, a.StopMongo()
+	})
+	api("/api/mongo/db/list", func(a *app.App, r *http.Request) (any, error) {
+		if a.State.Config.Mongo == "" || !mongodb.Running() {
+			return []string{}, nil
+		}
+		dbs, err := a.MongoDatabases()
+		if err != nil {
+			return nil, err
+		}
+		if dbs == nil {
+			dbs = []string{}
+		}
+		return dbs, nil
+	})
+	api("/api/mongo/db/create", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Name string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		return nil, a.CreateMongoDB(in.Name)
+	})
+	api("/api/mongo/db/drop", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Name string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		return nil, a.DropMongoDB(in.Name)
+	})
+	api("/api/mongo-express/open", func(a *app.App, r *http.Request) (any, error) {
+		if a.State.Config.Mongo == "" {
+			return nil, errors.New("MongoDB is not installed (install it first, above)")
+		}
+		id, err := jobs.startInstall(func(setStatus func(string)) (any, error) {
+			a2, err := app.New()
+			if err != nil {
+				return nil, err
+			}
+			// mongo-express can't show anything without a server behind it.
+			if !mongodb.Running() {
+				setStatus("Starting MongoDB…")
+				if err := a2.StartMongo(); err != nil {
+					return nil, err
+				}
+			}
+			setStatus("Installing mongo-express…")
+			return mongoexpress.Ensure(context.Background(), a2)
+		})
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{"job": id}, nil
+	})
+
+	api("/api/phpmyadmin/install", func(a *app.App, r *http.Request) (any, error) {
+		id, err := jobs.startInstall(func(setStatus func(string)) (any, error) {
+			a2, err := app.New()
+			if err != nil {
+				return nil, err
+			}
+			setStatus("Installing phpMyAdmin…")
+			return phpmyadmin.EnsureLinked(context.Background(), a2, "")
+		})
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{"job": id}, nil
+	})
+	api("/api/admintool/uninstall", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Tool string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		return nil, a.UninstallAdminTool(in.Tool)
+	})
+
+	api("/api/backups", func(a *app.App, r *http.Request) (any, error) {
+		list, err := a.ListBackups()
+		if err != nil {
+			return nil, err
+		}
+		if list == nil {
+			list = []app.BackupInfo{}
+		}
+		return list, nil
+	})
+	api("/api/engine/backup", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Engine string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		id, err := jobs.startInstall(func(setStatus func(string)) (any, error) {
+			setStatus("Backing up " + in.Engine + "…")
+			a2, err := app.New()
+			if err != nil {
+				return nil, err
+			}
+			return a2.BackupEngine(context.Background(), in.Engine)
+		})
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{"job": id}, nil
+	})
+	api("/api/backups/restore", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Dir, Db string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		id, err := jobs.startInstall(func(setStatus func(string)) (any, error) {
+			setStatus("Restoring backup…")
+			a2, err := app.New()
+			if err != nil {
+				return nil, err
+			}
+			return nil, a2.RestoreBackup(context.Background(), in.Dir, in.Db)
+		})
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{"job": id}, nil
+	})
+	api("/api/engine/uninstall", func(a *app.App, r *http.Request) (any, error) {
+		var in struct {
+			Engine      string
+			BackupFirst bool
+			DeleteData  bool
+		}
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		id, err := jobs.startInstall(func(setStatus func(string)) (any, error) {
+			a2, err := app.New()
+			if err != nil {
+				return nil, err
+			}
+			if in.BackupFirst {
+				setStatus("Backing up…")
+			} else {
+				setStatus("Removing…")
+			}
+			return a2.UninstallEngine(context.Background(), in.Engine, in.BackupFirst, in.DeleteData)
+		})
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{"job": id}, nil
+	})
+	api("/api/open-path", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Path string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		return nil, openInFileManager(in.Path)
+	})
+	api("/api/tld", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Tld string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		id, err := jobs.startInstall(func(setStatus func(string)) (any, error) {
+			setStatus("Updating the hosts file and certificates…")
+			a2, err := app.New()
+			if err != nil {
+				return nil, err
+			}
+			return nil, a2.SetTLD(in.Tld)
+		})
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{"job": id}, nil
+	})
+
+	api("/api/pick-file", func(a *app.App, r *http.Request) (any, error) {
+		var in struct {
+			Title string
+			Types []string
+		}
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		return pickFile(in.Title, in.Types)
+	})
+	api("/api/php/uninstall", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Version string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		return nil, a.UninstallPhp(in.Version)
+	})
+	api("/api/node/uninstall", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Version string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		return nil, a.UninstallNode(in.Version)
+	})
+	api("/api/node/npm", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Npm, Node string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		id, err := jobs.startInstall(func(setStatus func(string)) (any, error) {
+			setStatus("Installing npm " + in.Npm + "…")
+			a2, err := app.New()
+			if err != nil {
+				return nil, err
+			}
+			return nil, a2.SetNpmVersion(context.Background(), in.Npm, in.Node)
+		})
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{"job": id}, nil
+	})
+	api("/api/node/info", func(a *app.App, r *http.Request) (any, error) {
+		return a.NodeInfo(), nil
+	})
+	api("/api/dev/restart", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Name string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		return nil, a.RestartDevServer(in.Name)
+	})
+	api("/api/restart", func(a *app.App, r *http.Request) (any, error) {
+		id, err := jobs.startInstall(func(setStatus func(string)) (any, error) {
+			setStatus("Restarting the stack…")
+			a2, err := app.New()
+			if err != nil {
+				return nil, err
+			}
+			return nil, a2.RestartStack(context.Background())
+		})
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{"job": id}, nil
+	})
+	api("/api/composer/install", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Version string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		id, err := jobs.startInstall(func(setStatus func(string)) (any, error) {
+			setStatus("Installing Composer…")
+			a2, err := app.New()
+			if err != nil {
+				return nil, err
+			}
+			return a2.InstallComposer(context.Background(), in.Version)
+		})
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{"job": id}, nil
+	})
+	api("/api/mysql/restore", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Path string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		id, err := jobs.startInstall(func(setStatus func(string)) (any, error) {
+			setStatus("Importing backup…")
+			a2, err := app.New()
+			if err != nil {
+				return nil, err
+			}
+			return nil, a2.RestoreMySQL(context.Background(), in.Path)
+		})
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{"job": id}, nil
+	})
+	api("/api/doctor", func(a *app.App, r *http.Request) (any, error) {
+		// Read-only checks: don't queue behind a running install.
+		id := jobs.start(func(setStatus func(string)) (any, error) {
+			setStatus("Running diagnostics…")
+			a2, err := app.New()
+			if err != nil {
+				return nil, err
+			}
+			return a2.Doctor(context.Background()), nil
+		})
+		return map[string]string{"job": id}, nil
+	})
 	return mux
 }
 
@@ -637,6 +1157,9 @@ func getState(a *app.App, r *http.Request) (any, error) {
 	installed, err := phpver.Installed(a.Paths)
 	if err != nil {
 		return nil, err
+	}
+	if installed == nil {
+		installed = []string{} // the page reads .length on a fresh install
 	}
 
 	type cgi struct {
@@ -716,7 +1239,35 @@ func getState(a *app.App, r *http.Request) (any, error) {
 			"label":       mysql.Label(v),
 			"port":        mysql.Port,
 			"running":     mysql.Running(),
+			"stopped":     a.State.Config.MySQLStopped,
 		}
+	}
+
+	postgresState := map[string]any{
+		"installed":        false,
+		"pgadminInstalled": pgadmin.Installed(a.Paths),
+	}
+	if v := a.State.Config.Postgres; v != "" {
+		postgresState["installed"] = true
+		postgresState["version"] = v
+		postgresState["label"] = postgres.Label(v)
+		postgresState["port"] = postgres.Port
+		postgresState["running"] = postgres.Running()
+		postgresState["stopped"] = a.State.Config.PostgresStopped
+		postgresState["hasPassword"] = a.State.Config.PostgresPassword != ""
+	}
+
+	mongoState := map[string]any{
+		"installed": false,
+		"uiLinked":  a.State.FindSite(mongoexpress.SiteName) != nil,
+	}
+	if v := a.State.Config.Mongo; v != "" {
+		mongoState["installed"] = true
+		mongoState["version"] = v
+		mongoState["label"] = mongodb.Label(v)
+		mongoState["port"] = mongodb.Port
+		mongoState["running"] = mongodb.Running()
+		mongoState["stopped"] = a.State.Config.MongoStopped
 	}
 
 	return map[string]any{
@@ -728,6 +1279,8 @@ func getState(a *app.App, r *http.Request) (any, error) {
 		"globalNode":    a.State.Config.GlobalNode,
 		"phpCgi":        cgis,
 		"mysql":         mysqlState,
+		"postgres":      postgresState,
+		"mongo":         mongoState,
 		"sites":         sites,
 		"tld":           a.State.Config.TLD,
 		"heidisql":      heidisql.Installed(a.Paths),
@@ -736,6 +1289,8 @@ func getState(a *app.App, r *http.Request) (any, error) {
 		"backupsDir":    a.Paths.BackupsDir(),
 		"autostart":     autostart.Enabled(),
 		"phpShadow":     a.PhpShadow(),
+		"adminTools":    a.AdminTools(),
+		"composer":      a.ComposerVersion(),
 		"time":          time.Now().Format("15:04:05"),
 	}, nil
 }
