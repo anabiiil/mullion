@@ -35,22 +35,8 @@ func writeElevated(path, content string) error {
 	}
 
 	script := fmt.Sprintf("/bin/cp %q %q && /usr/bin/dscacheutil -flushcache && /usr/bin/killall -HUP mDNSResponder", tmpPath, path)
-	if stdinIsTerminal() {
-		fmt.Println("Updating /etc/hosts needs administrator rights — you may be asked for your password.")
-		cmd := exec.Command("sudo", "-p", "Password (to update /etc/hosts): ", "/bin/sh", "-c", script)
-		cmd.Stdin = os.Stdin
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		if err := cmd.Run(); err != nil {
-			return fmt.Errorf("elevated hosts update failed: %w", err)
-		}
-	} else {
-		// No terminal to type a sudo password into: use the system
-		// authorization dialog instead.
-		osa := fmt.Sprintf("do shell script %q with administrator privileges", script)
-		if out, err := exec.Command("osascript", "-e", osa).CombinedOutput(); err != nil {
-			return fmt.Errorf("elevated hosts update failed (dialog dismissed?): %v: %s", err, strings.TrimSpace(string(out)))
-		}
+	if err := RunElevated("to update /etc/hosts", script); err != nil {
+		return fmt.Errorf("elevated hosts update failed: %w", err)
 	}
 
 	// Verify the copy actually happened.
@@ -60,6 +46,28 @@ func writeElevated(path, content string) error {
 	}
 	if string(data) != content {
 		return fmt.Errorf("/etc/hosts was not updated; retry, or edit it manually")
+	}
+	return nil
+}
+
+// RunElevated runs a /bin/sh script as root: through sudo when a
+// terminal can take the password, otherwise through the macOS
+// administrator dialog (e.g. launched from the control panel). reason
+// completes "Password (...)", e.g. "to update /etc/hosts".
+func RunElevated(reason, script string) error {
+	if stdinIsTerminal() {
+		fmt.Printf("This needs administrator rights (%s) — you may be asked for your password.\n", reason)
+		cmd := exec.Command("sudo", "-p", "Password ("+reason+"): ", "/bin/sh", "-c", script)
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		return cmd.Run()
+	}
+	// No terminal to type a sudo password into: use the system
+	// authorization dialog instead.
+	osa := fmt.Sprintf("do shell script %q with administrator privileges", script)
+	if out, err := exec.Command("osascript", "-e", osa).CombinedOutput(); err != nil {
+		return fmt.Errorf("%v (dialog dismissed?): %s", err, strings.TrimSpace(string(out)))
 	}
 	return nil
 }

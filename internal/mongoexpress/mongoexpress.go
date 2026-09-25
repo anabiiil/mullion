@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 
 	"pm/internal/mongodb"
 	"pm/internal/nodever"
@@ -66,12 +67,14 @@ func Installed(paths pmdir.Paths) bool {
 // Install writes the wrapper project (package.json + start.js, with
 // fresh random session/cookie secrets) and fetches mongo-express with
 // the given Node version directory (as returned by
-// nodever/app.NodeVersionDirFor). No-op when already installed — call
+// nodever/app.NodeVersionDirFor). When already installed it only makes
+// sure start.js points at MongoDB's current port (RefreshConfig) — call
 // Remove first to force a clean reinstall (e.g. to rotate secrets or
 // pick up a new pinned Version).
 func Install(ctx context.Context, paths pmdir.Paths, nodeDir string) error {
 	if Installed(paths) {
-		return nil
+		_, err := RefreshConfig(paths)
+		return err
 	}
 	dir := Dir(paths)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -200,6 +203,37 @@ setDefault('VCAP_APP_HOST', '127.0.0.1');
 const appEntry = path.join(__dirname, 'node_modules', 'mongo-express', 'app.js');
 await import(pathToFileURL(appEntry).href);
 `
+
+// mongoURLRe matches start.js's connection-string default, as written
+// by renderStartJS (a Go-quoted string).
+var mongoURLRe = regexp.MustCompile(`setDefault\('ME_CONFIG_MONGODB_URL', "[^"\n]*"\);`)
+
+// RefreshConfig points start.js at MongoDB's current connection URI
+// (after its port moved), keeping the per-install secrets. It reports
+// whether the file changed — a running mongo-express only picks that up
+// when restarted. No-op when start.js isn't there.
+func RefreshConfig(paths pmdir.Paths) (bool, error) {
+	file := filepath.Join(Dir(paths), "start.js")
+	b, err := os.ReadFile(file)
+	if err != nil {
+		return false, nil
+	}
+	out, changed := rewriteMongoURL(string(b), mongodb.ConnectionURI())
+	if !changed {
+		return false, nil
+	}
+	return true, os.WriteFile(file, []byte(out), 0o644)
+}
+
+// rewriteMongoURL swaps the connection-string default in a start.js.
+func rewriteMongoURL(js, uri string) (string, bool) {
+	want := fmt.Sprintf("setDefault('ME_CONFIG_MONGODB_URL', %q);", uri)
+	loc := mongoURLRe.FindStringIndex(js)
+	if loc == nil || js[loc[0]:loc[1]] == want {
+		return js, false
+	}
+	return js[:loc[0]] + want + js[loc[1]:], true
+}
 
 // renderStartJS renders start.js with the given Mongo connection string
 // and per-install secrets baked in as defaults.

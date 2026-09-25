@@ -9,6 +9,17 @@ import (
 	"pm/internal/config"
 )
 
+// Follow a moved MySQL port: config.inc.php carries it. (Registered as
+// a hook because this package imports app, not the other way around.)
+func init() {
+	app.OnEnginePortChange(func(a *app.App, engine string) error {
+		if engine != "mysql" {
+			return nil
+		}
+		return RefreshConfig(a.Paths, a.State.Config.MySQLPassword)
+	})
+}
+
 // EnsureLinked installs phpMyAdmin (version "" = latest, or keep the one
 // already installed), links it as a secured site, and converges the
 // machine. It is the reusable core shared by `mullion phpmyadmin`,

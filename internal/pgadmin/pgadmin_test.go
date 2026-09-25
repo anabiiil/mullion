@@ -2,10 +2,13 @@ package pgadmin
 
 import (
 	"encoding/json"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
+
+	"pm/internal/postgres"
 )
 
 func TestLayoutFor(t *testing.T) {
@@ -74,8 +77,8 @@ func TestRenderServers(t *testing.T) {
 		t.Error("servers.json must not carry a password")
 	}
 	// The dump format load-servers round-trips must be recognized.
-	if found, err := hasServer(b); err != nil || !found {
-		t.Errorf("hasServer(rendered) = %v, %v", found, err)
+	if found, port, err := hasServer(b); err != nil || !found || port != 5432 {
+		t.Errorf("hasServer(rendered) = %v, %d, %v", found, port, err)
 	}
 
 	b, _ = renderServers("")
@@ -85,14 +88,14 @@ func TestRenderServers(t *testing.T) {
 }
 
 func TestHasServer(t *testing.T) {
-	dump := `{"Servers": {"1": {"Name": "Local", "Group": "Servers"}, "7": {"Name": "Mullion (PostgreSQL)", "Group": "Mine"}}}`
-	if found, err := hasServer([]byte(dump)); err != nil || !found {
-		t.Errorf("found = %v, %v", found, err)
+	dump := `{"Servers": {"1": {"Name": "Local", "Group": "Servers", "Port": 5432}, "7": {"Name": "Mullion (PostgreSQL)", "Group": "Mine", "Port": 5433}}}`
+	if found, port, err := hasServer([]byte(dump)); err != nil || !found || port != 5433 {
+		t.Errorf("found = %v, %d, %v", found, port, err)
 	}
-	if found, err := hasServer([]byte(`{"Servers": {}}`)); err != nil || found {
+	if found, _, err := hasServer([]byte(`{"Servers": {}}`)); err != nil || found {
 		t.Errorf("empty: found = %v, %v", found, err)
 	}
-	if _, err := hasServer([]byte("not json")); err == nil {
+	if _, _, err := hasServer([]byte("not json")); err == nil {
 		t.Error("garbage should fail")
 	}
 }
@@ -134,5 +137,77 @@ func TestAddedRe(t *testing.T) {
 	m := addedRe.FindStringSubmatch("----------\nAdded 1 Server Group(s) and 1 Server(s).\n")
 	if m == nil || m[1] != "1" {
 		t.Errorf("match = %v", m)
+	}
+}
+
+// withPort runs fn with postgres.Port moved, restoring it afterwards.
+func withPort(t *testing.T, port int) {
+	t.Helper()
+	old := postgres.Port
+	postgres.Port = port
+	t.Cleanup(func() { postgres.Port = old })
+}
+
+func TestNonDefaultPort(t *testing.T) {
+	withPort(t, 5433)
+	b, err := renderServers("/p")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if found, port, err := hasServer(b); err != nil || !found || port != 5433 {
+		t.Errorf("servers.json port = %d (%v, %v), want 5433", port, found, err)
+	}
+	if got := renderPassFile("x"); got != "127.0.0.1:5433:*:postgres:x\n" {
+		t.Errorf("pgpass = %q", got)
+	}
+}
+
+func TestMarker(t *testing.T) {
+	withPort(t, 5440)
+	db, port := parseMarker([]byte(renderMarker("/h/.pgadmin/pgadmin4.db", 5440)))
+	if db != "/h/.pgadmin/pgadmin4.db" || port != 5440 {
+		t.Errorf("round trip = %q, %d", db, port)
+	}
+	// A marker from before ports were configurable: db only, default port.
+	db, port = parseMarker([]byte("C:\\Users\\me\\AppData\\Roaming\\pgAdmin\\pgadmin4.db\r\n"))
+	if db != `C:\Users\me\AppData\Roaming\pgAdmin\pgadmin4.db` || port != 5432 {
+		t.Errorf("legacy = %q, %d", db, port)
+	}
+}
+
+// TestUpdatePortScript runs the SQL port update against a scratch
+// SQLite database shaped like pgAdmin's (server + "user" tables) with
+// any python3 on PATH — it only needs the stdlib sqlite3 module.
+func TestUpdatePortScript(t *testing.T) {
+	py, err := exec.LookPath("python3")
+	if err != nil {
+		t.Skip("python3 not on PATH")
+	}
+	db := filepath.Join(t.TempDir(), "pgadmin4.db")
+	setup := `import sqlite3, sys
+con = sqlite3.connect(sys.argv[1])
+con.executescript("""
+CREATE TABLE "user" (id INTEGER PRIMARY KEY, email TEXT);
+CREATE TABLE server (id INTEGER PRIMARY KEY, user_id INTEGER, name TEXT, host TEXT, port INTEGER);
+INSERT INTO "user" VALUES (1, 'pgadmin4@pgadmin.org'), (2, 'other@x');
+INSERT INTO server VALUES (1, 1, 'Mullion (PostgreSQL)', '127.0.0.1', 5432);
+INSERT INTO server VALUES (2, 1, 'Prod', 'db.example.com', 5432);
+INSERT INTO server VALUES (3, 2, 'Mullion (PostgreSQL)', '127.0.0.1', 5432);
+""")
+con.commit()`
+	if out, err := exec.Command(py, "-c", setup, db).CombinedOutput(); err != nil {
+		t.Fatalf("setup: %v: %s", err, out)
+	}
+	out, err := exec.Command(py, "-s", "-c", updatePortScript, db, ServerName, desktopUser, "5433").CombinedOutput()
+	if err != nil || !strings.Contains(string(out), "updated 1") {
+		t.Fatalf("update: %v: %s", err, out)
+	}
+	got, err := exec.Command(py, "-c", `import sqlite3, sys
+print(",".join(str(r[0]) for r in sqlite3.connect(sys.argv[1]).execute("SELECT port FROM server ORDER BY id")))`, db).Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.TrimSpace(string(got)) != "5433,5432,5432" {
+		t.Errorf("ports after update = %s (only the desktop user's Mullion entry may move)", got)
 	}
 }

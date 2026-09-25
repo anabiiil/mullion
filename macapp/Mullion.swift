@@ -31,6 +31,38 @@ func locateMullionBinary() -> String? {
 
 private let mullionURLPrefix = "MULLION_UI_URL="
 
+// A NSWindow.tabbingIdentifier shared by the main panel window and every
+// secondary window (terminal / project) so AppKit's native tabs can merge
+// them together when the user has "Prefer tabs" on.
+private let windowTabbingIdentifier = "mullion"
+
+// Returns whether two URLs share a host+port — the same test the
+// navigation delegate uses to decide "stay in the app" vs. "hand off to
+// the default browser". Pulled out as a pure function so it's easy to
+// exercise on its own (e.g. from a scratch test harness) without spinning
+// up any WebKit/AppKit objects.
+func isSameOrigin(_ a: URL, _ b: URL) -> Bool {
+    let portA = a.port ?? (a.scheme == "https" ? 443 : 80)
+    let portB = b.port ?? (b.scheme == "https" ? 443 : 80)
+    return a.host == b.host && portA == portB
+}
+
+// One entry per secondary window (terminal / project popouts opened via
+// window.open). Holds the window and its webview alive for as long as the
+// window is open, plus the KVO observation that mirrors the page's
+// document.title into the window's title bar. Dropping the entry (when
+// the window closes) tears all of that down together.
+final class SecondaryWindowEntry {
+    let window: NSWindow
+    let webView: WKWebView
+    var titleObservation: NSKeyValueObservation?
+
+    init(window: NSWindow, webView: WKWebView) {
+        self.window = window
+        self.webView = webView
+    }
+}
+
 final class AppDelegate: NSObject, NSApplicationDelegate {
     var window: NSWindow!
     var webView: WKWebView!
@@ -41,6 +73,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var panelURL: URL?
     var stderrTail: [String] = []
     var urlResolved = false
+
+    // Terminal/project windows opened from the panel via window.open. The
+    // main window isn't in here — it's tracked separately via `window`.
+    var secondaryWindows: [SecondaryWindowEntry] = []
 
     // MARK: Lifecycle
 
@@ -87,6 +123,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         appMenuItem.submenu = appMenu
         mainMenu.addItem(appMenuItem)
 
+        let fileMenuItem = NSMenuItem()
+        let fileMenu = NSMenu(title: "File")
+        fileMenu.addItem(withTitle: "New Window", action: #selector(newMainWindow(_:)), keyEquivalent: "n")
+        fileMenuItem.submenu = fileMenu
+        mainMenu.addItem(fileMenuItem)
+
         let editMenuItem = NSMenuItem()
         let editMenu = NSMenu(title: "Edit")
         editMenu.addItem(withTitle: "Undo", action: Selector(("undo:")), keyEquivalent: "z")
@@ -110,6 +152,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let windowMenu = NSMenu(title: "Window")
         windowMenu.addItem(withTitle: "Minimize", action: #selector(NSWindow.performMiniaturize(_:)), keyEquivalent: "m")
         windowMenu.addItem(withTitle: "Close", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+        windowMenu.addItem(NSMenuItem.separator())
+        // Standard AppKit tabbing actions: since we build the menu bar by
+        // hand (no nib/storyboard to wire this up implicitly), these need
+        // to be added explicitly. AppKit still handles enabling/disabling
+        // them and flipping "Show Tab Bar" to "Hide Tab Bar" on its own.
+        windowMenu.addItem(withTitle: "Show Tab Bar", action: #selector(NSWindow.toggleTabBar(_:)), keyEquivalent: "")
+        windowMenu.addItem(withTitle: "Merge All Windows", action: #selector(NSWindow.mergeAllWindows(_:)), keyEquivalent: "")
         windowMenuItem.submenu = windowMenu
         mainMenu.addItem(windowMenuItem)
         // Lets AppKit append the standard "Bring All to Front" etc. items.
@@ -120,6 +169,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc func reload(_ sender: Any?) {
         webView?.reload()
+    }
+
+    // Cmd+N: open a fresh window onto the same panel root (a new tab if
+    // native tabbing is on). Independent WKWebViewConfiguration/session
+    // from the main window, same as any other "new window" in a browser.
+    @objc func newMainWindow(_ sender: Any?) {
+        guard let url = panelURL else { return }
+        let configuration = WKWebViewConfiguration()
+        configuration.userContentController.add(self, name: "mullion")
+        let newWebView = openSecondaryWindow(configuration: configuration, windowFeatures: nil)
+        newWebView.load(URLRequest(url: url))
     }
 
     // MARK: Window
@@ -138,6 +198,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Remembers the user's size/position across launches; centering
         // above only applies the very first time (no saved frame yet).
         window.setFrameAutosaveName("MullionMain")
+        window.tabbingIdentifier = windowTabbingIdentifier
+        window.tabbingMode = .automatic
+        window.delegate = self
 
         statusLabel = NSTextField(labelWithString: "Starting Mullion…")
         statusLabel.font = NSFont.systemFont(ofSize: 15)
@@ -165,6 +228,71 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if let url = panelURL {
             webView.load(URLRequest(url: url))
         }
+    }
+
+    // MARK: Secondary windows (terminal / project popouts)
+    //
+    // The panel opens these with window.open(sameOriginURL, name,
+    // 'popup,width=…,height=…') for a standalone terminal or a project in
+    // its own window. createWebViewWith (below) is what calls this; it
+    // hands us the WKWebViewConfiguration WebKit already built for the
+    // popup so window.opener and the shared data store/process pool keep
+    // working, same as a real browser's popup windows.
+    @discardableResult
+    func openSecondaryWindow(configuration: WKWebViewConfiguration, windowFeatures: WKWindowFeatures?) -> WKWebView {
+        let width = windowFeatures?.width?.doubleValue ?? 1100
+        let height = windowFeatures?.height?.doubleValue ?? 720
+        let rect = NSRect(x: 0, y: 0, width: width, height: height)
+
+        let newWindow = NSWindow(
+            contentRect: rect,
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        newWindow.minSize = NSSize(width: 700, height: 450)
+        newWindow.tabbingIdentifier = windowTabbingIdentifier
+        newWindow.tabbingMode = .automatic
+        newWindow.delegate = self
+        // window.isReleasedWhenClosed defaults to true, which has AppKit
+        // release the window itself the moment it closes. We manage this
+        // window's lifetime ourselves via `secondaryWindows` (torn down in
+        // windowWillClose below), so that default would fight our own
+        // bookkeeping — turn it off.
+        newWindow.isReleasedWhenClosed = false
+
+        // Cascade from whichever window was frontmost (falling back to the
+        // main panel window) so successive popups don't stack exactly on
+        // top of each other.
+        let anchor = NSApp.keyWindow ?? window
+        if let anchor = anchor {
+            let topLeft = NSPoint(x: anchor.frame.minX, y: anchor.frame.maxY)
+            _ = newWindow.cascadeTopLeft(from: topLeft)
+        }
+
+        let newWebView = WKWebView(frame: rect, configuration: configuration)
+        newWebView.autoresizingMask = [.width, .height]
+        newWebView.navigationDelegate = self
+        newWebView.uiDelegate = self
+        newWindow.contentView = newWebView
+
+        let entry = SecondaryWindowEntry(window: newWindow, webView: newWebView)
+        entry.titleObservation = newWebView.observe(\.title, options: [.new]) { [weak newWindow] _, change in
+            guard let title = change.newValue.flatMap({ $0 }), !title.isEmpty else { return }
+            newWindow?.title = title
+        }
+        secondaryWindows.append(entry)
+
+        newWindow.makeKeyAndOrderFront(nil)
+        return newWebView
+    }
+
+    // Which of our windows (main or secondary) a given webview lives in —
+    // used to route JS dialogs and the native-picker bridge to the right
+    // window instead of always the main one.
+    func windowFor(_ webView: WKWebView) -> NSWindow? {
+        if webView === self.webView { return window }
+        return secondaryWindows.first(where: { $0.webView === webView })?.window
     }
 
     // MARK: Child process
@@ -297,20 +425,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
+// MARK: - NSWindowDelegate
+//
+// Secondary (terminal/project) windows depend on the main window's child
+// `mullion ui` server, so closing the main window takes all of them down
+// too — at which point applicationShouldTerminateAfterLastWindowClosed
+// (already true) quits the app for us. Closing a secondary window on its
+// own just stops tracking it so it can be freed.
+extension AppDelegate: NSWindowDelegate {
+    func windowWillClose(_ notification: Notification) {
+        guard let closedWindow = notification.object as? NSWindow else { return }
+
+        if closedWindow === window {
+            for entry in secondaryWindows {
+                entry.window.close()
+            }
+            return
+        }
+
+        if let index = secondaryWindows.firstIndex(where: { $0.window === closedWindow }) {
+            secondaryWindows[index].titleObservation?.invalidate()
+            secondaryWindows.remove(at: index)
+        }
+    }
+}
+
 // MARK: - WKNavigationDelegate / WKUIDelegate
 
 extension AppDelegate: WKNavigationDelegate, WKUIDelegate {
     // Keep the panel's own host+port inside the app window; send everything
     // else (site links like https://site.test, external http/https) to the
-    // user's default browser instead.
+    // user's default browser instead. Applies to every webview we own
+    // (main window and secondary windows alike), since they all share the
+    // same navigation delegate.
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         guard let url = navigationAction.request.url, let panel = panelURL else {
             decisionHandler(.allow)
             return
         }
-        let targetPort = url.port ?? (url.scheme == "https" ? 443 : 80)
-        let panelPort = panel.port ?? (panel.scheme == "https" ? 443 : 80)
-        if url.host == panel.host && targetPort == panelPort {
+        if isSameOrigin(url, panel) {
             decisionHandler(.allow)
         } else {
             decisionHandler(.cancel)
@@ -318,21 +471,39 @@ extension AppDelegate: WKNavigationDelegate, WKUIDelegate {
         }
     }
 
-    // window.open / target=_blank: never spawn a second webview, hand the
-    // link to the default browser instead.
+    // window.open / target=_blank. The panel uses this for two same-origin
+    // popups — a standalone terminal window and a project window — which
+    // get a real NSWindow + WKWebView of their own (sharing the
+    // configuration WebKit hands us, so window.opener/postMessage and the
+    // session/cookies keep working). Anything not same-origin as the panel
+    // (external links) still goes to the default browser, same as before.
     func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
-        if let url = navigationAction.request.url {
-            NSWorkspace.shared.open(url)
+        guard let url = navigationAction.request.url, let panel = panelURL, isSameOrigin(url, panel) else {
+            if let url = navigationAction.request.url {
+                NSWorkspace.shared.open(url)
+            }
+            return nil
         }
-        return nil
+        // WebKit loads navigationAction's request into whatever webview we
+        // return here, so we don't load it ourselves.
+        return openSecondaryWindow(configuration: configuration, windowFeatures: windowFeatures)
+    }
+
+    // JS called window.close() on one of our popup windows.
+    func webViewDidClose(_ webView: WKWebView) {
+        windowFor(webView)?.close()
     }
 
     func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping () -> Void) {
         let alert = NSAlert()
         alert.messageText = message
         alert.addButton(withTitle: "OK")
-        alert.runModal()
-        completionHandler()
+        if let hostWindow = windowFor(webView) {
+            alert.beginSheetModal(for: hostWindow) { _ in completionHandler() }
+        } else {
+            alert.runModal()
+            completionHandler()
+        }
     }
 
     func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (Bool) -> Void) {
@@ -340,7 +511,13 @@ extension AppDelegate: WKNavigationDelegate, WKUIDelegate {
         alert.messageText = message
         alert.addButton(withTitle: "OK")
         alert.addButton(withTitle: "Cancel")
-        completionHandler(alert.runModal() == .alertFirstButtonReturn)
+        if let hostWindow = windowFor(webView) {
+            alert.beginSheetModal(for: hostWindow) { response in
+                completionHandler(response == .alertFirstButtonReturn)
+            }
+        } else {
+            completionHandler(alert.runModal() == .alertFirstButtonReturn)
+        }
     }
 
     func webView(_ webView: WKWebView, runJavaScriptTextInputPanelWithPrompt prompt: String, defaultText: String?, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (String?) -> Void) {
@@ -352,8 +529,14 @@ extension AppDelegate: WKNavigationDelegate, WKUIDelegate {
         field.stringValue = defaultText ?? ""
         alert.accessoryView = field
         alert.window.initialFirstResponder = field
-        let response = alert.runModal()
-        completionHandler(response == .alertFirstButtonReturn ? field.stringValue : nil)
+        if let hostWindow = windowFor(webView) {
+            alert.beginSheetModal(for: hostWindow) { response in
+                completionHandler(response == .alertFirstButtonReturn ? field.stringValue : nil)
+            }
+        } else {
+            let response = alert.runModal()
+            completionHandler(response == .alertFirstButtonReturn ? field.stringValue : nil)
+        }
     }
 }
 
@@ -369,21 +552,25 @@ extension AppDelegate: WKScriptMessageHandler {
     func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
         guard message.name == "mullion",
               let body = message.body as? [String: Any],
-              let type = body["type"] as? String
+              let type = body["type"] as? String,
+              // Whichever webview posted this — main panel, a terminal
+              // window, or a project window — is the one whose reply
+              // (__mullionPicked) and sheet the answer must go to.
+              let sourceWebView = message.webView
         else { return }
 
         switch type {
         case "pickFolder":
-            presentFolderPicker(id: body["id"], title: body["title"] as? String)
+            presentFolderPicker(id: body["id"], title: body["title"] as? String, webView: sourceWebView)
         case "pickFile":
-            presentFilePicker(id: body["id"], title: body["title"] as? String, types: body["types"] as? [String])
+            presentFilePicker(id: body["id"], title: body["title"] as? String, types: body["types"] as? [String], webView: sourceWebView)
         default:
             break
         }
     }
 
-    func presentFolderPicker(id: Any?, title: String?) {
-        guard let id = id, let window = window else { return }
+    func presentFolderPicker(id: Any?, title: String?, webView: WKWebView) {
+        guard let id = id, let hostWindow = windowFor(webView) else { return }
 
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
@@ -392,9 +579,9 @@ extension AppDelegate: WKScriptMessageHandler {
         panel.prompt = "Choose"
         panel.message = (title?.isEmpty == false) ? title! : "Choose the project folder"
 
-        panel.beginSheetModal(for: window) { [weak self] response in
+        panel.beginSheetModal(for: hostWindow) { [weak self] response in
             let path = (response == .OK) ? panel.url?.path : nil
-            self?.sendPickedFolder(id: id, path: path)
+            self?.sendPickedFolder(id: id, path: path, webView: webView)
         }
     }
 
@@ -403,8 +590,8 @@ extension AppDelegate: WKScriptMessageHandler {
     // .sql/.sql.gz backup rather than a directory. types are extensions
     // without the leading dot (e.g. "sql", "gz"); unrecognized extensions
     // are simply skipped, leaving the picker unfiltered.
-    func presentFilePicker(id: Any?, title: String?, types: [String]?) {
-        guard let id = id, let window = window else { return }
+    func presentFilePicker(id: Any?, title: String?, types: [String]?, webView: WKWebView) {
+        guard let id = id, let hostWindow = windowFor(webView) else { return }
 
         let panel = NSOpenPanel()
         panel.canChooseDirectories = false
@@ -419,18 +606,17 @@ extension AppDelegate: WKScriptMessageHandler {
             }
         }
 
-        panel.beginSheetModal(for: window) { [weak self] response in
+        panel.beginSheetModal(for: hostWindow) { [weak self] response in
             let path = (response == .OK) ? panel.url?.path : nil
-            self?.sendPickedFolder(id: id, path: path)
+            self?.sendPickedFolder(id: id, path: path, webView: webView)
         }
     }
 
     // Encodes (id, path) as a JSON array and unwraps its brackets to build
     // the argument list — the safe way to splice arbitrary/possibly-nil
     // strings into a JS call without hand-rolling escaping.
-    func sendPickedFolder(id: Any, path: String?) {
-        guard let webView = webView,
-              let data = try? JSONSerialization.data(withJSONObject: [id, path ?? NSNull()]),
+    func sendPickedFolder(id: Any, path: String?, webView: WKWebView) {
+        guard let data = try? JSONSerialization.data(withJSONObject: [id, path ?? NSNull()]),
               let json = String(data: data, encoding: .utf8)
         else { return }
         let args = json.dropFirst().dropLast() // "[1,\"/x\"]" -> "1,\"/x\""

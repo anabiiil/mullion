@@ -78,3 +78,26 @@ func TestGenerateKinds(t *testing.T) {
 		t.Fatalf("down site must not proxy to port 0:\n%s", out)
 	}
 }
+
+func TestGenerateAliases(t *testing.T) {
+	sites := []SiteConf{
+		{Name: "shop", Host: "shop.test", Aliases: []string{"api.shop.test", "*.shop.test"}, Root: "/s", FcgiPort: 9084},
+		{Name: "app", Host: "app.test", Aliases: []string{"*.app.test"}, Kind: "node", ProxyPort: 5173, RewriteHost: true, Secure: true},
+		{Name: "plain", Host: "plain.test", Root: "/p", FcgiPort: 9084},
+	}
+	out := Generate(sites, "/logs")
+	for _, want := range []string{
+		"\nhttp://shop.test, http://api.shop.test, http://*.shop.test {\n",
+		"\napp.test, *.app.test {\n\ttls internal\n",
+		"\nhttp://plain.test {\n",
+		// One log per site, named after the primary host.
+		`output file "/logs/shop.test.log"`,
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("generated Caddyfile misses %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "api.shop.test.log") || strings.Contains(out, "*.shop.test.log") {
+		t.Fatalf("aliases must not get their own log files:\n%s", out)
+	}
+}

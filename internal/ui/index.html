@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <title>Mullion — Local Dev Server</title>
 <link rel="icon" type="image/png" href="/favicon.png">
+<link rel="stylesheet" href="/project.css">
 <style>
   /* Palette "Midnight + coral". Coral is the brand/primary colour only —
      danger is a separate, deeper red. Text on coral uses the midnight ink
@@ -188,8 +189,9 @@
   button.danger { color: var(--bad); }
   button.danger:hover { border-color: var(--bad); background: var(--bad-bg); color: var(--bad); }
   button.sm { padding: 5px 12px; font-size: 12px; border-radius: 8px; }
+  button:disabled { opacity: .45; cursor: default; pointer-events: none; }
 
-  select, input[type=text], input[type=password] {
+  select, input[type=text], input[type=password], input[type=number] {
            border: 1px solid var(--border); background: var(--input);
            color: var(--text); border-radius: 10px; padding: 8px 12px;
            font: inherit; font-size: 13px; outline: none; line-height: 1.35;
@@ -197,7 +199,7 @@
   select { -webkit-appearance: none; appearance: none; cursor: pointer;
            padding-right: 30px; background-image: var(--chevron);
            background-repeat: no-repeat; background-position: right 10px center; background-size: 12px; }
-  select:hover, input[type=text]:hover, input[type=password]:hover { border-color: var(--border-strong); }
+  select:hover, input[type=text]:hover, input[type=password]:hover, input[type=number]:hover { border-color: var(--border-strong); }
   select:focus, input:focus { border-color: var(--accent); background-color: var(--card);
            box-shadow: 0 0 0 3px var(--accent-ring); }
   input::placeholder { color: var(--faint); }
@@ -377,6 +379,210 @@
   .modal-actions button.danger { background: var(--bad-solid); border-color: var(--bad-solid); color: #fff; }
   .modal-actions button.danger:hover { background: var(--bad-solid-deep); border-color: var(--bad-solid-deep); color: #fff; }
 
+  /* ── sites: toolbar ──────────────────────────────────────── */
+  .toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .search { position: relative; flex: 1 1 280px; max-width: 460px; }
+  .search svg { position: absolute; left: 13px; top: 50%; width: 15px; height: 15px;
+                transform: translateY(-50%); color: var(--faint); pointer-events: none; }
+  .search input[type=text] { width: 100%; padding: 10px 40px 10px 38px; border-radius: 12px;
+                background: var(--card); box-shadow: var(--shadow); }
+  .search kbd { position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+                font: 600 11px var(--mono); color: var(--faint); border: 1px solid var(--border);
+                border-radius: 6px; padding: 1px 6px; background: var(--inset); pointer-events: none; }
+  .search input:focus ~ kbd { display: none; }
+  .db-tabs .n { font-size: 11px; font-weight: 700; color: var(--faint); font-variant-numeric: tabular-nums; }
+  .db-tabs button.active .n { color: rgba(255, 255, 255, .6); }
+
+  /* ── sites: sections & cards ─────────────────────────────── */
+  .sec { display: flex; flex-direction: column; gap: 14px; }
+  .sec-head { display: flex; align-items: center; gap: 10px; padding: 6px 2px 0; }
+  .sec-head > svg { width: 30px; height: 30px; padding: 7px; border-radius: 10px;
+                    background: var(--accent-soft); color: var(--accent); flex: none; }
+  .sec-head h2 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -.2px; }
+  .sec-head .sub { font-size: 12px; color: var(--muted); }
+  .link-form .card-body { padding: 18px 22px 18px; }
+  .site-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); gap: 16px; }
+  .site-card { position: relative; min-width: 0; background: var(--card); border: 1px solid var(--border);
+               border-radius: 18px; box-shadow: var(--shadow); padding: 18px 18px 14px;
+               display: flex; flex-direction: column; gap: 12px; min-width: 0;
+               transition: box-shadow .18s, border-color .18s, transform .18s; }
+  .site-card:hover { box-shadow: var(--shadow-lg); border-color: var(--border-strong); }
+  .site-card.pinned { border-color: color-mix(in srgb, var(--accent) 38%, var(--border)); }
+  .site-card.pinned::before { content: ""; position: absolute; left: 22px; right: 22px; top: -1px;
+               height: 3px; border-radius: 0 0 4px 4px; background: var(--accent); }
+  .sc-head { display: flex; align-items: flex-start; gap: 12px; min-width: 0; }
+  .sc-title { flex: 1; min-width: 0; }
+  .sc-name { font-size: 15px; font-weight: 700; letter-spacing: -.2px; line-height: 1.3;
+             overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  button.sc-name { display: block; max-width: 100%; padding: 0; margin: 0; border: 0; background: none;
+                   box-shadow: none; color: var(--text); font: inherit; font-size: 15px; font-weight: 700;
+                   text-align: left; cursor: pointer; border-radius: 4px; }
+  button.sc-name:hover { color: var(--accent-text, var(--accent)); text-decoration: underline; text-underline-offset: 3px; background: none; }
+  .sc-host { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; max-width: 100%;
+             overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sc-host svg { width: 12px; height: 12px; flex: none; }
+  .sc-host .lock-on { color: var(--ok); }
+  .sc-host .lock-off { color: var(--faint); }
+  .icon-btn { width: 30px; height: 30px; padding: 0; border-radius: 9px; flex: none;
+              display: inline-flex; align-items: center; justify-content: center;
+              border: 1px solid transparent; background: transparent; color: var(--faint); }
+  .icon-btn svg { width: 15px; height: 15px; }
+  .icon-btn:hover { background: var(--inset); border-color: var(--border); color: var(--text); }
+  .icon-btn.pin-on { color: var(--accent); }
+  .icon-btn.pin-on svg { fill: currentColor; }
+  .sc-badges { display: flex; flex-wrap: wrap; gap: 6px; }
+  /* git chip: branch + dirty count; opens the project's Git tab */
+  button.sc-git { display: inline-flex; align-items: center; gap: 5px; max-width: 190px; padding: 2px 9px 2px 7px;
+                  border-radius: 999px; font: 650 10.5px/1.4 var(--mono); color: var(--muted);
+                  background: var(--inset); border: 1px solid var(--border); vertical-align: middle; }
+  button.sc-git svg { width: 12px; height: 12px; flex: none; color: var(--faint); }
+  button.sc-git .b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  button.sc-git .d { display: inline-flex; align-items: center; gap: 4px; color: var(--warn-text); flex: none; }
+  button.sc-git .d::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  button.sc-git .ab { color: var(--accent-text); flex: none; }
+  button.sc-git.dirty { color: var(--text); }
+  button.sc-git.conflict .d { color: var(--bad); }
+  button.sc-git:hover { border-color: var(--accent); color: var(--accent-text); }
+  button.sc-git:hover svg { color: var(--accent); }
+  .badge.fw { color: var(--accent-text); background: var(--accent-soft); border-color: transparent; }
+  .badge.mono { font-family: var(--mono); font-size: 10.5px; }
+  .sc-hosts { display: flex; flex-wrap: wrap; gap: 5px; margin-top: -4px; }
+  .sc-hosts a, .sc-hosts span { font-family: var(--mono); font-size: 11px; font-weight: 500;
+             color: var(--muted); background: var(--inset); border: 1px dashed var(--border-strong);
+             border-radius: 999px; padding: 1px 9px; max-width: 100%;
+             overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sc-hosts a:hover { color: var(--accent-text); border-color: var(--accent); text-decoration: none; }
+  .sc-status { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600;
+               min-height: 28px; }
+  .sc-status .txt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sc-status button.sm { padding: 3px 10px; font-size: 11.5px; }
+  .sdot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--faint); }
+  .sdot.on { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 20%, transparent); }
+  .sdot.sleep { background: var(--warn-text); box-shadow: 0 0 0 3px color-mix(in srgb, var(--warn-text) 18%, transparent); }
+  .sdot.off { background: var(--faint); }
+  .sc-path { display: flex; align-items: center; gap: 4px; background: var(--inset);
+             border: 1px solid var(--border); border-radius: 10px; padding: 3px 4px 3px 10px; min-width: 0; }
+  .sc-path .p { flex: 1; min-width: 0; font-family: var(--mono); font-size: 11.5px; color: var(--muted);
+                overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
+  .sc-path .icon-btn { width: 26px; height: 26px; border-radius: 7px; }
+  .sc-path .icon-btn svg { width: 13px; height: 13px; }
+  .sc-actions { display: flex; align-items: center; gap: 6px; padding-top: 12px;
+                border-top: 1px solid var(--row); }
+  .sc-actions { min-width: 0; }
+  /* Buttons may shrink so the ⋯ menu never spills outside a narrow card. */
+  .sc-actions button.sm { display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+                          flex: 0 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; }
+  .sc-actions button.sm svg { width: 13px; height: 13px; flex: none; }
+  .sc-actions .icon-btn { margin-left: auto; flex: none; }
+  .sites-empty { border: 1.5px dashed var(--border-strong); border-radius: 18px; padding: 26px;
+                 text-align: center; color: var(--muted); font-size: 13px; }
+  .sites-empty button { margin-top: 12px; }
+  .nomatch { color: var(--muted); font-size: 12.5px; padding: 4px 2px; }
+
+  /* framework marks: a soft brand-tinted tile with a glyph */
+  .fw-mark { width: 42px; height: 42px; border-radius: 13px; flex: none; display: flex;
+             align-items: center; justify-content: center; color: var(--fw);
+             background: color-mix(in srgb, var(--fw) 13%, transparent);
+             font: 800 14px/1 Inter, -apple-system, "Segoe UI", system-ui, sans-serif; letter-spacing: -.5px; }
+  .fw-mark svg { width: 22px; height: 22px; }
+  .fw-mark.lg { width: 56px; height: 56px; border-radius: 17px; font-size: 18px; }
+  .fw-mark.lg svg { width: 28px; height: 28px; }
+
+  /* ── popover menu ────────────────────────────────────────── */
+  .menu { position: fixed; z-index: 45; min-width: 220px; background: var(--card);
+          border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow-lg);
+          padding: 6px; display: flex; flex-direction: column; }
+  .menu button { border: none; background: transparent; box-shadow: none; text-align: left;
+                 display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 9px;
+                 font-weight: 550; color: var(--text); }
+  .menu button:hover { background: var(--inset); color: var(--text); border: none; }
+  .menu button svg { width: 15px; height: 15px; color: var(--muted); flex: none; }
+  .menu button .r { margin-left: auto; font-size: 11.5px; color: var(--muted); font-family: var(--mono); }
+  .menu button.danger, .menu button.danger svg { color: var(--bad); }
+  .menu button.danger:hover { background: var(--bad-bg); }
+  .menu hr { border: none; border-top: 1px solid var(--row); margin: 5px 4px; }
+
+  /* ── project shell ───────────────────────────────────────── */
+  .proj-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 20px 24px; }
+  .proj-head .t { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 6px; }
+  .proj-head .nm { font-size: 19px; font-weight: 700; letter-spacing: -.3px; line-height: 1.2; }
+  .back-btn { display: inline-flex; align-items: center; gap: 6px; justify-self: start; }
+  .back-btn svg { width: 14px; height: 14px; }
+  #project-root:empty { display: none; }
+  .ptab-pane[hidden] { display: none; }
+
+  /* project tabs: one per open project, side by side */
+  .ptabs-bar { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .ptabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; min-width: 0; flex: 0 1 auto;
+           background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+           padding: 4px; box-shadow: var(--shadow); }
+  .ptabs::-webkit-scrollbar { display: none; }
+  .ptabs:empty { display: none; }
+  .ptab { display: flex; align-items: center; gap: 8px; flex: none; max-width: 230px;
+          border-radius: 10px; padding: 4px 5px 4px 5px; cursor: pointer; user-select: none;
+          font-size: 13px; font-weight: 600; color: var(--muted); transition: background .12s, color .12s; }
+  .ptab:hover { background: var(--inset); color: var(--text); }
+  .ptab.active { background: var(--seg-active); color: var(--seg-active-text); }
+  .ptab:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent-ring); }
+  .ptab .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ptab .x { width: 20px; height: 20px; border-radius: 6px; flex: none; display: inline-flex;
+             align-items: center; justify-content: center; opacity: .5; }
+  .ptab .x svg { width: 10px; height: 10px; }
+  .ptab:hover .x, .ptab.active .x { opacity: .85; }
+  .ptab .x:hover { opacity: 1; background: rgba(127, 127, 127, .22); }
+  .ptab.dragging { opacity: .45; }
+  .ptab.drop-before { box-shadow: inset 2px 0 0 var(--accent); }
+  /* Sites toolbar: the projects open in tabs, one click away */
+  .open-proj { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
+  .open-proj .lbl { font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase;
+                    color: var(--faint); margin-right: 2px; }
+  .open-proj button { display: inline-flex; align-items: center; gap: 7px; padding: 3px 11px 3px 3px;
+                      border-radius: 999px; font-size: 12.5px; background: var(--card); box-shadow: var(--shadow); }
+  .open-proj button.active { border-color: var(--accent); color: var(--accent-text); }
+  .open-proj .fw-mark.xs { width: 22px; height: 22px; border-radius: 999px; font-size: 9.5px; }
+  .open-proj .fw-mark.xs svg { width: 12px; height: 12px; }
+  .fw-mark.xs { width: 24px; height: 24px; border-radius: 7px; font-size: 10.5px; letter-spacing: -.3px; }
+  .fw-mark.xs svg { width: 14px; height: 14px; }
+  .ptab.active .fw-mark.xs { background: color-mix(in srgb, var(--fw) 26%, transparent); }
+
+  /* standalone windows: #termwin (a terminal) and popup project windows */
+  #termwin-root { display: none; }
+  body.termwin { overflow: hidden; }
+  body.termwin .shell { display: none; }
+  /* terminal.js makes the root itself edge to edge (.mt-standalone) */
+  body.termwin #termwin-root { display: flex; position: fixed; inset: 0; background: var(--bg); }
+  body.projwin .side, body.projwin .ptabs-bar, body.projwin .topbar button, body.projwin #svc-pill { display: none !important; }
+  body.projwin .shell { padding: 0; }
+  body.projwin .topbar { max-width: none; padding: 14px 28px 2px; }
+  body.projwin .topbar h1 { font-size: 18px; }
+  body.projwin main { max-width: none; padding: 10px 28px 32px; }
+  @media (max-width: 1000px) {
+    body.projwin .topbar { padding: 10px 14px 0; }
+    body.projwin main { padding: 8px 14px 24px; }
+    body.projwin .page.active { gap: 14px; }
+  }
+
+  /* ── terminal page ───────────────────────────────────────── */
+  #page-terminal.active { display: block; }
+  #terminal-root { height: calc(100vh - 150px); min-height: 380px; }
+  .term-missing { padding: 40px; text-align: center; }
+
+  /* ── ports & SSL ─────────────────────────────────────────── */
+  .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 20px; align-items: start; }
+  tr.grp td { padding: 16px 12px 6px; font-size: 10.5px; font-weight: 700; letter-spacing: .8px;
+              text-transform: uppercase; color: var(--faint); border-bottom: 1px solid var(--row); background: transparent !important; }
+  tbody tr:first-child.grp td { padding-top: 4px; }
+  tr.conflict td { background: var(--bad-bg) !important; }
+  tr.conflict td:first-child { box-shadow: inset 3px 0 0 var(--bad); }
+  .warn-ic { display: inline-block; width: 14px; height: 14px; color: var(--bad); vertical-align: -2px; margin-right: 6px; }
+  .port-note { display: block; font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .badge.bad { color: var(--bad); background: var(--bad-bg); border-color: transparent; }
+  .badge.warnb { color: var(--warn-text); background: var(--warn-bg); border-color: transparent; }
+  .modal-input .with-btn { display: flex; gap: 8px; }
+  .modal-input .with-btn input { flex: 1; min-width: 0; }
+  .modal-input select[size] { background-image: none; padding: 4px; margin-top: 8px; height: 190px; }
+  .modal-input select[size] option { padding: 5px 8px; border-radius: 6px; }
+
   ::-webkit-scrollbar { width: 10px; height: 10px; }
   ::-webkit-scrollbar-thumb { background: var(--border-strong);
                               border-radius: 5px; border: 2px solid var(--bg); }
@@ -433,13 +639,17 @@
         Overview
       </a>
       <div class="nav-label">Projects</div>
-      <a href="#backend" data-page="backend" title="Backend">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17l6-6-6-6"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
-        Backend <span class="count" id="nav-be">0</span>
+      <a href="#sites" data-page="sites" title="Sites">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg>
+        Sites <span class="count" id="nav-sites">0</span>
       </a>
-      <a href="#frontend" data-page="frontend" title="Frontend">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="18" x2="12" y2="21"/></svg>
-        Frontend <span class="count" id="nav-fe">0</span>
+      <a href="#projects" data-page="projects" title="Open projects" id="nav-projects" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H10l2 2.5h6.5A2.5 2.5 0 0 1 21 10v7.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/><line x1="3" y1="11" x2="21" y2="11"/></svg>
+        Projects <span class="count" id="nav-projects-n">0</span>
+      </a>
+      <a href="#terminal" data-page="terminal" title="Terminal">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="M6.5 9.5l3 2.5-3 2.5"/><line x1="12" y1="15" x2="17" y2="15"/></svg>
+        Terminal
       </a>
       <div class="nav-label">Runtimes</div>
       <a href="#php" data-page="php" title="PHP">
@@ -455,6 +665,10 @@
         Database
       </a>
       <div class="nav-label">General</div>
+      <a href="#ports" data-page="ports" title="Ports &amp; SSL">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10.5" width="16" height="10.5" rx="2.5"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/><line x1="12" y1="14.5" x2="12" y2="17"/></svg>
+        Ports &amp; SSL
+      </a>
       <a href="#settings" data-page="settings" title="Settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         Settings
@@ -522,59 +736,91 @@
         </div>
       </div>
 
-      <!-- ═══ BACKEND ═══ -->
-      <div class="page" id="page-backend">
-        <section class="card">
-          <div class="card-head">
+      <!-- ═══ SITES ═══ -->
+      <div class="page" id="page-sites">
+        <div class="toolbar">
+          <label class="search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
+            <input type="text" id="sites-search" placeholder="Search by name, domain, path, framework…" autocomplete="off" spellcheck="false">
+            <kbd>/</kbd>
+          </label>
+          <div class="db-tabs" id="sites-chips">
+            <button data-filter="all">All <span class="n" id="chip-all"></span></button>
+            <button data-filter="backend">Backend <span class="n" id="chip-backend"></span></button>
+            <button data-filter="frontend">Frontend <span class="n" id="chip-frontend"></span></button>
+            <button data-filter="pinned">Pinned <span class="n" id="chip-pinned"></span></button>
+          </div>
+          <div class="open-proj" id="open-proj" style="display:none" aria-label="Open projects"></div>
+        </div>
+
+        <div class="sec" id="sec-backend">
+          <div class="sec-head">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17l6-6-6-6"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
-            <h2>Backend projects</h2>
-            <span class="hint" id="be-count"></span>
+            <div><h2>Backend</h2><div class="sub" id="be-count">PHP sites served through php-fpm</div></div>
+            <span class="spacer"></span>
+            <button class="sm" id="btn-be-add">+ Add project</button>
           </div>
-          <div class="card-body">
-            <table>
-              <thead><tr><th>Site</th><th>Path</th><th>PHP</th><th>HTTPS</th><th></th></tr></thead>
-              <tbody id="be-body"></tbody>
-            </table>
-            <div class="row" style="margin-top:16px">
-              <input type="text" id="be-link-path" placeholder="full project path" style="flex:1; min-width:240px" class="mono">
-              <button id="btn-be-browse">Browse…</button>
-              <input type="text" id="be-link-name" placeholder="name (optional)" size="13" class="mono">
-              <button id="btn-be-link" class="primary">Link project</button>
+          <section class="card link-form" id="be-form" style="display:none">
+            <div class="card-body">
+              <div class="row">
+                <input type="text" id="be-link-path" placeholder="full project path" style="flex:1; min-width:240px" class="mono">
+                <button id="btn-be-browse">Browse…</button>
+                <input type="text" id="be-link-name" placeholder="name (optional)" size="13" class="mono">
+                <button id="btn-be-link" class="primary">Link project</button>
+              </div>
+              <p class="muted" style="margin:10px 0 0">
+                Served at http://&lt;name&gt;.<span class="js-tld">test</span> — a <span class="mono">public/</span> folder with
+                <span class="mono">index.php</span> is detected automatically.
+              </p>
             </div>
-            <p class="muted" style="margin:10px 0 0">
-              Served at http://&lt;name&gt;.test — a <span class="mono">public/</span> folder with
-              <span class="mono">index.php</span> is detected automatically.
-            </p>
+          </section>
+          <div class="site-grid" id="be-grid"></div>
+        </div>
+
+        <div class="sec" id="sec-frontend">
+          <div class="sec-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="18" x2="12" y2="21"/></svg>
+            <div><h2>Frontend</h2><div class="sub" id="fe-count">Managed dev servers &amp; production builds</div></div>
+            <span class="spacer"></span>
+            <button class="sm" id="btn-fe-add">+ Add project</button>
           </div>
-        </section>
+          <section class="card link-form" id="fe-form" style="display:none">
+            <div class="card-body">
+              <div class="row">
+                <input type="text" id="fe-link-path" placeholder="full project path" style="flex:1; min-width:240px" class="mono">
+                <button id="btn-fe-browse">Browse…</button>
+                <input type="text" id="fe-link-name" placeholder="name (optional)" size="13" class="mono">
+                <button id="btn-fe-link" class="primary">Link project</button>
+              </div>
+              <p class="muted" style="margin:10px 0 0">
+                Mullion runs <span class="mono">npm run dev</span> for you behind the domain —
+                switch a domain to <b>build</b> to serve the last production build instead
+                (it builds first when needed). Dev servers wake automatically when you open their link. They sleep after 2 minutes with no open tab, or after 10 minutes with a tab open but no activity (requests or code edits).
+              </p>
+            </div>
+          </section>
+          <div class="site-grid" id="fe-grid"></div>
+        </div>
       </div>
 
-      <!-- ═══ FRONTEND ═══ -->
-      <div class="page" id="page-frontend">
-        <section class="card">
-          <div class="card-head">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="18" x2="12" y2="21"/></svg>
-            <h2>Frontend projects</h2>
-            <span class="hint" id="fe-count"></span>
-          </div>
-          <div class="card-body">
-            <table>
-              <thead><tr><th>Site</th><th>Path</th><th>Serves</th><th>Node</th><th>Status</th><th>HTTPS</th><th></th></tr></thead>
-              <tbody id="fe-body"></tbody>
-            </table>
-            <div class="row" style="margin-top:16px">
-              <input type="text" id="fe-link-path" placeholder="full project path" style="flex:1; min-width:240px" class="mono">
-              <button id="btn-fe-browse">Browse…</button>
-              <input type="text" id="fe-link-name" placeholder="name (optional)" size="13" class="mono">
-              <button id="btn-fe-link" class="primary">Link project</button>
-            </div>
-            <p class="muted" style="margin:10px 0 0">
-              Mullion runs <span class="mono">npm run dev</span> for you behind the domain —
-              switch a domain to <b>build</b> to serve the last production build instead
-              (it builds first when needed). Dev servers wake automatically when you open their link. They sleep after 2 minutes with no open tab, or after 10 minutes with a tab open but no activity (requests or code edits).
-            </p>
-          </div>
+      <!-- ═══ PROJECT (reached from a site card's Manage) ═══ -->
+      <div class="page" id="page-project">
+        <div class="ptabs-bar">
+          <button class="sm back-btn" id="btn-project-back" title="Back to all sites">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            All sites
+          </button>
+          <div class="ptabs" id="ptabs" role="tablist" aria-label="Open projects"></div>
+        </div>
+        <section class="card" id="project-head-card">
+          <div class="proj-head" id="project-head"></div>
         </section>
+        <div id="project-root"></div>
+      </div>
+
+      <!-- ═══ TERMINAL ═══ -->
+      <div class="page" id="page-terminal">
+        <div id="terminal-root"></div>
       </div>
 
       <!-- ═══ PHP ═══ -->
@@ -687,10 +933,10 @@
             <p class="muted" style="margin:12px 0 0">
               <span class="mono">node</span>/<span class="mono">npm</span> resolve per project:
               a site's pinned version → the project's <span class="mono">.nvmrc</span> → this default.
-              Pin a frontend project from its row in the Frontend page.
+              Pin a frontend project from its card on the Sites page (⋯ → Node version).
             </p>
             <table style="margin-top:14px">
-              <thead><tr><th>Installed</th><th style="text-align:right"></th></tr></thead>
+              <thead><tr><th>Installed</th><th>npm</th><th style="text-align:right"></th></tr></thead>
               <tbody id="node-versions-body"></tbody>
             </table>
           </div>
@@ -896,6 +1142,72 @@
         </div>
       </div>
 
+      <!-- ═══ PORTS & SSL ═══ -->
+      <div class="page" id="page-ports">
+        <section class="card">
+          <div class="card-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><circle cx="5" cy="12" r="2.5"/><circle cx="19" cy="12" r="2.5"/><path d="M12 5v14"/><circle cx="12" cy="5" r="2.5"/><circle cx="12" cy="19" r="2.5"/></svg>
+            <h2>Ports</h2>
+            <span class="hint" id="ports-hint"></span>
+            <button id="btn-ports-refresh" class="sm">Refresh</button>
+          </div>
+          <div class="card-body">
+            <table>
+              <thead><tr><th>Service</th><th>Port</th><th>Status</th><th>Held by</th><th style="text-align:right"></th></tr></thead>
+              <tbody id="ports-body"><tr><td colspan="5" class="muted">Loading…</td></tr></tbody>
+            </table>
+          </div>
+        </section>
+        <div class="grid-2">
+          <section class="card">
+            <div class="card-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+              <h2>HTTPS certificates</h2>
+              <span class="hint" id="ssl-hint"></span>
+            </div>
+            <div class="card-body">
+              <div class="ini-grid" id="ssl-grid" style="margin-top:0"></div>
+              <div class="row" style="margin-top:16px">
+                <button id="btn-ssl-trust" class="primary">Trust certificate</button>
+                <button id="btn-ssl-export">Export certificate…</button>
+              </div>
+              <div class="row">
+                <button id="btn-ssl-all-on" class="sm">Enable HTTPS for all sites</button>
+                <button id="btn-ssl-all-off" class="sm">Disable for all</button>
+              </div>
+              <p class="muted" style="margin:12px 0 0">
+                Every <span class="mono">https://</span> site is signed by Mullion's local certificate authority.
+                Trusting it once makes browsers show the padlock. Firefox, phones and VMs keep their own
+                trust store — export the certificate and import it there.
+              </p>
+            </div>
+          </section>
+          <section class="card">
+            <div class="card-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              <h2>Wildcard DNS</h2>
+              <span class="hint" id="dns-hint"></span>
+            </div>
+            <div class="card-body">
+              <div class="row">
+                <label class="toggle" style="color:var(--text); font-size:13px; font-weight:600">
+                  <span class="switch"><input type="checkbox" id="dns-toggle"><i></i></span>
+                  Resolve every <span class="mono">*.<span class="js-tld">test</span></span> name locally
+                </label>
+              </div>
+              <div class="row" id="dns-status"></div>
+              <div class="warn" id="dns-note" style="display:none; margin-top:14px"></div>
+              <p class="muted" style="margin:14px 0 0">
+                Only needed for a site's <span class="mono">*</span> (every-subdomain) alias, e.g.
+                <span class="mono">anything.shop.<span class="js-tld">test</span></span> — named aliases like
+                <span class="mono">api.shop.<span class="js-tld">test</span></span> work through the hosts file without it.
+                Turning it on installs a small OS resolver hookup once, which asks for administrator rights.
+              </p>
+            </div>
+          </section>
+        </div>
+      </div>
+
       <!-- ═══ SETTINGS ═══ -->
       <div class="page" id="page-settings">
         <section class="card">
@@ -922,6 +1234,47 @@
         </section>
         <section class="card">
           <div class="card-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="M6.5 9.5l3 2.5-3 2.5"/><line x1="12" y1="15" x2="17" y2="15"/></svg>
+            <h2>Terminal</h2>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <span class="label">Open terminals in</span>
+              <div class="db-tabs" id="term-openin">
+                <button data-openin="page">Terminal page</button>
+                <button data-openin="window">Separate window</button>
+                <button data-openin="project">Project page</button>
+              </div>
+            </div>
+            <p class="muted" id="term-openin-help" style="margin:12px 0 0"></p>
+          </div>
+        </section>
+        <section class="card">
+          <div class="card-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
+            <h2>Backups</h2>
+            <span class="hint" id="backup-dir-hint"></span>
+          </div>
+          <div class="card-body">
+            <div class="ini-grid" style="margin-top:0">
+              <div class="ini-row"><div class="ini-label" style="flex:none"><span class="ini-name">Backup folder</span><span class="ini-key">database backups are written here</span></div>
+                <div class="ini-control" style="flex:1; justify-content:flex-end"><span class="mono" id="backup-dir-path" style="min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; direction:rtl">…</span><span id="backup-dir-badge"></span></div></div>
+              <div class="ini-row"><div class="ini-label"><span class="ini-name">Free space</span><span class="ini-key">on that disk</span></div>
+                <div class="ini-control"><span class="mono" id="backup-dir-free">—</span></div></div>
+            </div>
+            <div class="row" style="margin-top:16px">
+              <button id="btn-backup-dir-change" class="primary">Change…</button>
+              <button id="btn-backup-dir-reset">Reset to default</button>
+              <button id="btn-backup-dir-show">Show in Finder</button>
+            </div>
+            <p class="muted" style="margin:12px 0 0">
+              Backups already written stay where they are — only new ones go to the new folder.
+              The default lives next to Mullion's install (not inside it), so it survives an uninstall.
+            </p>
+          </div>
+        </section>
+        <section class="card">
+          <div class="card-head">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
             <h2>Diagnostics</h2>
             <span class="spacer"></span>
@@ -936,28 +1289,98 @@
   </div>
 </div>
 
+<div id="termwin-root"></div>
 <div id="toast"></div>
 <div id="busy"><div class="box"><div class="spin"></div><span id="busy-label">Working…</span></div></div>
 
+<!-- Page components served beside this file: the built-in terminal and
+     the per-project page. Each defines a global (MullionTerminal /
+     MullionProject); everything below guards for its absence. -->
+<script src="/terminal.js"></script>
+<script src="/project.js"></script>
 <script>
 const token = new URLSearchParams(location.search).get('t') || '';
 const $ = id => document.getElementById(id);
 let state = null;
 
+/* ── preferences ───────────────────────────────────────────── */
+// MullionPrefs keeps panel preferences in Mullion's own config
+// (/api/prefs) — the panel is served from a new port on every launch, so
+// localStorage (per-origin) is effectively wiped each time. localStorage
+// stays as a cache: get() answers from it until the server copy arrives,
+// then from memory. set() updates memory at once and saves (debounced
+// per key). Other page components (terminal.js, project.js) use it too.
+window.MullionPrefs = (() => {
+  const LS = 'mullion-pref:';
+  const mem = {}, timers = {}, pending = {};
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith(LS)) mem[k.slice(LS.length)] = localStorage.getItem(k);
+    }
+  } catch {}
+  const cache = (k, v) => {
+    try { if (v === '') localStorage.removeItem(LS + k); else localStorage.setItem(LS + k, v); } catch {}
+  };
+  const ready = fetch('/api/prefs', {
+    method: 'POST',
+    headers: { 'X-Mullion-Token': token, 'Content-Type': 'application/json' },
+    body: '{}',
+  }).then(r => r.json()).then(out => {
+    if (!out || !out.ok) return;
+    const server = out.data || {};
+    // The server is authoritative, except for keys set since loading began.
+    for (const k of Object.keys(mem)) {
+      if (!(k in server) && !pending[k]) { delete mem[k]; cache(k, ''); }
+    }
+    for (const [k, v] of Object.entries(server)) {
+      if (pending[k]) continue;
+      mem[k] = v;
+      cache(k, v);
+    }
+  }).catch(() => {});
+  function get(key, def) {
+    return Object.prototype.hasOwnProperty.call(mem, key) ? mem[key] : def;
+  }
+  function set(key, value) {
+    const v = value == null ? '' : String(value);
+    if (v === '') delete mem[key]; else mem[key] = v;
+    cache(key, v);
+    pending[key] = true;
+    clearTimeout(timers[key]);
+    timers[key] = setTimeout(() => {
+      fetch('/api/prefs/set', {
+        method: 'POST',
+        headers: { 'X-Mullion-Token': token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, value: v }),
+      }).catch(() => {}).finally(() => { delete pending[key]; });
+    }, 300);
+  }
+  return { ready, get, set };
+})();
+// lsGet reads a pre-MullionPrefs localStorage key (one-time migration).
+function lsGet(k) { try { return localStorage.getItem(k); } catch { return null; } }
+
 /* ── theme ─────────────────────────────────────────────────── */
-function applyTheme(t) {
+// Theme is applied from the localStorage cache first (no flash on the
+// first paint), then corrected from the saved preference.
+function applyTheme(t, save = true) {
   document.documentElement.dataset.theme = t;
   $('theme-light').classList.toggle('active', t === 'light');
   $('theme-dark').classList.toggle('active', t === 'dark');
   try { localStorage.setItem('mullion-theme', t); } catch {}
+  if (save) MullionPrefs.set('theme', t);
 }
 $('theme-light').onclick = () => applyTheme('light');
 $('theme-dark').onclick = () => applyTheme('dark');
 (() => {
-  let t = null;
-  try { t = localStorage.getItem('mullion-theme'); } catch {}
+  let t = MullionPrefs.get('theme') || lsGet('mullion-theme');
   if (!t) t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  applyTheme(t);
+  applyTheme(t, false);
+  MullionPrefs.ready.then(() => {
+    const saved = MullionPrefs.get('theme');
+    if (saved && saved !== document.documentElement.dataset.theme) applyTheme(saved, false);
+  });
 })();
 
 /* ── modal system ──────────────────────────────────────────── */
@@ -997,6 +1420,15 @@ function modal(opts) {
         html += '<select id="modal-field" class="mono">' + (inp.options || []).map(o =>
           `<option value="${String(o.value).replace(/"/g, '&quot;')}"${o.value === inp.value ? ' selected' : ''}>${o.label}</option>`
         ).join('') + '</select>';
+      } else if (inp.type === 'search-select') {
+        // A filter box over a list: typing narrows the options live.
+        html += `<input type="text" id="modal-filter" class="mono" placeholder="${inp.placeholder || 'Filter…'}" autocomplete="off" spellcheck="false">` +
+          '<select id="modal-field" class="mono" size="8"></select>';
+      } else if (inp.action) {
+        // An input with a helper button beside it (e.g. "Find free port").
+        const v = inp.value != null ? String(inp.value).replace(/"/g, '&quot;') : '';
+        html += `<div class="with-btn"><input type="${inp.type || 'text'}" id="modal-field" class="mono" value="${v}" placeholder="${inp.placeholder || ''}">` +
+          `<button type="button" id="modal-field-action">${inp.action.label}</button></div>`;
       } else {
         const v = inp.value != null ? String(inp.value).replace(/"/g, '&quot;') : '';
         html += `<input type="${inp.type || 'text'}" id="modal-field" class="mono" value="${v}" placeholder="${inp.placeholder || ''}">`;
@@ -1022,6 +1454,31 @@ function modal(opts) {
     const prevFocus = document.activeElement;
     const cancelBtn = card.querySelector('#modal-cancel');
     const confirmBtn = card.querySelector('#modal-confirm');
+    const actionBtn = card.querySelector('#modal-field-action');
+    if (actionBtn) actionBtn.onclick = () => opts.input.action.run(card.querySelector('#modal-field'), actionBtn);
+    const filter = card.querySelector('#modal-filter');
+    if (filter) {
+      const list = card.querySelector('#modal-field');
+      const fill = () => {
+        const q = filter.value.trim().toLowerCase();
+        const prev = list.value || opts.input.value;
+        const opts2 = (opts.input.options || []).filter(o =>
+          !q || String(o.label).toLowerCase().includes(q) || String(o.value).toLowerCase().includes(q));
+        list.innerHTML = opts2.map(o =>
+          `<option value="${String(o.value).replace(/"/g, '&quot;')}">${o.label}</option>`).join('');
+        if (opts2.some(o => o.value === prev)) list.value = prev;
+        else if (opts2.length) list.selectedIndex = 0;
+      };
+      filter.oninput = fill;
+      filter.onkeydown = (e) => {
+        if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+        e.preventDefault();
+        const i = list.selectedIndex + (e.key === 'ArrowDown' ? 1 : -1);
+        if (i >= 0 && i < list.options.length) list.selectedIndex = i;
+      };
+      list.ondblclick = () => close(readResult());
+      fill();
+    }
 
     function readResult() {
       const result = {};
@@ -1051,7 +1508,7 @@ function modal(opts) {
       } else if (e.key === 'Enter') {
         const active = document.activeElement;
         if (active && active.tagName === 'INPUT' && active.type === 'checkbox') return;
-        if (active === cancelBtn) return;
+        if (active === cancelBtn || (actionBtn && active === actionBtn)) return;
         e.preventDefault();
         close(readResult());
       } else if (e.key === 'Tab') {
@@ -1069,7 +1526,7 @@ function modal(opts) {
 
     requestAnimationFrame(() => {
       backdrop.classList.add('show');
-      const field = card.querySelector('#modal-field');
+      const field = card.querySelector('#modal-filter') || card.querySelector('#modal-field');
       const target = field || (opts.danger ? (cancelBtn || confirmBtn) : confirmBtn);
       if (target) {
         target.focus();
@@ -1094,36 +1551,74 @@ function alertModal(opts) {
 }
 
 /* ── router ────────────────────────────────────────────────── */
+// Routes are the URL hash: #sites, #terminal, #ports, … plus
+// #project/<name> for a site's page (not in the nav — reached through a
+// card's Manage). The old #backend / #frontend deep links land on Sites
+// with the matching filter.
 const TITLES = {
   overview: ['Overview', 'Your whole local stack at a glance'],
-  backend:  ['Backend projects', 'PHP sites served through php-fpm'],
-  frontend: ['Frontend projects', 'Managed dev servers & production builds'],
+  sites:    ['Sites', 'Every linked project — PHP backends and frontend dev servers'],
+  project:  ['Project', ''],
+  terminal: ['Terminal', 'Shells in your projects, with Mullion\'s PHP & Node on PATH'],
   php:      ['PHP', 'Versions and extensions'],
   node:     ['Node', 'Versions — per project or global'],
   database: ['Database', 'MySQL, PostgreSQL, or MongoDB — pick an engine below'],
+  ports:    ['Ports & SSL', 'Ports in use, local HTTPS certificates, and wildcard DNS'],
   settings: ['Settings', 'General options for the whole panel'],
 };
-function showPage(name) {
-  if (!TITLES[name]) name = 'overview';
+let currentPage = '';
+function showPage(route) {
+  let name = route || 'overview';
+  let project = null;
+  if (name === 'backend' || name === 'frontend') {
+    setSiteFilter(name);
+    history.replaceState(null, '', '#sites');
+    name = 'sites';
+  }
+  if (name === 'projects') {
+    // The sidebar's "Projects": back to the last active project tab.
+    const t = activeTab() || projTabs[0];
+    if (t) {
+      activeTabId = t.id;
+      name = 'project/' + encodeURIComponent(t.name);
+      history.replaceState(null, '', '#' + name);
+    } else {
+      name = 'sites';
+      history.replaceState(null, '', '#sites');
+    }
+  }
+  if (name.startsWith('project/')) {
+    try { project = decodeURIComponent(name.slice(8)); } catch { project = name.slice(8); }
+    name = 'project';
+  }
+  if (!TITLES[name] || (name === 'project' && !project)) name = 'overview';
+  closeMenu();
+  currentPage = name;
   document.querySelectorAll('.page').forEach(p =>
     p.classList.toggle('active', p.id === 'page-' + name));
+  const navName = name === 'project' ? 'projects' : name;
   document.querySelectorAll('.nav a').forEach(a =>
-    a.classList.toggle('active', a.dataset.page === name));
-  $('page-title').textContent = TITLES[name][0];
-  $('page-sub').textContent = TITLES[name][1];
+    a.classList.toggle('active', a.dataset.page === navName));
+  $('page-title').textContent = name === 'project' ? project : TITLES[name][0];
+  $('page-sub').textContent = name === 'project' ? 'Commands, workers, packages, and domains' : TITLES[name][1];
+  if (name === 'project') enterProject(project); else leaveProject();
   if (name === 'database') showDbTab(dbTab, true);
   if (name === 'php' && state) loadIni();
+  if (name === 'terminal') ensureTerminal();
+  if (name === 'ports') loadPortsPage();
+  if (name === 'settings') loadBackupDir();
 }
+const pageActive = name => currentPage === name;
 
 /* ── database engine tabs ──────────────────────────────────── */
 let dbTab = 'mysql';
-try { dbTab = localStorage.getItem('mullion-dbtab') || 'mysql'; } catch {}
+dbTab = MullionPrefs.get('dbTab') || lsGet('mullion-dbtab') || 'mysql';
 function setDot(id, installed, running) {
   $(id).className = 'eng-dot' + (installed ? (running ? ' on' : ' off') : '');
 }
 function showDbTab(name, force) {
   dbTab = name;
-  try { localStorage.setItem('mullion-dbtab', name); } catch {}
+  if (MullionPrefs.get('dbTab') !== name) MullionPrefs.set('dbTab', name);
   document.querySelectorAll('#db-tabs button').forEach(b =>
     b.classList.toggle('active', b.dataset.engtab === name));
   document.querySelectorAll('.eng-panel').forEach(p =>
@@ -1136,7 +1631,7 @@ function showDbTab(name, force) {
 }
 document.querySelectorAll('#db-tabs button').forEach(b =>
   b.onclick = () => showDbTab(b.dataset.engtab, true));
-window.addEventListener('hashchange', () => showPage(location.hash.slice(1)));
+window.addEventListener('hashchange', () => { if (!document.body.classList.contains('termwin')) showPage(location.hash.slice(1)); });
 document.querySelectorAll('[data-go]').forEach(el =>
   el.addEventListener('click', () => { location.hash = el.dataset.go; }));
 
@@ -1236,8 +1731,8 @@ function render() {
 
   const beSites = s.sites.filter(x => x.kind === 'php');
   const feSites = s.sites.filter(x => x.kind !== 'php');
-  $('nav-be').textContent = beSites.length;
-  $('nav-fe').textContent = feSites.length;
+  $('nav-sites').textContent = s.sites.length;
+  document.querySelectorAll('.js-tld').forEach(el => { el.textContent = s.tld || 'test'; });
 
   /* overview stats */
   $('st-services').textContent = on ? 'Running' : 'Stopped';
@@ -1355,8 +1850,9 @@ function render() {
   }
   renderNodeVersions(s);
 
-  renderBackend(beSites);
-  renderFrontend(feSites);
+  renderSites();
+  renderProjectHeader();
+  if (pageActive('ports') && Date.now() - portsLoadedAt > 15000) loadPortsPage();
 }
 
 function renderPostgres(s) {
@@ -1504,30 +2000,26 @@ $('btn-composer-install').onclick = () =>
 
 /* ── Node versions (uninstall, npm, diagnostics) ──────────────── */
 function renderNodeVersions(s) {
+  const npmOf = {};
+  (s.nodeNpm || []).forEach(n => { npmOf[n.node] = n.npm; });
   const tb = $('node-versions-body');
   tb.innerHTML = '';
+  if (!s.nodeInstalled.length) {
+    tb.innerHTML = '<tr><td colspan="3" class="empty">No Node installed yet — install one above (lts is a good start).</td></tr>';
+  }
   s.nodeInstalled.forEach(v => {
     const isDefault = v === s.globalNode;
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="mono" style="font-weight:600">${v}${isDefault ? ' <span class="badge on">default</span>' : ''}</td>
+      <td class="mono">${npmOf[v] ? 'npm ' + esc(npmOf[v]) : '<span class="muted">—</span>'}</td>
       <td style="text-align:right; white-space:nowrap">
-        <button class="sm" data-node-npm="${v}">npm…</button>
+        <button class="sm" data-node-npm="${v}">Change npm…</button>
         ${isDefault ? '' : `<button class="danger sm" data-node-uninstall="${v}">Uninstall</button>`}
       </td>`;
     tb.appendChild(tr);
   });
-  tb.querySelectorAll('[data-node-npm]').forEach(el => el.onclick = async () => {
-    const v = el.dataset.nodeNpm;
-    const npm = await promptModal({
-      title: 'Set npm version',
-      message: `Install a specific npm release into Node <span class="mono">${v}</span>.`,
-      input: { placeholder: 'e.g. 10, latest' },
-      confirmText: 'Install',
-    });
-    if (!npm) return;
-    runJob('Installing npm ' + npm + ' into Node ' + v + '…', '/api/node/npm', { npm, node: v }, 'npm updated');
-  });
+  tb.querySelectorAll('[data-node-npm]').forEach(el => el.onclick = () => pickNpm(el.dataset.nodeNpm, npmOf[el.dataset.nodeNpm]));
   tb.querySelectorAll('[data-node-uninstall]').forEach(el => el.onclick = async () => {
     const v = el.dataset.nodeUninstall;
     const ok = await confirmModal({
@@ -1539,6 +2031,33 @@ function renderNodeVersions(s) {
     if (!ok) return;
     act('Uninstalling Node ' + v + '…', '/api/node/uninstall', { version: v }, 'Removed Node ' + v);
   });
+}
+// pickNpm offers every stable npm release (newest first, from the
+// registry — cached server-side) in a filterable list, then installs the
+// pick into that Node version as a job.
+async function pickNpm(node, current) {
+  $('busy-label').textContent = 'Loading npm versions…';
+  $('busy').classList.add('show');
+  let versions;
+  try {
+    versions = await api('/api/node/npm-versions');
+  } catch (e) {
+    toast('Error: ' + e.message);
+    return;
+  } finally {
+    $('busy').classList.remove('show');
+  }
+  const options = [{ value: 'latest', label: 'latest — the newest release' }].concat(
+    versions.map(n => ({ value: n, label: n + (n === current ? '   (installed)' : '') })));
+  const r = await modal({
+    title: 'npm for Node ' + esc(node),
+    message: `Currently <span class="mono">npm ${esc(current || '?')}</span>. Pick a release to install into Node <span class="mono">${esc(node)}</span>.`,
+    input: { type: 'search-select', label: 'npm version', placeholder: 'Filter — e.g. 10.9', options, value: current },
+    confirmText: 'Install',
+  });
+  if (!r || !r.input) return;
+  if (r.input === current) return toast('npm ' + current + ' is already installed');
+  runJob('Installing npm ' + r.input + ' into Node ' + node + '…', '/api/node/npm', { npm: r.input, node }, 'npm ' + r.input + ' installed');
 }
 function renderNodeInfo(info) {
   if (info.error) return `<p class="muted">${info.error}</p>`;
@@ -1625,138 +2144,1112 @@ $('btn-doctor').onclick = async () => {
   renderDoctor(checks || []);
 };
 
-function siteCell(site) {
-  return `<a href="${site.url}" target="_blank">${site.host}</a>`;
+/* ── small helpers ─────────────────────────────────────────── */
+const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+const fileManager = () => (state && state.windows ? 'Explorer' : 'Finder');
+// copyText uses the async clipboard API, falling back to a hidden
+// textarea + execCommand where it isn't allowed (non-secure origins).
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch {}
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.setAttribute('readonly', '');
+  ta.style.cssText = 'position:fixed; top:0; left:0; opacity:0';
+  document.body.appendChild(ta);
+  ta.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch {}
+  ta.remove();
+  return ok;
+}
+async function copyPath(p) {
+  toast((await copyText(p)) ? 'Copied ' + p : 'Could not copy — select the path and copy it manually');
+}
+async function revealPath(p) {
+  try { await api('/api/open-path', { path: p }); } catch (e) { toast('Error: ' + e.message); }
 }
 
-function renderBackend(sites) {
-  $('be-count').textContent = sites.length + (sites.length === 1 ? ' project' : ' projects');
-  const tb = $('be-body');
-  tb.innerHTML = '';
-  if (!sites.length) {
-    tb.innerHTML = '<tr><td colspan="5" class="empty">No backend projects linked yet — add one below.</td></tr>';
-  }
-  for (const site of sites) {
-    const opts = ['<option value="">global (' + state.globalPhp + ')</option>']
-      .concat(state.phpInstalled.map(v =>
-        `<option value="${v}" ${site.php === v ? 'selected' : ''}>${v}</option>`)).join('');
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${siteCell(site)}</td>
-      <td class="muted mono">${site.path}</td>
-      <td><select data-isolate="${site.name}" class="mono">${opts}</select></td>
-      <td><label class="switch"><input type="checkbox" data-secure="${site.name}" ${site.secure ? 'checked' : ''}><i></i></label></td>
-      <td style="text-align:right; white-space:nowrap">
-        <button class="sm" data-rename="${site.name}" title="change this site's domain">Rename</button>
-        <button class="danger sm" data-unlink="${site.name}">Unlink</button></td>`;
-    tb.appendChild(tr);
-  }
-  wireSiteHandlers(tb);
+const I = {
+  star: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2.8l2.8 5.8 6.3.9-4.6 4.4 1.1 6.3L12 17.2l-5.6 3 1.1-6.3-4.6-4.4 6.3-.9z"/></svg>',
+  copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="2.5"/><path d="M5 15H4.5A1.5 1.5 0 0 1 3 13.5v-9A1.5 1.5 0 0 1 4.5 3h9A1.5 1.5 0 0 1 15 4.5V5"/></svg>',
+  folder: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>',
+  open: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>',
+  term: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8l4 4-4 4"/><path d="M12 17h7"/></svg>',
+  manage: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="9" cy="7" r="2.3" fill="var(--card)"/><circle cx="15" cy="17" r="2.3" fill="var(--card)"/></svg>',
+  dots: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg>',
+  lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="4.5" y="10.5" width="15" height="10.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></svg>',
+  unlock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="4.5" y="10.5" width="15" height="10.5" rx="2.5"/><path d="M8 10.5V7.5a4 4 0 0 1 7.6-1.8"/></svg>',
+  php: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
+  node: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l9 5v10l-9 5-9-5V7z"/></svg>',
+  mode: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l10 5-10 5L2 7z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>',
+  pencil: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>',
+  unlink: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>',
+  warn: '<svg class="warn-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+};
+
+/* ── framework marks ───────────────────────────────────────── */
+// detect.icon → [brand colour, glyph]. The glyph is a monogram or a tiny
+// inline SVG in currentColor; the tile is the brand colour at 13% so it
+// reads in both themes. Near-black brands use --text to stay visible.
+const FW_SVG = {
+  vue: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M1.5 3.5h4.2L12 14.4 18.3 3.5h4.2L12 21.5z"/><path fill="currentColor" opacity=".5" d="M5.7 3.5h3.6L12 8.2l2.7-4.7h3.6L12 14.4z"/></svg>',
+  react: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><ellipse cx="12" cy="12" rx="10" ry="3.9"/><ellipse cx="12" cy="12" rx="10" ry="3.9" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="10" ry="3.9" transform="rotate(120 12 12)"/><circle cx="12" cy="12" r="1.9" fill="currentColor" stroke="none"/></svg>',
+  nuxt: '<svg viewBox="0 0 24 24" fill="currentColor"><path opacity=".55" d="M9.6 5.2a1 1 0 0 1 1.7 0l7.3 12.7a1 1 0 0 1-.9 1.5H2.9a1 1 0 0 1-.9-1.5z"/><path d="M15.5 9.9a1 1 0 0 1 1.7 0l4.7 8.1a1 1 0 0 1-.9 1.5h-9.4a1 1 0 0 1-.9-1.5z"/></svg>',
+  vite: '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M13.5 2L5 13.5h6L10 22l9-12.5h-6.2z"/></svg>',
+  node: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"><path d="M12 2.5l8.2 4.75v9.5L12 21.5l-8.2-4.75v-9.5z"/><path d="M12 8v8" stroke-linecap="round"/></svg>',
+  angular: '<svg viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" d="M12 2L2.8 5.3l1.4 12.1L12 22l7.8-4.6 1.4-12.1zm0 2.6l5.6 12.6h-2.1l-1.1-2.8H9.6l-1.1 2.8H6.4zm0 4.3l-1.6 3.9h3.2z"/></svg>',
+  astro: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9.3 3.6c.2-.6.8-.9 1.4-.9h2.6c.6 0 1.2.3 1.4.9l4.1 12.2c-1.5-.8-3.3-1.2-5.2-1.4L12 7.6l-1.7 6.8c-1.9.2-3.7.6-5.2 1.4z"/><path opacity=".55" d="M8.8 17.1c0 1.9 1.3 3.5 3.1 4.2-.4-1.1.1-2.2 1.3-2.5 1.5-.4 2.4-.9 2.6-2.3-2.1.9-4.9 1.1-7 .6z"/></svg>',
+  code: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>',
+  folder: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>',
+};
+const FW = {
+  laravel: ['#ff2d20', 'L'], symfony: ['var(--text)', 'sf'], wordpress: ['#21759b', 'W'],
+  drupal: ['#0678be', 'D'], codeigniter: ['#ee4623', 'CI'], yii: ['#40b3d8', 'Yii'],
+  cakephp: ['#d33c43', 'C'], slim: ['#74a045', 'S'], php: ['#777bb3', 'php'],
+  nuxt: ['#00c16a', FW_SVG.nuxt], next: ['var(--text)', 'N'], vue: ['#42b883', FW_SVG.vue],
+  react: ['#149eca', FW_SVG.react], svelte: ['#ff3e00', 'S'], sveltekit: ['#ff3e00', 'SK'],
+  astro: ['#bc52ee', FW_SVG.astro], angular: ['#dd0031', FW_SVG.angular], vite: ['#8b5cf6', FW_SVG.vite],
+  remix: ['var(--text)', 'R'], gatsby: ['#663399', 'G'], solid: ['#446b9e', 'S'], qwik: ['#18b6f6', 'Q'],
+  express: ['var(--muted)', 'ex'], nest: ['#e0234e', 'N'], node: ['#5fa04e', FW_SVG.node],
+  static: ['var(--muted)', FW_SVG.code], unknown: ['var(--faint)', FW_SVG.folder],
+};
+function fwMark(icon, big) {
+  const m = FW[icon] || FW.unknown;
+  const svg = m[1].startsWith('<svg');
+  let style = '--fw:' + m[0];
+  if (!svg && m[1].length > 2) style += '; font-size:' + (big ? 15 : 12) + 'px';
+  return `<span class="fw-mark${big ? ' lg' : ''}" style="${style}" aria-hidden="true">${m[1]}</span>`;
 }
 
-function renderFrontend(sites) {
-  $('fe-count').textContent = sites.length + (sites.length === 1 ? ' project' : ' projects');
-  const tb = $('fe-body');
-  tb.innerHTML = '';
-  if (!sites.length) {
-    tb.innerHTML = '<tr><td colspan="7" class="empty">No frontend projects linked yet — add one below.</td></tr>';
+/* ── sites page ────────────────────────────────────────────── */
+const isBackend = x => x.kind === 'php';
+let siteFilter = 'all';
+let siteQuery = '';
+siteFilter = MullionPrefs.get('sites.filter') || lsGet('mullion-sitefilter') || 'all';
+function setSiteFilter(f) {
+  if (!['all', 'backend', 'frontend', 'pinned'].includes(f)) f = 'all';
+  siteFilter = f;
+  if (MullionPrefs.get('sites.filter') !== f) MullionPrefs.set('sites.filter', f);
+  document.querySelectorAll('#sites-chips button').forEach(b =>
+    b.classList.toggle('active', b.dataset.filter === f));
+  renderSites(true);
+}
+function siteHaystack(x) {
+  const d = x.detect || {};
+  return [x.name, x.host, x.path, d.framework, d.language, d.packageManager, d.icon,
+    x.kind === 'php' ? 'backend php' : 'frontend node', x.php, x.node]
+    .concat(x.hosts || []).filter(Boolean).join(' ').toLowerCase();
+}
+// siteStatus is the one-line state shown on a card: what the domain is
+// doing right now.
+function siteStatus(x) {
+  if (!state.caddy) return { cls: 'off', text: 'stopped', title: 'Mullion is stopped — press Start' };
+  if (x.kind === 'php') return { cls: 'on', text: 'serving' };
+  if (x.kind === 'static') return { cls: 'on', text: 'serving ' + (x.buildDir || 'build') + '/' };
+  if (x.mode === 'build') return { cls: 'on', text: 'serving the build · ' + (x.buildDir || 'dist') + '/' };
+  if (x.devPort) return { cls: 'on', text: 'dev server running · :' + x.devPort };
+  if (x.devPaused) return { cls: 'off', text: 'dev server stopped', title: 'opening the link wakes it again' };
+  return { cls: 'sleep', text: 'sleeping', title: 'wakes automatically when you open the link; sleeps after 2 idle minutes (10 with a tab open)' };
+}
+function runtimeBadge(x) {
+  if (x.kind === 'php') {
+    const v = x.php || state.globalPhp;
+    return v ? `<span class="badge mono" title="${x.php ? 'pinned for this site' : 'the global PHP version'}">PHP ${esc(v)}</span>` : '';
   }
-  for (const site of sites) {
-    let serves, nodeSel = '—', status, action = '';
-    if (site.kind === 'static') {
-      serves = `<span class="muted mono">${site.buildDir}/</span>`;
-      status = '<span class="badge">static build</span>';
-    } else {
-      serves = `<select data-mode="${site.name}" class="mono" title="what this domain serves">
-        <option value="dev" ${site.mode !== 'build' ? 'selected' : ''}>dev</option>
-        <option value="build" ${site.mode === 'build' ? 'selected' : ''}>build</option>
-      </select>`;
-      nodeSel = `<select data-nodever="${site.name}" class="mono">` +
-        ['<option value="">.nvmrc / default (' + (state.globalNode || '—') + ')</option>']
-          .concat(state.nodeInstalled.map(v =>
-            `<option value="${v}" ${site.node === v ? 'selected' : ''}>${v}</option>`)).join('') +
-        '</select>';
-      if (site.mode === 'build') {
-        status = `<span class="badge" title="serving ${site.buildDir}/">${site.buildDir}/</span>`;
-      } else if (site.devPort) {
-        status = `<span class="badge on" title="dev server port">:${site.devPort}</span>`;
-        action = `<button class="sm" data-devrestart="${site.name}" title="restart the dev server">Restart</button> ` +
-          `<button class="sm" data-devstop="${site.name}" title="stop the dev server (frees RAM/CPU)">Stop</button>`;
-      } else {
-        status = '<span class="badge off" title="wakes automatically when you open the link; sleeps after 2 idle minutes (10 with a tab open)">sleeping</span>';
-        action = `<button class="sm" data-devstart="${site.name}">Start</button>`;
-      }
+  if (x.kind === 'node') {
+    return `<span class="badge mono" title="${x.node ? 'pinned for this site' : '.nvmrc, else the default (' + esc(state.globalNode || '—') + ')'}">Node ${esc(x.node || 'auto')}</span>`;
+  }
+  return '';
+}
+function siteBadges(x) {
+  const d = x.detect || {};
+  const out = [];
+  if (d.framework) out.push(`<span class="badge fw">${esc(d.framework)}${d.frameworkVersion ? ' ' + esc(d.frameworkVersion) : ''}</span>`);
+  if (d.language && d.language !== 'Unknown' && !(x.kind === 'php' && d.language === 'PHP')) out.push(`<span class="badge">${esc(d.language)}</span>`);
+  if (d.packageManager) out.push(`<span class="badge">${esc(d.packageManager)}</span>`);
+  out.push(runtimeBadge(x));
+  return out.join('');
+}
+function hostLink(x) {
+  return `<a class="sc-host" href="${esc(x.url)}" target="_blank" title="${x.secure ? 'HTTPS' : 'plain HTTP'} — open ${esc(x.url)}">` +
+    `<span class="${x.secure ? 'lock-on' : 'lock-off'}">${x.secure ? I.lock : I.unlock}</span>${esc(x.host)}</a>`;
+}
+function devButtons(x) {
+  if (x.kind !== 'node' || x.mode === 'build') return '';
+  if (x.devPort) return `<button class="sm" data-a="devrestart" title="restart the dev server">Restart</button>` +
+    `<button class="sm" data-a="devstop" title="stop the dev server (frees RAM/CPU)">Stop</button>`;
+  return `<button class="sm" data-a="devstart">Start</button>`;
+}
+// gitChip is a card's branch chip ("main • 3"), from /api/sites/info.
+function gitChip(x) {
+  const g = gitChips[x.name];
+  if (!g) return '';
+  const branch = g.branch || (g.detached ? 'detached' : '—');
+  const bits = [];
+  if (g.changes) bits.push(g.changes + ' changed file' + (g.changes === 1 ? '' : 's'));
+  if (g.conflicts) bits.push(g.conflicts + ' in conflict');
+  if (g.ahead) bits.push(g.ahead + ' to push');
+  if (g.behind) bits.push(g.behind + ' to pull');
+  const ab = (g.ahead ? '↑' + g.ahead : '') + (g.behind ? '↓' + g.behind : '');
+  return `<button type="button" class="sc-git${g.changes ? ' dirty' : ''}${g.conflicts ? ' conflict' : ''}" data-a="git" ` +
+    `title="${esc(branch)}${g.detached ? ' (detached)' : ''} — ${bits.length ? esc(bits.join(', ')) : 'clean'} · open Git">` +
+    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="6" cy="5" r="2.2"/><circle cx="6" cy="19" r="2.2"/><circle cx="18" cy="7" r="2.2"/><path d="M6 7.2v9.6M18 9.2c0 5-6 3.5-11 7.6"/></svg>` +
+    `<span class="b">${esc(branch)}</span>${g.changes ? `<span class="d">${g.changes}</span>` : ''}${ab ? `<span class="ab">${ab}</span>` : ''}</button>`;
+}
+// The chips refresh on their own, slower than the page (each is a git
+// status; the server caches them for a few seconds).
+let gitChips = {}, gitChipSig = '', gitChipsBusy = false;
+async function loadGitChips() {
+  if (gitChipsBusy || document.visibilityState !== 'visible' || !pageActive('sites')) return;
+  gitChipsBusy = true;
+  try {
+    const next = {};
+    for (const x of (await api('/api/sites/info')) || []) if (x.git) next[x.name] = x.git;
+    const sig = JSON.stringify(next);
+    if (sig !== gitChipSig) { gitChips = next; gitChipSig = sig; renderSites(); }
+  } catch {} finally { gitChipsBusy = false; }
+}
+setInterval(loadGitChips, 6000);
+window.addEventListener('hashchange', () => setTimeout(loadGitChips, 60));
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') loadGitChips(); });
+setTimeout(loadGitChips, 400);
+function siteCard(x) {
+  const st = siteStatus(x);
+  const extra = (x.hosts || []).slice(1);
+  const scheme = x.secure ? 'https://' : 'http://';
+  const chips = extra.length ? '<div class="sc-hosts">' + extra.map(h => h.startsWith('*')
+    ? `<span title="every subdomain (needs wildcard DNS)">${esc(h)}</span>`
+    : `<a href="${esc(scheme + h)}" target="_blank" title="open ${esc(scheme + h)}">${esc(h)}</a>`).join('') + '</div>' : '';
+  return `<div class="site-card${x.pinned ? ' pinned' : ''}" data-name="${esc(x.name)}">
+    <div class="sc-head">
+      ${fwMark((x.detect || {}).icon)}
+      <div class="sc-title"><button type="button" class="sc-name" data-a="manage" title="Open the ${esc(x.name)} project page (⌘/Ctrl-click: new tab)">${esc(x.name)}</button>${hostLink(x)}</div>
+      <button class="icon-btn${x.pinned ? ' pin-on' : ''}" data-a="pin" title="${x.pinned ? 'Unpin' : 'Pin to the top'}">${I.star}</button>
+    </div>
+    <div class="sc-badges">${siteBadges(x)}${gitChip(x)}</div>
+    ${chips}
+    <div class="sc-status"><span class="sdot ${st.cls}"></span><span class="txt" title="${esc(st.title || st.text)}">${esc(st.text)}</span>${devButtons(x)}</div>
+    <div class="sc-path"><span class="p" title="${esc(x.path)}"><bdi>${esc(x.path)}</bdi></span>
+      <button class="icon-btn" data-a="copy" title="Copy path">${I.copy}</button>
+      <button class="icon-btn" data-a="reveal" title="Show in ${fileManager()}">${I.folder}</button></div>
+    <div class="sc-actions">
+      <button class="sm" data-a="open">${I.open}Open</button>
+      <button class="sm" data-a="term">${I.term}Terminal</button>
+      <button class="sm" data-a="manage">${I.manage}Manage</button>
+      <button class="icon-btn" data-a="menu" title="More actions">${I.dots}</button>
+    </div>
+  </div>`;
+}
+function fillGrid(id, all, shown, kind) {
+  const grid = $(id);
+  if (!all.length) {
+    grid.innerHTML = `<div class="sites-empty" style="grid-column:1/-1">No ${kind} projects linked yet.<br>` +
+      `<button class="sm primary" data-add="${kind}">+ Add a ${kind} project</button></div>`;
+  } else if (!shown.length) {
+    grid.innerHTML = `<div class="nomatch" style="grid-column:1/-1">No ${kind} projects match${siteQuery ? ' “' + esc(siteQuery) + '”' : ''}.</div>`;
+  } else {
+    grid.innerHTML = shown.map(siteCard).join('');
+  }
+}
+let lastSitesSig = '';
+function renderSites(force) {
+  if (!state) return;
+  const s = state;
+  // Re-render only when something visible changed: the 5-second poll
+  // would otherwise rebuild every card (and reset hover/focus) each tick.
+  const sig = JSON.stringify([s.sites, s.caddy, s.globalPhp, s.globalNode, s.tld, s.windows, siteFilter, siteQuery, gitChipSig]);
+  if (!force && sig === lastSitesSig) return;
+  lastSitesSig = sig;
+  const all = s.sites.slice().sort((a, b) => (b.pinned - a.pinned) || a.name.localeCompare(b.name));
+  const be = all.filter(isBackend), fe = all.filter(x => !isBackend(x));
+  $('chip-all').textContent = all.length;
+  $('chip-backend').textContent = be.length;
+  $('chip-frontend').textContent = fe.length;
+  $('chip-pinned').textContent = all.filter(x => x.pinned).length;
+  const terms = siteQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const match = x => (siteFilter !== 'pinned' || x.pinned) &&
+    terms.every(t => siteHaystack(x).includes(t));
+  $('sec-backend').style.display = siteFilter === 'frontend' ? 'none' : '';
+  $('sec-frontend').style.display = siteFilter === 'backend' ? 'none' : '';
+  const n = l => l.length + (l.length === 1 ? ' project' : ' projects');
+  $('be-count').textContent = n(be) + ' · PHP sites served through php-fpm';
+  const devUp = fe.filter(x => x.devPort).length;
+  $('fe-count').textContent = n(fe) + ' · ' + devUp + ' dev server' + (devUp === 1 ? '' : 's') + ' running';
+  fillGrid('be-grid', be, be.filter(match), 'backend');
+  fillGrid('fe-grid', fe, fe.filter(match), 'frontend');
+}
+const findSite = name => state && state.sites.find(x => x.name === name);
+
+/* site actions — shared by the cards and the project page header */
+function siteMenuItems(x) {
+  const items = [
+    { icon: x.secure ? I.unlock : I.lock, label: x.secure ? 'Turn off HTTPS' : 'Turn on HTTPS', right: x.secure ? 'on' : 'off',
+      run: () => act(x.secure ? 'Unsecuring…' : 'Securing…', '/api/sites/secure', { name: x.name, secure: !x.secure }, 'Done') },
+  ];
+  if (x.kind === 'php') items.push({ icon: I.php, label: 'PHP version…', right: x.php || 'global', run: () => pickSitePhp(x) });
+  if (x.kind === 'node') {
+    items.push({ icon: I.node, label: 'Node version…', right: x.node || 'auto', run: () => pickSiteNode(x) });
+    items.push({ icon: I.mode, label: 'Serve…', right: x.mode || 'dev', run: () => pickSiteMode(x) });
+  }
+  items.push('-',
+    { icon: I.manage, label: 'Open in new tab', run: () => openProjectTab(x.name, true) },
+    { icon: I.open, label: 'Open in new window', run: () => openProjectWindow(x.name) },
+    '-',
+    { icon: I.copy, label: 'Copy path', run: () => copyPath(x.path) },
+    { icon: I.folder, label: 'Show in ' + fileManager(), run: () => revealPath(x.path) },
+    '-',
+    { icon: I.pencil, label: 'Rename…', run: () => renameSite(x.name) },
+    { icon: I.unlink, label: 'Unlink…', danger: true, run: () => unlinkSite(x.name) });
+  return items;
+}
+async function pickSitePhp(x) {
+  const r = await modal({
+    title: 'PHP version for ' + esc(x.name),
+    message: 'Pin this site to a PHP version, or let it follow the global one.',
+    input: { type: 'select', label: 'PHP', value: x.php || '',
+      options: [{ value: '', label: 'global (' + (state.globalPhp || '—') + ')' }]
+        .concat(state.phpInstalled.map(v => ({ value: v, label: v }))) },
+    confirmText: 'Apply',
+  });
+  if (!r || r.input === (x.php || '')) return;
+  act('Switching PHP version…', '/api/sites/isolate', { name: x.name, version: r.input }, 'Done');
+}
+async function pickSiteNode(x) {
+  const r = await modal({
+    title: 'Node version for ' + esc(x.name),
+    message: 'Pin this site to a Node version, or let it follow the project\'s <span class="mono">.nvmrc</span> / the default.',
+    input: { type: 'select', label: 'Node', value: x.node || '',
+      options: [{ value: '', label: '.nvmrc / default (' + (state.globalNode || '—') + ')' }]
+        .concat(state.nodeInstalled.map(v => ({ value: v, label: v }))) },
+    confirmText: 'Apply',
+  });
+  if (!r || r.input === (x.node || '')) return;
+  act('Switching Node version…', '/api/sites/node', { name: x.name, version: r.input }, 'Done');
+}
+async function pickSiteMode(x) {
+  const r = await modal({
+    title: 'What should ' + esc(x.host) + ' serve?',
+    message: '<b>dev</b> runs <span class="mono">npm run dev</span> behind the domain; <b>build</b> serves the last production build (building first when needed).',
+    input: { type: 'select', label: 'Serve', value: x.mode === 'build' ? 'build' : 'dev',
+      options: [{ value: 'dev', label: 'dev — the dev server' }, { value: 'build', label: 'build — the production build' }] },
+    confirmText: 'Apply',
+  });
+  if (!r || r.input === (x.mode === 'build' ? 'build' : 'dev')) return;
+  act(r.input === 'build' ? 'Switching to the production build… (builds first if needed — can take a minute)' : 'Switching the domain to the dev server…',
+      '/api/sites/mode', { name: x.name, mode: r.input }, 'Done');
+}
+async function renameSite(oldName) {
+  const newName = await promptModal({
+    title: 'Rename site',
+    message: `New name for <span class="mono">${esc(oldName)}</span> — the domain becomes &lt;name&gt;.${esc(state.tld || 'test')}.`,
+    input: { value: oldName, placeholder: 'site-name' },
+    confirmText: 'Rename',
+  });
+  if (!newName || newName === oldName) return;
+  await act('Renaming ' + oldName + ' → ' + newName + '…', '/api/sites/rename', { name: oldName, newName }, 'Renamed');
+  if (pageActive('project') && currentProject === oldName) location.hash = 'project/' + encodeURIComponent(newName);
+}
+async function unlinkSite(name) {
+  const ok = await confirmModal({
+    title: 'Unlink site?',
+    message: `Unlink <span class="mono">${esc(name)}</span>? Mullion stops serving this domain — your project files are untouched.`,
+    confirmText: 'Unlink',
+    danger: true,
+  });
+  if (!ok) return;
+  if (pageActive('project') && currentProject === name) location.hash = 'sites';
+  act('Unlinking…', '/api/sites/unlink', { name }, 'Unlinked');
+}
+async function siteAction(action, name, btn, ev) {
+  const x = findSite(name);
+  if (!x) return;
+  switch (action) {
+    case 'open': window.open(x.url, '_blank'); break;
+    case 'term': openTerminalFor(name); break;
+    case 'manage': openProjectTab(name, !!(ev && (ev.metaKey || ev.ctrlKey || ev.button === 1))); break;
+    case 'newtab': openProjectTab(name, true); break;
+    case 'git': {
+      const t = openProjectTab(name, !!(ev && (ev.metaKey || ev.ctrlKey)));
+      if (t && t.inst && typeof t.inst.showTab === 'function') { try { t.inst.showTab('git'); } catch {} }
+      break;
     }
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${siteCell(site)}</td>
-      <td class="muted mono">${site.path}</td>
-      <td>${serves}</td>
-      <td>${nodeSel}</td>
-      <td>${status} ${action}</td>
-      <td><label class="switch"><input type="checkbox" data-secure="${site.name}" ${site.secure ? 'checked' : ''}><i></i></label></td>
-      <td style="text-align:right; white-space:nowrap">
-        <button class="sm" data-rename="${site.name}" title="change this site's domain">Rename</button>
-        <button class="danger sm" data-unlink="${site.name}">Unlink</button></td>`;
-    tb.appendChild(tr);
+    case 'newwin': openProjectWindow(name); break;
+    case 'menu': openMenu(btn, siteMenuItems(x)); break;
+    case 'copy': copyPath(x.path); break;
+    case 'reveal': revealPath(x.path); break;
+    case 'pin':
+      try {
+        await api('/api/sites/pin', { name, pinned: !x.pinned });
+        x.pinned = !x.pinned; // instant feedback; the refresh confirms it
+        renderSites(true);
+        toast(x.pinned ? 'Pinned ' + name : 'Unpinned ' + name);
+      } catch (e) { toast('Error: ' + e.message); }
+      refresh();
+      break;
+    case 'devstart':
+      act('Starting the dev server… (first start can take a minute)', '/api/dev/start', { name }, 'Started'); break;
+    case 'devrestart':
+      act('Restarting the dev server…', '/api/dev/restart', { name }, 'Restarted'); break;
+    case 'devstop': {
+      const ok = await confirmModal({
+        title: 'Stop dev server?',
+        message: `Stop the dev server for <span class="mono">${esc(name)}</span>? Opening its link later wakes it automatically.`,
+        confirmText: 'Stop',
+      });
+      if (ok) act('Stopping the dev server…', '/api/dev/stop', { name }, 'Stopped — opening the link wakes it again');
+      break;
+    }
   }
-  wireSiteHandlers(tb);
+}
+function onSiteClick(e) {
+  const add = e.target.closest('[data-add]');
+  if (add) return toggleLinkForm(add.dataset.add === 'backend' ? 'be' : 'fe', true);
+  const btn = e.target.closest('[data-a]');
+  const card = e.target.closest('.site-card');
+  if (!btn || !card) return;
+  e.preventDefault();
+  siteAction(btn.dataset.a, card.dataset.name, btn, e);
+}
+// Middle-click on Manage opens the project in a new tab.
+function onSiteAuxClick(e) {
+  if (e.button !== 1) return;
+  const btn = e.target.closest('[data-a="manage"]');
+  const card = e.target.closest('.site-card');
+  if (!btn || !card) return;
+  e.preventDefault();
+  openProjectTab(card.dataset.name, true);
+}
+$('be-grid').addEventListener('auxclick', onSiteAuxClick);
+$('fe-grid').addEventListener('auxclick', onSiteAuxClick);
+$('be-grid').addEventListener('click', onSiteClick);
+$('fe-grid').addEventListener('click', onSiteClick);
+function toggleLinkForm(p, open) {
+  const form = $(p + '-form');
+  const show = open === undefined ? form.style.display === 'none' : open;
+  form.style.display = show ? '' : 'none';
+  $('btn-' + p + '-add').textContent = show ? 'Close' : '+ Add project';
+  if (show) $(p + '-link-path').focus();
+}
+$('btn-be-add').onclick = () => toggleLinkForm('be');
+$('btn-fe-add').onclick = () => toggleLinkForm('fe');
+document.querySelectorAll('#sites-chips button').forEach(b => b.onclick = () => setSiteFilter(b.dataset.filter));
+$('sites-search').addEventListener('input', () => { siteQuery = $('sites-search').value; renderSites(true); });
+$('sites-search').addEventListener('keydown', e => {
+  if (e.key === 'Escape' && $('sites-search').value) {
+    e.stopPropagation();
+    $('sites-search').value = ''; siteQuery = ''; renderSites(true);
+  }
+});
+// "/" jumps to the search box on the Sites page (unless you're typing).
+document.addEventListener('keydown', e => {
+  if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey || !pageActive('sites')) return;
+  const t = e.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+  if (document.querySelector('.modal-backdrop')) return;
+  e.preventDefault();
+  $('sites-search').focus();
+  $('sites-search').select();
+});
+
+/* ── popover menu ──────────────────────────────────────────── */
+let menuEl = null;
+function closeMenu() {
+  if (!menuEl) return;
+  menuEl.remove();
+  menuEl = null;
+  document.removeEventListener('mousedown', onMenuOutside, true);
+}
+function onMenuOutside(e) { if (menuEl && !menuEl.contains(e.target)) closeMenu(); }
+function openMenu(anchor, items) {
+  closeMenu();
+  const m = document.createElement('div');
+  m.className = 'menu';
+  m.setAttribute('role', 'menu');
+  for (const it of items) {
+    if (it === '-') { m.appendChild(document.createElement('hr')); continue; }
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('role', 'menuitem');
+    if (it.danger) b.className = 'danger';
+    b.innerHTML = it.icon + '<span>' + esc(it.label) + '</span>' + (it.right ? '<span class="r">' + esc(it.right) + '</span>' : '');
+    b.onclick = () => { closeMenu(); it.run(); };
+    m.appendChild(b);
+  }
+  document.body.appendChild(m);
+  const r = anchor.getBoundingClientRect();
+  const w = m.offsetWidth, h = m.offsetHeight;
+  const left = Math.max(8, Math.min(r.right - w, innerWidth - w - 8));
+  let top = r.bottom + 6;
+  if (top + h > innerHeight - 8) top = Math.max(8, r.top - h - 6);
+  m.style.left = left + 'px';
+  m.style.top = top + 'px';
+  menuEl = m;
+  menuOpenedAt = Date.now();
+  document.addEventListener('mousedown', onMenuOutside, true);
+  const first = m.querySelector('button');
+  if (first) first.focus({ preventScroll: true });
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && menuEl) { e.preventDefault(); closeMenu(); } });
+window.addEventListener('resize', closeMenu);
+// A scroll detaches the fixed menu from its button — close it, but not
+// for the scroll that focusing the menu itself can cause.
+let menuOpenedAt = 0;
+window.addEventListener('scroll', () => { if (Date.now() - menuOpenedAt > 250) closeMenu(); }, true);
+
+/* ── project tabs ──────────────────────────────────────────── */
+// The project area holds several projects side by side: one tab per open
+// project, each with its own container and its own MullionProject
+// instance (project.js v2: mount(el, site) → {site, unmount, reload,
+// showTab}). Switching tabs only hides/shows containers, so every
+// project keeps its state. A tab mounts lazily on first activation.
+// The route (#project/<name>) follows the active tab; open tabs persist
+// in MullionPrefs 'projectTabs'.
+//
+// project.js v1 (a single mount, no instance returned) still works: its
+// one live mount moves to whichever tab is active.
+let projTabs = [];          // [{id, name, el, inst}]
+let activeTabId = null;
+let projTabSeq = 0;
+let currentProject = null;  // the active tab's site (header, title, menus)
+let lastProjectSig = '';
+let tabsRestored = false;
+const activeTab = () => projTabs.find(t => t.id === activeTabId) || null;
+const X_ICON = '<svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M2 2l6 6M8 2L2 8"/></svg>';
+
+function saveTabs() {
+  if (document.body.classList.contains('projwin')) return; // a popup never rewrites the main window's tabs
+  const i = projTabs.findIndex(t => t.id === activeTabId);
+  MullionPrefs.set('projectTabs', projTabs.length
+    ? JSON.stringify({ tabs: projTabs.map(t => t.name), active: Math.max(0, i) }) : '');
+}
+function addTab(name) {
+  const el = document.createElement('div');
+  el.className = 'ptab-pane';
+  el.hidden = true;
+  $('project-root').appendChild(el);
+  const t = { id: ++projTabSeq, name, el, inst: null };
+  projTabs.push(t);
+  return t;
+}
+function mountTab(t) {
+  const MP = window.MullionProject;
+  if (!MP || typeof MP.mount !== 'function') {
+    t.el.innerHTML = '<section class="card"><div class="card-body"><p class="empty">Project details are not available in this build.</p></div></section>';
+    return;
+  }
+  if (t.inst && !t.inst.legacy) return;
+  if (t.inst && t.inst.legacy && t.inst.mountedHere) return;
+  // v1: the single live mount leaves whichever tab had it.
+  projTabs.forEach(o => {
+    if (o !== t && o.inst && o.inst.legacy && o.inst.mountedHere) { o.inst.mountedHere = false; o.el.innerHTML = ''; }
+  });
+  t.el.innerHTML = '';
+  try {
+    const inst = MP.mount(t.el, t.name);
+    if (inst && typeof inst.unmount === 'function') t.inst = inst;
+    else t.inst = { legacy: true, mountedHere: true, site: t.name,
+      unmount: () => { try { MP.unmount(); } catch {} }, showTab: n => { try { MP.showTab && MP.showTab(n); } catch {} } };
+  } catch (e) {
+    t.el.innerHTML = `<section class="card"><div class="card-body"><p class="muted">Could not load the project page: ${esc(e.message)}</p></div></section>`;
+  }
+}
+function activateTab(t) {
+  activeTabId = t.id;
+  currentProject = t.name;
+  projTabs.forEach(o => { o.el.hidden = o !== t; });
+  if (pageActive('project')) {
+    mountTab(t);
+    // A pane that was hidden measured nothing; let it re-lay out.
+    if (t.inst && typeof t.inst.fit === 'function') requestAnimationFrame(() => { try { t.inst.fit(); } catch {} });
+  }
+  renderTabStrip();
+  lastProjectSig = '';
+  renderProjectHeader();
+  saveTabs();
+}
+// openProjectTab opens (or, unless newTab, focuses) a project's tab and
+// shows the project page. Returns the tab.
+function openProjectTab(name, newTab) {
+  let t = !newTab && ((activeTab() && activeTab().name === name ? activeTab() : null) ||
+    projTabs.find(o => o.name === name));
+  if (!t) t = addTab(name);
+  activateTab(t);
+  // Show it now (callers may use the instance right away); the hash
+  // change that follows re-routes to the same, already-active tab.
+  const target = '#project/' + encodeURIComponent(name);
+  if (!pageActive('project')) showPage(target.slice(1));
+  if (location.hash !== target) location.hash = target;
+  return t;
+}
+function closeTab(id) {
+  const i = projTabs.findIndex(t => t.id === id);
+  if (i < 0) return;
+  const [t] = projTabs.splice(i, 1);
+  if (t.inst) { try { t.inst.unmount(); } catch {} }
+  t.el.remove();
+  if (activeTabId === id) {
+    const next = projTabs[i] || projTabs[i - 1];
+    if (next) {
+      activeTabId = null;
+      if (pageActive('project')) openProjectTab(next.name, false);
+      else activateTab(next);
+    } else {
+      activeTabId = null;
+      currentProject = null;
+      saveTabs();
+      renderTabStrip();
+      if (pageActive('project')) location.hash = 'sites';
+    }
+  } else {
+    saveTabs();
+    renderTabStrip();
+  }
+}
+function renderTabStrip() {
+  const strip = $('ptabs');
+  strip.innerHTML = projTabs.map(t => {
+    const x = findSite(t.name);
+    return `<div class="ptab${t.id === activeTabId ? ' active' : ''}" role="tab" tabindex="0" draggable="true"
+        aria-selected="${t.id === activeTabId}" data-tab="${t.id}" title="${esc(t.name)}">
+      ${fwMark(x && x.detect ? x.detect.icon : 'unknown', false).replace('fw-mark', 'fw-mark xs')}
+      <span class="nm">${esc(t.name)}</span>
+      <span class="x" data-close="${t.id}" title="Close tab" role="button">${X_ICON}</span></div>`;
+  }).join('');
+  const act = strip.querySelector('.ptab.active');
+  if (act) act.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  // Sidebar "Projects" item and the Sites toolbar chips follow the tabs.
+  $('nav-projects').style.display = projTabs.length ? '' : 'none';
+  $('nav-projects-n').textContent = projTabs.length;
+  const chips = $('open-proj');
+  chips.style.display = projTabs.length ? '' : 'none';
+  chips.innerHTML = projTabs.length ? '<span class="lbl">Open</span>' + projTabs.map(t => {
+    const x = findSite(t.name);
+    return `<button class="sm${t.id === activeTabId ? ' active' : ''}" data-opentab="${t.id}" title="Back to ${esc(t.name)}">` +
+      fwMark(x && x.detect ? x.detect.icon : 'unknown', false).replace('fw-mark', 'fw-mark xs') + esc(t.name) + '</button>';
+  }).join('') : '';
+}
+$('open-proj').addEventListener('click', e => {
+  const b = e.target.closest('[data-opentab]');
+  const t = b && projTabs.find(o => o.id === +b.dataset.opentab);
+  if (!t) return;
+  activateTab(t);
+  const target = '#project/' + encodeURIComponent(t.name);
+  showPage(target.slice(1));
+  if (location.hash !== target) location.hash = target;
+});
+(() => {
+  const strip = $('ptabs');
+  const tabOf = e => { const el = e.target.closest('.ptab'); return el ? projTabs.find(t => t.id === +el.dataset.tab) : null; };
+  strip.addEventListener('click', e => {
+    const x = e.target.closest('[data-close]');
+    if (x) { e.stopPropagation(); closeTab(+x.dataset.close); return; }
+    const t = tabOf(e);
+    if (t && t.id !== activeTabId) { activateTab(t); history.replaceState(null, '', '#project/' + encodeURIComponent(t.name)); }
+  });
+  strip.addEventListener('auxclick', e => { if (e.button === 1) { const t = tabOf(e); if (t) { e.preventDefault(); closeTab(t.id); } } });
+  strip.addEventListener('mousedown', e => { if (e.button === 1) e.preventDefault(); }); // no autoscroll
+  strip.addEventListener('keydown', e => {
+    const t = tabOf(e);
+    if (!t) return;
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activateTab(t); history.replaceState(null, '', '#project/' + encodeURIComponent(t.name)); }
+    if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); closeTab(t.id); }
+  });
+  // drag to reorder
+  let dragId = null;
+  strip.addEventListener('dragstart', e => {
+    const t = tabOf(e);
+    if (!t) return;
+    dragId = t.id;
+    e.dataTransfer.effectAllowed = 'move';
+    try { e.dataTransfer.setData('text/plain', t.name); } catch {}
+    e.target.closest('.ptab').classList.add('dragging');
+  });
+  strip.addEventListener('dragover', e => {
+    if (dragId === null) return;
+    e.preventDefault();
+    strip.querySelectorAll('.drop-before').forEach(el => el.classList.remove('drop-before'));
+    const over = e.target.closest('.ptab');
+    if (over && +over.dataset.tab !== dragId) over.classList.add('drop-before');
+  });
+  strip.addEventListener('drop', e => {
+    e.preventDefault();
+    const over = e.target.closest('.ptab');
+    const from = projTabs.findIndex(t => t.id === dragId);
+    if (from >= 0) {
+      const [t] = projTabs.splice(from, 1);
+      const to = over ? projTabs.findIndex(o => o.id === +over.dataset.tab) : projTabs.length;
+      projTabs.splice(to < 0 ? projTabs.length : to, 0, t);
+      saveTabs();
+    }
+    dragId = null;
+    renderTabStrip();
+  });
+  strip.addEventListener('dragend', () => { dragId = null; renderTabStrip(); });
+})();
+// enterProject is the route handler for #project/<name>: focus a tab
+// for that project (the active one if it matches), opening one if needed.
+function enterProject(name) {
+  let t = activeTab();
+  if (!t || t.name !== name) t = projTabs.find(o => o.name === name) || addTab(name);
+  activateTab(t);
+}
+// The page hides; the tabs (and their instances) stay alive.
+function leaveProject() {}
+// restoreTabs reopens last session's tabs once the site list is known
+// (unlinked sites are skipped). Called after the first state load.
+function restoreTabs() {
+  if (tabsRestored || !state) return;
+  tabsRestored = true;
+  let saved = null;
+  try { saved = JSON.parse(MullionPrefs.get('projectTabs') || 'null'); } catch {}
+  if (!saved || !Array.isArray(saved.tabs)) { if (projTabs.length) saveTabs(); return; }
+  const routed = activeTab();
+  const restored = [];
+  saved.tabs.forEach(n => {
+    if (typeof n !== 'string' || !findSite(n)) return;
+    if (routed && routed.name === n && !restored.includes(routed)) { restored.push(routed); return; }
+    const t = addTab(n);
+    restored.push(t);
+  });
+  // A tab opened by the route (#project/x) that wasn't saved stays too.
+  projTabs.forEach(t => { if (!restored.includes(t)) restored.push(t); });
+  projTabs = restored;
+  // Keep DOM order irrelevant (panes are toggled by hidden), just activate.
+  if (!routed) {
+    const t = projTabs[Math.min(saved.active || 0, projTabs.length - 1)];
+    if (t) { activeTabId = t.id; currentProject = t.name; projTabs.forEach(o => { o.el.hidden = o !== t; }); }
+  }
+  renderTabStrip();
+  saveTabs();
+}
+window.addEventListener('mullion:project-renamed', e => {
+  const { from, to } = (e && e.detail) || {};
+  if (!from || !to) return;
+  projTabs.forEach(t => { if (t.name === from) { t.name = to; if (t.inst && t.inst.site !== undefined) t.inst.site = to; } });
+  if (currentProject === from) {
+    currentProject = to;
+    if (pageActive('project')) history.replaceState(null, '', '#project/' + encodeURIComponent(to));
+  }
+  saveTabs();
+  renderTabStrip();
+  lastProjectSig = '';
+  refresh();
+});
+window.addEventListener('mullion:project-unlinked', e => {
+  const name = e && e.detail && e.detail.name;
+  if (!name) return;
+  projTabs.filter(t => t.name === name).forEach(t => closeTab(t.id));
+  refresh();
+});
+function openProjectWindow(name) {
+  window.open(location.origin + '/?t=' + encodeURIComponent(token) + '&popup=1#project/' + encodeURIComponent(name),
+    'mullion-proj-' + Date.now(), 'popup,width=1280,height=820');
+}
+function renderProjectHeader() {
+  if (!pageActive('project') || currentProject === null) return;
+  const t = activeTab();
+  // The project component draws its own header; this is the fallback.
+  $('project-head-card').style.display = t && t.inst ? 'none' : '';
+  const head = $('project-head');
+  if (!state) { head.innerHTML = '<span class="muted">Loading…</span>'; return; }
+  const x = findSite(currentProject);
+  const sig = JSON.stringify([currentProject, x, state.caddy, state.globalPhp, state.globalNode]);
+  if (sig === lastProjectSig) return;
+  lastProjectSig = sig;
+  renderTabStrip();
+  if (!x) {
+    head.innerHTML = fwMark('unknown', true) + `<div class="t"><div class="nm">${esc(currentProject)}</div>` +
+      '<span class="muted">No site with this name is linked any more.</span></div>';
+    $('page-title').textContent = currentProject;
+    $('page-sub').textContent = 'Not linked';
+    return;
+  }
+  const d = x.detect || {};
+  const st = siteStatus(x);
+  head.innerHTML = fwMark(d.icon, true) + `<div class="t">
+      <div class="nm">${esc(x.name)}</div>
+      ${hostLink(x)}
+      <div class="sc-badges">${siteBadges(x)}</div>
+      <div class="sc-status" style="min-height:0"><span class="sdot ${st.cls}"></span><span class="txt">${esc(st.text)}</span></div>
+    </div>
+    <div class="row" style="flex:none">
+      ${devButtons(x)}
+      <button class="sm" data-a="open">Open site</button>
+      <button class="sm" data-a="term">Terminal</button>
+      <button class="icon-btn" data-a="menu" title="More actions">${I.dots}</button>
+    </div>`;
+  $('page-title').textContent = x.name;
+  $('page-sub').textContent = (d.framework ? d.framework + (d.frameworkVersion ? ' ' + d.frameworkVersion : '') + ' · ' : '') +
+    (isBackend(x) ? 'backend' : 'frontend') + ' project';
+  document.title = x.name + ' — Mullion';
+}
+$('project-head').addEventListener('click', e => {
+  const btn = e.target.closest('[data-a]');
+  if (!btn || !currentProject) return;
+  e.preventDefault();
+  siteAction(btn.dataset.a, currentProject, btn, e);
+});
+$('btn-project-back').onclick = () => { location.hash = 'sites'; };
+
+/* ── terminal page & routing ───────────────────────────────── */
+// Where "Terminal" buttons open a shell: the Terminal page (default), a
+// separate window (#termwin/<site>), or the project's own page — the
+// Settings → Terminal preference 'terminal.openIn'.
+const TERM_OPENIN_HELP = {
+  page: 'Every terminal opens as a tab on the Terminal page — all your shells in one place.',
+  window: 'Each terminal opens in its own window, so you can keep it next to your editor or browser.',
+  project: 'A project\'s terminal opens inside that project\'s page, beside its commands and settings.',
+};
+const termOpenIn = () => {
+  const v = MullionPrefs.get('terminal.openIn', 'page');
+  return TERM_OPENIN_HELP[v] ? v : 'page';
+};
+function renderTermOpenIn() {
+  const v = termOpenIn();
+  document.querySelectorAll('#term-openin button').forEach(b => b.classList.toggle('active', b.dataset.openin === v));
+  $('term-openin-help').textContent = TERM_OPENIN_HELP[v];
+}
+document.querySelectorAll('#term-openin button').forEach(b => b.onclick = () => {
+  MullionPrefs.set('terminal.openIn', b.dataset.openin);
+  renderTermOpenIn();
+  toast('Terminals now open in the ' + b.textContent.toLowerCase());
+});
+function openTerminalWindow(site) {
+  const MT = window.MullionTerminal;
+  if (MT && typeof MT.openWindow === 'function') return MT.openWindow(site);
+  window.open(location.origin + '/?t=' + encodeURIComponent(token) + '#termwin' + (site ? '/' + encodeURIComponent(site) : ''),
+    'mullion-term-' + Date.now(), 'popup,width=1000,height=640');
+}
+function openProjectTerminal(site) {
+  const t = openProjectTab(site, false);
+  if (t.inst && typeof t.inst.showTab === 'function') { try { t.inst.showTab('terminal'); } catch {} }
+  return t;
+}
+function openTerminalFor(name) {
+  const MT0 = window.MullionTerminal;
+  // terminal.js v2 routes by the same preference (and calls
+  // onRequestShow / onRequestProject back); v1 needs the shell to route.
+  if (MT0 && typeof MT0.openWindow === 'function') {
+    return Promise.resolve(MT0.openInProject(name)).catch(e => toast('Terminal: ' + e.message));
+  }
+  const where = termOpenIn();
+  if (where === 'window') return openTerminalWindow(name);
+  if (where === 'project') return openProjectTerminal(name);
+  const MT = window.MullionTerminal;
+  if (!MT) return toast('The terminal is not available in this build');
+  Promise.resolve(MT.openInProject(name)).catch(e => toast('Terminal: ' + e.message));
+}
+let terminalMounted = false, termInst = null;
+function ensureTerminal() {
+  const MT = window.MullionTerminal;
+  const root = $('terminal-root');
+  if (!MT) {
+    root.innerHTML = '<section class="card term-missing"><p class="empty">The terminal is not available in this build.</p></section>';
+    return;
+  }
+  if (terminalMounted) {
+    setTimeout(() => {
+      try {
+        const o = termInst && typeof termInst.fit === 'function' ? termInst : MT;
+        if (o.fit) o.fit();
+        if (o.focus) o.focus();
+      } catch {}
+    }, 60);
+    return;
+  }
+  terminalMounted = true;
+  Promise.resolve(MT.mount(root, {})).then(inst => { termInst = inst || null; })
+    .catch(e => { terminalMounted = false; toast('Terminal: ' + e.message); });
+}
+if (window.MullionTerminal) {
+  window.MullionTerminal.onRequestShow = () => { if (!pageActive('terminal')) location.hash = 'terminal'; };
+  window.MullionTerminal.onRequestProject = site => { openProjectTerminal(site); };
 }
 
-function wireSiteHandlers(tb) {
-  tb.querySelectorAll('[data-isolate]').forEach(el => el.onchange = () =>
-    act('Switching PHP version…', '/api/sites/isolate',
-        { name: el.dataset.isolate, version: el.value }, 'Done'));
-  tb.querySelectorAll('[data-nodever]').forEach(el => el.onchange = () =>
-    act('Switching Node version…', '/api/sites/node',
-        { name: el.dataset.nodever, version: el.value }, 'Done'));
-  tb.querySelectorAll('[data-rename]').forEach(el => el.onclick = async (e) => {
-    e.preventDefault();
-    const oldName = el.dataset.rename;
-    const newName = await promptModal({
-      title: 'Rename site',
-      message: `New name for <span class="mono">${oldName}</span> — the domain becomes &lt;name&gt;.${state.tld || 'test'}.`,
-      input: { value: oldName, placeholder: 'site-name' },
-      confirmText: 'Rename',
-    });
-    if (!newName || newName === oldName) return;
-    act('Renaming ' + oldName + ' → ' + newName + '…', '/api/sites/rename',
-        { name: oldName, newName }, 'Renamed');
+/* ── standalone windows ────────────────────────────────────── */
+// #termwin[/<site>] is a bare terminal window; a popup opened on
+// #project/<name> shows just that project with a slim top bar.
+const standalone = (() => {
+  const h = location.hash.slice(1);
+  if (h === 'termwin' || h.startsWith('termwin/') || h.startsWith('termwin?')) {
+    // #termwin[/<site>][?cwd=…] — terminal.js owns the format.
+    const MT = window.MullionTerminal;
+    let parsed = null;
+    try { parsed = MT && MT.parseWindowHash ? MT.parseWindowHash(location.hash) : null; } catch {}
+    if (!parsed) {
+      let site = h.slice(8).split('?')[0];
+      try { site = decodeURIComponent(site); } catch {}
+      parsed = { site };
+    }
+    return { kind: 'term', site: parsed.site || '', cwd: parsed.cwd || '' };
+  }
+  const popup = new URLSearchParams(location.search).has('popup') || !!window.opener;
+  if (popup && h.startsWith('project/')) return { kind: 'project' };
+  return null;
+})();
+function startTermWindow(site, cwd) {
+  document.body.classList.add('termwin');
+  document.title = site ? 'Terminal — ' + site : 'Terminal';
+  const root = $('termwin-root');
+  const MT = window.MullionTerminal;
+  if (!MT) {
+    root.innerHTML = '<p class="empty">The terminal is not available in this build.</p>';
+    return;
+  }
+  Promise.resolve(MT.mount(root, { site, cwd: cwd || '', standalone: true })).then(inst => { termInst = inst || null; })
+    .catch(e => toast('Terminal: ' + e.message));
+}
+
+/* ── ports & SSL page ──────────────────────────────────────── */
+let portsLoadedAt = 0;
+let portsList = [];
+const PORT_GROUPS = [['caddy', 'Web'], ['php', 'PHP'], ['db', 'Databases'], ['dev', 'Dev servers'], ['agent', 'Agent']];
+const portGroup = k => (['mysql', 'postgres', 'mongo'].includes(k) ? 'db' : k);
+function loadPortsPage() {
+  portsLoadedAt = Date.now();
+  loadPorts();
+  loadSSL();
+  loadDNS();
+}
+async function loadPorts() {
+  try {
+    portsList = await api('/api/ports');
+    renderPorts();
+  } catch (e) {
+    $('ports-body').innerHTML = `<tr><td colspan="5" class="muted">Error: ${esc(e.message)}</td></tr>`;
+  }
+}
+function portStatus(p) {
+  if (p.running) return '<span class="badge on">listening</span>';
+  if (p.conflict && p.heldBy && p.heldBy !== 'mullion') return '<span class="badge bad">blocked</span>';
+  if (p.conflict) return '<span class="badge bad">duplicate</span>';
+  return '<span class="badge off">idle</span>';
+}
+function renderPorts() {
+  const list = portsList;
+  const conflicts = list.filter(p => p.conflict).length;
+  $('ports-hint').innerHTML = conflicts
+    ? `<span class="badge bad">${conflicts} conflict${conflicts === 1 ? '' : 's'}</span>`
+    : list.length + ' ports · no conflicts';
+  let html = '';
+  for (const [key, label] of PORT_GROUPS) {
+    const rows = list.map((p, i) => [p, i]).filter(([p]) => portGroup(p.kind) === key);
+    if (!rows.length) continue;
+    html += `<tr class="grp"><td colspan="5">${label}</td></tr>`;
+    for (const [p, i] of rows) {
+      const held = !p.heldBy ? '—' : p.heldBy === 'mullion' ? 'Mullion' : esc(p.heldBy);
+      html += `<tr class="${p.conflict ? 'conflict' : ''}">
+        <td><span style="font-weight:600">${p.conflict ? I.warn : ''}${esc(p.service)}</span>${p.note ? `<span class="port-note">${esc(p.note)}</span>` : ''}</td>
+        <td class="mono" style="font-weight:650">${p.port}</td>
+        <td>${portStatus(p)}</td>
+        <td class="${p.conflict && p.heldBy && p.heldBy !== 'mullion' ? '' : 'muted'}">${held}</td>
+        <td style="text-align:right">${p.configurable ? `<button class="sm" data-port="${i}">Change…</button>` : ''}</td>
+      </tr>`;
+    }
+  }
+  $('ports-body').innerHTML = html || '<tr><td colspan="5" class="empty">No ports in use yet.</td></tr>';
+}
+$('ports-body').addEventListener('click', e => {
+  const b = e.target.closest('[data-port]');
+  if (b) changePort(portsList[+b.dataset.port]);
+});
+$('btn-ports-refresh').onclick = () => loadPortsPage();
+async function suggestPort(start) {
+  try { return await api('/api/ports/suggest', { start }); } catch (e) { toast('Error: ' + e.message); return 0; }
+}
+async function changePort(p) {
+  if (!p) return;
+  const isDev = p.kind === 'dev';
+  const suggested = (await suggestPort(p.port + 1)) || p.port + 1;
+  const what = isDev ? `the dev server for <span class="mono">${esc(p.site)}</span>` : `<span class="mono">${esc(p.service)}</span>`;
+  const val = await promptModal({
+    title: 'Change port',
+    message: `Move ${what} from port <span class="mono">${p.port}</span> to:`,
+    detail: isDev
+      ? 'A running dev server restarts on the new port. Mullion passes it as <span class="mono">PORT</span>; a port hard-coded in the project\'s config wins over it.'
+      : 'The database restarts on the new port, and phpMyAdmin, HeidiSQL, pgAdmin and mongo-express follow. Your projects\' <span class="mono">.env</span> files are never edited.',
+    input: {
+      type: 'number', value: suggested, label: 'New port',
+      action: {
+        label: 'Find free port',
+        run: async (field, btn) => {
+          btn.disabled = true;
+          const n = await suggestPort((parseInt(field.value, 10) || p.port) + 1);
+          btn.disabled = false;
+          if (n) field.value = n; else toast('No free port found');
+          field.focus();
+        },
+      },
+    },
+    confirmText: 'Change port',
   });
-  tb.querySelectorAll('[data-mode]').forEach(el => el.onchange = () =>
-    act(el.value === 'build' ? 'Switching to the production build… (builds first if needed — can take a minute)' : 'Switching the domain to the dev server…',
-        '/api/sites/mode', { name: el.dataset.mode, mode: el.value }, 'Done'));
-  tb.querySelectorAll('[data-devstart]').forEach(el => el.onclick = () =>
-    act('Starting the dev server… (first start can take a minute)', '/api/dev/start',
-        { name: el.dataset.devstart }, 'Started'));
-  tb.querySelectorAll('[data-devrestart]').forEach(el => el.onclick = () =>
-    act('Restarting the dev server…', '/api/dev/restart',
-        { name: el.dataset.devrestart }, 'Restarted'));
-  tb.querySelectorAll('[data-devstop]').forEach(el => el.onclick = async () => {
-    const name = el.dataset.devstop;
+  if (val === null) return;
+  const port = parseInt(val, 10);
+  if (!(port >= 1024 && port <= 65535)) return toast('Enter a port between 1024 and 65535');
+  if (port === p.port) return;
+  await applyPort(p, port, false);
+}
+async function applyPort(p, port, force) {
+  const isDev = p.kind === 'dev';
+  const r = await runJob('Changing the port…', isDev ? '/api/ports/dev' : '/api/ports/engine',
+    isDev ? { site: p.site, port, force } : { engine: p.kind, port, force });
+  if (r && r.inUse) {
+    const who = r.inUse.pid ? `${esc(r.inUse.name)} (pid ${r.inUse.pid})` : 'another process';
     const ok = await confirmModal({
-      title: 'Stop dev server?',
-      message: `Stop the dev server for <span class="mono">${name}</span>? Opening its link later wakes it automatically.`,
-      confirmText: 'Stop',
-    });
-    if (!ok) return;
-    act('Stopping the dev server…', '/api/dev/stop',
-        { name }, 'Stopped — opening the link wakes it again');
-  });
-  tb.querySelectorAll('[data-secure]').forEach(el => el.onchange = () =>
-    act(el.checked ? 'Securing…' : 'Unsecuring…', '/api/sites/secure',
-        { name: el.dataset.secure, secure: el.checked }, 'Done'));
-  tb.querySelectorAll('[data-unlink]').forEach(el => el.onclick = async () => {
-    const name = el.dataset.unlink;
-    const ok = await confirmModal({
-      title: 'Unlink site?',
-      message: `Unlink <span class="mono">${name}</span>? Mullion stops serving this domain — your project files are untouched.`,
-      confirmText: 'Unlink',
+      title: 'Port ' + port + ' is in use',
+      message: `Port <span class="mono">${port}</span> is held by <span class="mono">${who}</span>.`,
+      detail: 'Use it anyway? Mullion saves the port, but the service can\'t start there until that process is gone.',
+      confirmText: 'Use anyway',
       danger: true,
     });
-    if (ok) act('Unlinking…', '/api/sites/unlink', { name }, 'Unlinked');
-  });
+    if (ok) return applyPort(p, port, true);
+  } else if (r) {
+    toast((isDev ? p.site + '\'s dev server' : p.service) + ' now uses port ' + port);
+    if (r.hints && r.hints.length) {
+      await alertModal({
+        title: 'Port changed — a few things to check',
+        message: 'These still point at the old port, or ignore the new one:',
+        detail: r.hints.map(h => '• ' + esc(h)).join('<br>'),
+      });
+    }
+  }
+  loadPorts();
 }
+
+let sslInfo = null;
+async function loadSSL() {
+  try {
+    sslInfo = await api('/api/ssl');
+    renderSSL();
+  } catch (e) {
+    $('ssl-grid').innerHTML = `<div class="ini-row"><span class="muted">Error: ${esc(e.message)}</span></div>`;
+  }
+}
+function renderSSL() {
+  const i = sslInfo;
+  const status = !i.caExists ? '<span class="badge warnb">not created yet</span>'
+    : i.trusted ? '<span class="badge on">trusted</span>' : '<span class="badge bad">not trusted</span>';
+  const row = (k, sub, v) => `<div class="ini-row"><div class="ini-label"><span class="ini-name">${k}</span>${sub ? `<span class="ini-key">${sub}</span>` : ''}</div><div class="ini-control">${v}</div></div>`;
+  $('ssl-grid').innerHTML =
+    row('Local certificate authority', i.caExists ? '' : 'created on the first HTTPS request', status) +
+    (i.caExists ? row('Subject', '', `<span class="mono">${esc(i.caSubject || '—')}</span>`) +
+      row('Expires', '', `<span class="mono">${esc(i.caExpires || '—')}</span>`) : '') +
+    row('Certificate file', '', `<span class="mono" style="max-width:230px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; direction:rtl" title="${esc(i.caPath)}"><bdi>${esc(i.caPath)}</bdi></span>` +
+      `<button class="icon-btn" id="btn-ssl-copy" title="Copy path">${I.copy}</button>`) +
+    row('HTTPS sites', '', `<span class="mono" style="font-weight:650">${i.secureSites} of ${i.totalSites}</span>`);
+  $('btn-ssl-copy').onclick = () => copyPath(i.caPath);
+  $('ssl-hint').textContent = i.secureSites + ' secure site' + (i.secureSites === 1 ? '' : 's');
+  const trust = $('btn-ssl-trust');
+  trust.textContent = i.trusted ? 'Trust again' : 'Trust certificate';
+  trust.className = i.trusted ? '' : 'primary';
+  $('btn-ssl-export').disabled = !i.caExists;
+  $('btn-ssl-all-on').disabled = !i.totalSites || i.secureSites === i.totalSites;
+  $('btn-ssl-all-off').disabled = !i.secureSites;
+}
+$('btn-ssl-trust').onclick = async () => {
+  const win = state && state.windows;
+  const ok = await confirmModal({
+    title: 'Trust Mullion\'s certificate?',
+    message: 'Adds Mullion\'s local certificate authority to your system\'s trust store, so browsers show the padlock on <span class="mono">https://</span> sites.',
+    detail: win ? 'Windows shows a security prompt (UAC) — confirm it.' : 'macOS asks for your password once.',
+    confirmText: 'Trust',
+  });
+  if (!ok) return;
+  await runJob('Trusting the certificate…', '/api/ssl/trust', {}, 'Certificate trusted');
+  loadSSL();
+};
+$('btn-ssl-export').onclick = async () => {
+  const dir = await pickFolder('Choose where to save the certificate');
+  if (!dir) return;
+  try {
+    const target = await api('/api/ssl/export', { dest: dir });
+    toast('Saved ' + target);
+  } catch (e) { toast('Error: ' + e.message); }
+};
+async function secureAll(on) {
+  const ok = await confirmModal({
+    title: on ? 'Enable HTTPS for every site?' : 'Disable HTTPS for every site?',
+    message: on
+      ? 'Every linked site switches to <span class="mono">https://</span>.'
+      : 'Every linked site goes back to plain <span class="mono">http://</span>.',
+    detail: on && sslInfo && !sslInfo.trusted ? 'The certificate is not trusted yet — press “Trust certificate” afterwards so browsers show the padlock.' : undefined,
+    confirmText: on ? 'Enable HTTPS' : 'Disable HTTPS',
+    danger: !on,
+  });
+  if (!ok) return;
+  await runJob(on ? 'Switching every site to HTTPS…' : 'Switching every site to HTTP…',
+    '/api/ssl/secure-all', { secure: on }, on ? 'Every site now uses HTTPS' : 'Every site now uses HTTP');
+  loadSSL();
+}
+$('btn-ssl-all-on').onclick = () => secureAll(true);
+$('btn-ssl-all-off').onclick = () => secureAll(false);
+
+async function loadDNS() {
+  try {
+    const d = await api('/api/dns');
+    $('dns-toggle').checked = d.enabled;
+    $('dns-hint').innerHTML = !d.enabled ? '<span class="badge off">off</span>'
+      : d.note ? '<span class="badge warnb">needs attention</span>' : '<span class="badge on">on</span>';
+    $('dns-status').innerHTML =
+      `<span class="badge ${d.resolverInstalled ? 'on' : 'off'}">resolver ${d.resolverInstalled ? 'installed' : 'not installed'}</span>` +
+      `<span class="badge ${d.serverRunning ? 'on' : 'off'}">DNS server ${d.serverRunning ? 'answering' : 'not running'}</span>`;
+    $('dns-note').style.display = d.note ? '' : 'none';
+    $('dns-note').textContent = d.note ? '⚠ ' + d.note : '';
+  } catch (e) {
+    $('dns-status').innerHTML = `<span class="muted">Error: ${esc(e.message)}</span>`;
+  }
+}
+$('dns-toggle').onchange = async () => {
+  const on = $('dns-toggle').checked;
+  const tld = (state && state.tld) || 'test';
+  const ok = await confirmModal({
+    title: on ? 'Turn on wildcard DNS?' : 'Turn off wildcard DNS?',
+    message: on
+      ? `Mullion answers every <span class="mono">*.${esc(tld)}</span> name itself, so <span class="mono">*</span> aliases work.`
+      : `Removes the resolver hookup for <span class="mono">.${esc(tld)}</span>. Named aliases keep working through the hosts file.`,
+    detail: 'This changes system DNS settings and asks for administrator rights once.',
+    confirmText: on ? 'Turn on' : 'Turn off',
+  });
+  if (!ok) { $('dns-toggle').checked = !on; return; }
+  await runJob(on ? 'Turning on wildcard DNS…' : 'Turning off wildcard DNS…', '/api/dns/set', { enable: on },
+    on ? 'Wildcard DNS is on' : 'Wildcard DNS is off');
+  loadDNS();
+};
+
+/* ── settings: backup folder ───────────────────────────────── */
+let backupDirInfo = null;
+async function loadBackupDir(action, dir) {
+  try {
+    backupDirInfo = await api('/api/settings/backup-dir', { action: action || 'get', dir: dir || '' });
+    const i = backupDirInfo;
+    $('backup-dir-path').innerHTML = '<bdi>' + esc(i.dir) + '</bdi>';
+    $('backup-dir-path').title = i.dir;
+    $('backup-dir-badge').innerHTML = i.isDefault ? '<span class="badge">default</span>' : '<span class="badge fw">custom</span>';
+    $('backup-dir-free').textContent = i.freeBytes ? fmtSize(i.freeBytes) + ' free' : '—';
+    $('backup-dir-hint').textContent = i.isDefault ? 'default location' : 'custom location';
+    $('btn-backup-dir-reset').disabled = i.isDefault;
+    $('btn-backup-dir-show').textContent = 'Show in ' + fileManager();
+    return true;
+  } catch (e) {
+    toast('Error: ' + e.message);
+    return false;
+  }
+}
+$('btn-backup-dir-change').onclick = async () => {
+  const dir = await pickFolder('Choose a folder for database backups');
+  if (!dir) return;
+  if (await loadBackupDir('set', dir)) { toast('Backups now go to ' + dir); refresh(); }
+};
+$('btn-backup-dir-reset').onclick = async () => {
+  const ok = await confirmModal({
+    title: 'Reset the backup folder?',
+    message: 'New backups go back to the default folder. Backups already written stay where they are.',
+    confirmText: 'Reset',
+  });
+  if (ok && await loadBackupDir('reset')) { toast('Backup folder reset to the default'); refresh(); }
+};
+$('btn-backup-dir-show').onclick = () => { if (backupDirInfo) revealPath(backupDirInfo.dir); };
 
 async function refresh() {
   try {
@@ -2036,7 +3529,7 @@ async function loadMongoDatabases(force) {
 /* ── backups ───────────────────────────────────────────────── */
 function fmtSize(bytes) {
   if (!bytes) return '0 B';
-  const units = ['B', 'KB', 'MB', 'GB'];
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
   let n = bytes, i = 0;
   while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
   return (i === 0 ? n : n.toFixed(1)) + ' ' + units[i];
@@ -2077,11 +3570,25 @@ function renderBackupsTable(engine, cardId, countId, bodyId) {
       <td style="text-align:right; white-space:nowrap">
         <button class="sm" data-act="restore">Restore…</button>
         <button class="sm" data-act="show">Show in ${state && state.windows ? 'Explorer' : 'Finder'}</button>
+        <button class="sm danger" data-act="delete">Delete</button>
       </td>`;
     tr.querySelector('[data-act="restore"]').onclick = () => restoreBackup(b);
     tr.querySelector('[data-act="show"]').onclick = () => act('Opening…', '/api/open-path', { path: b.dir });
+    tr.querySelector('[data-act="delete"]').onclick = () => deleteBackup(b);
     tb.appendChild(tr);
   });
+}
+async function deleteBackup(b) {
+  const ok = await confirmModal({
+    title: 'Delete backup?',
+    message: `Delete <span class="mono">${b.name}</span> from this computer? Its ${(b.files || []).length} file(s) (${fmtSize(b.size)}) are removed permanently.`,
+    detail: 'This cannot be undone.',
+    confirmText: 'Delete',
+    danger: true,
+  });
+  if (!ok) return;
+  await act('Deleting backup…', '/api/backups/delete', { dir: b.dir }, 'Backup deleted');
+  if (typeof loadBackups === 'function') loadBackups(true);
 }
 async function restoreBackup(b) {
   const options = [{ value: '', label: 'All databases' }].concat(
@@ -2360,8 +3867,17 @@ $('btn-heidi').onclick = () =>
   act('Opening HeidiSQL…', '/api/heidisql/open', {}, 'HeidiSQL opened');
 
 (async () => {
+  if (standalone && standalone.kind === 'term') { startTermWindow(standalone.site, standalone.cwd); return; }
+  if (standalone && standalone.kind === 'project') document.body.classList.add('projwin');
+  // Saved preferences first (bounded, so a slow backend never blocks the page).
+  await Promise.race([MullionPrefs.ready, new Promise(r => setTimeout(r, 1500))]);
+  dbTab = MullionPrefs.get('dbTab', dbTab);
+  siteFilter = MullionPrefs.get('sites.filter', siteFilter);
+  setSiteFilter(siteFilter);
+  renderTermOpenIn();
   showPage(location.hash.slice(1) || 'overview');
   await refresh();
+  if (!document.body.classList.contains('projwin')) restoreTabs();
   if ((location.hash.slice(1) || 'overview') === 'php') loadIni();
   try {
     const avail = await api('/api/php/available');

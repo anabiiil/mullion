@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"pm/internal/mongodb"
 	"pm/internal/pmdir"
 )
 
@@ -125,5 +126,39 @@ func TestRemove(t *testing.T) {
 	// Remove on an already-absent directory must not error.
 	if err := Remove(paths); err != nil {
 		t.Fatalf("Remove on missing dir: %v", err)
+	}
+}
+
+func TestRefreshConfigFollowsPort(t *testing.T) {
+	paths := pmdir.Paths{Home: t.TempDir()}
+	// No start.js yet: nothing to do.
+	if changed, err := RefreshConfig(paths); err != nil || changed {
+		t.Fatalf("missing start.js: %v, %v", changed, err)
+	}
+	os.MkdirAll(Dir(paths), 0o755)
+	js := renderStartJS("mongodb://127.0.0.1:27017", "cookie", "session")
+	file := filepath.Join(Dir(paths), "start.js")
+	os.WriteFile(file, []byte(js), 0o644)
+
+	old := mongodb.Port
+	t.Cleanup(func() { mongodb.Port = old })
+	mongodb.Port = 27017
+	if changed, err := RefreshConfig(paths); err != nil || changed {
+		t.Fatalf("same port: %v, %v", changed, err)
+	}
+	mongodb.Port = 27018
+	if changed, err := RefreshConfig(paths); err != nil || !changed {
+		t.Fatalf("new port: %v, %v", changed, err)
+	}
+	b, _ := os.ReadFile(file)
+	got := string(b)
+	if !strings.Contains(got, `setDefault('ME_CONFIG_MONGODB_URL', "mongodb://127.0.0.1:27018");`) {
+		t.Errorf("URL not rewritten:\n%s", got)
+	}
+	if !strings.Contains(got, `"cookie"`) || !strings.Contains(got, `"session"`) {
+		t.Error("secrets were not preserved")
+	}
+	if got != renderStartJS("mongodb://127.0.0.1:27018", "cookie", "session") {
+		t.Error("rewrite differs from a fresh render with the new URL")
 	}
 }

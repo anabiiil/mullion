@@ -34,8 +34,15 @@ import (
 	"pm/internal/proc"
 )
 
-// Port is fixed: local dev tools and connection strings expect the default.
-const Port = 27017
+// DefaultPort is MongoDB's standard port, which local dev tools and
+// connection strings expect.
+const DefaultPort = 27017
+
+// Port is the port Mullion's server listens on: DefaultPort unless the
+// user moved it (config mongoPort). app.ApplyPortConfig sets it from the
+// config at startup; mongod.conf, the shell/tool URIs and the readiness
+// probe all read it at call time.
+var Port = DefaultPort
 
 // DefaultSeries is what a bare install gets: the newest major release
 // line, the one drivers and ORMs test against. Rapid releases (8.2,
@@ -137,6 +144,15 @@ func EnsureInitialized(paths pmdir.Paths, version string) error {
 	return os.WriteFile(confFile(paths), []byte(renderConf(paths)), 0o644)
 }
 
+// WriteConfig rewrites mongod.conf (after a port change). No-op when
+// MongoDB was never set up — EnsureInitialized writes it then.
+func WriteConfig(paths pmdir.Paths) error {
+	if _, err := os.Stat(baseDir(paths)); err != nil {
+		return nil
+	}
+	return os.WriteFile(confFile(paths), []byte(renderConf(paths)), 0o644)
+}
+
 // yamlQuote single-quotes a YAML scalar (a doubled quote is the only escape), so
 // Windows paths keep their backslashes verbatim.
 func yamlQuote(s string) string { return "'" + strings.ReplaceAll(s, "'", "''") + "'" }
@@ -163,7 +179,7 @@ func renderConf(paths pmdir.Paths) string {
 		"  diagnosticDataCollectionEnabled: false",
 	}
 	if runtime.GOOS != "windows" {
-		// No /tmp/mongodb-27017.sock: clients use TCP, and a stale
+		// No /tmp/mongodb-<port>.sock: clients use TCP, and a stale
 		// socket left by a crash would block the next start. (Windows
 		// builds don't know the option and would refuse the config.)
 		lines = slices.Insert(lines, 4, "  unixDomainSocket:", "    enabled: false")

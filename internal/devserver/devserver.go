@@ -71,8 +71,12 @@ func Ensure(paths pmdir.Paths, site config.Site, host, nodeDir string) (int, err
 		"PORT="+strconv.Itoa(site.DevPort),
 		"BROWSER=none",
 		// Dev servers block unknown Host headers (DNS-rebinding
-		// protection); let our .test host through.
-		"__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS="+host,
+		// protection); let our .test host through. The leading dot is
+		// Vite's "this host and every subdomain" form, so the site's
+		// aliases (api.<host>, *.<host>) pass too. Vite <8 reads this
+		// variable as ONE host (8+ splits on commas) — a single entry
+		// works on both.
+		"__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS=."+host,
 		"DANGEROUSLY_DISABLE_HOST_CHECK=true",
 	)
 	// Let server-side code in the dev server (SSR, a Nitro/Vite proxy

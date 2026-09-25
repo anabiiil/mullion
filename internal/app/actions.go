@@ -19,6 +19,7 @@ import (
 	"pm/internal/caddy"
 	"pm/internal/composer"
 	"pm/internal/devserver"
+	"pm/internal/dnsd"
 	"pm/internal/fcgi"
 	"pm/internal/mongodb"
 	"pm/internal/mysql"
@@ -402,6 +403,16 @@ func (a *App) Doctor(ctx context.Context) []DoctorCheck {
 				b.WriteString("    " + l + "\n")
 			}
 			check.Fix = b.String()
+		}
+		checks = append(checks, check)
+	}
+
+	if a.State.Config.WildcardDNS {
+		_, resolverOK, serverOK, note := a.WildcardDNSStatus()
+		check := DoctorCheck{Name: "wildcard dns", Status: doctorStatus(resolverOK && serverOK),
+			Detail: fmt.Sprintf("*.%s via %s", a.State.Config.TLD, dnsd.ResolverDescription(a.State.Config.TLD))}
+		if note != "" {
+			check.Detail = note
 		}
 		checks = append(checks, check)
 	}

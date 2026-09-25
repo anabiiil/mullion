@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"pm/internal/pmdir"
@@ -203,10 +204,41 @@ func configDB() (string, error) {
 	return filepath.Join(dataDirFor(runtime.GOOS, home, appData), "pgadmin4.db"), nil
 }
 
-// markerFile records the config database the server was registered in,
-// so later launches skip the (slow, Python) check — and a server the
-// user deleted in pgAdmin stays deleted.
+// markerFile records the config database the server was registered in
+// (and the port it was registered with), so later launches skip the
+// (slow, Python) check — and a server the user deleted in pgAdmin stays
+// deleted.
 func markerFile(paths pmdir.Paths) string { return filepath.Join(Dir(paths), "registered") }
+
+// renderMarker is the marker's content: the config database, then the
+// PostgreSQL port the registered entry points at.
+func renderMarker(db string, port int) string {
+	return db + "\nport=" + strconv.Itoa(port) + "\n"
+}
+
+// parseMarker reads a marker back. Markers written before the port was
+// configurable hold only the database path — they were registered on the
+// default port.
+func parseMarker(b []byte) (db string, port int) {
+	port = postgres.DefaultPort
+	for i, line := range strings.Split(strings.TrimSpace(string(b)), "\n") {
+		line = strings.TrimSpace(line)
+		if i == 0 {
+			db = line
+			continue
+		}
+		if v, ok := strings.CutPrefix(line, "port="); ok {
+			if n, err := strconv.Atoi(v); err == nil && n > 0 {
+				port = n
+			}
+		}
+	}
+	return db, port
+}
+
+func writeMarker(paths pmdir.Paths, db string) error {
+	return os.WriteFile(markerFile(paths), []byte(renderMarker(db, postgres.Port)), 0o644)
+}
 
 // PassFile is the libpq password file the registered server points at,
 // so pgAdmin connects without a password prompt. It holds the same
@@ -249,22 +281,24 @@ func renderServers(passFile string) ([]byte, error) {
 	return json.MarshalIndent(doc, "", "  ")
 }
 
-// hasServer reports whether a dump-servers file lists the Mullion server.
-func hasServer(dump []byte) (bool, error) {
+// hasServer reports whether a dump-servers file lists the Mullion server,
+// and the port that entry points at.
+func hasServer(dump []byte) (bool, int, error) {
 	var doc struct {
 		Servers map[string]struct {
 			Name string `json:"Name"`
+			Port int    `json:"Port"`
 		} `json:"Servers"`
 	}
 	if err := json.Unmarshal(dump, &doc); err != nil {
-		return false, fmt.Errorf("reading pgAdmin's server list: %w", err)
+		return false, 0, fmt.Errorf("reading pgAdmin's server list: %w", err)
 	}
 	for _, s := range doc.Servers {
 		if s.Name == ServerName {
-			return true, nil
+			return true, s.Port, nil
 		}
 	}
-	return false, nil
+	return false, 0, nil
 }
 
 var addedRe = regexp.MustCompile(`Added \d+ Server Group\(s\) and (\d+) Server\(s\)`)
@@ -273,8 +307,9 @@ var addedRe = regexp.MustCompile(`Added \d+ Server Group\(s\) and (\d+) Server\(
 // server. It only ever ADDS to the user's pgAdmin data: a missing
 // database is created with pgAdmin's own setup-db, an existing one is
 // checked with dump-servers and gets the server only if it has none by
-// that name. Safe to call on every launch — after the first success it
-// is a file check.
+// that name. The one edit it makes is following a moved PostgreSQL
+// port: the Mullion entry's port is updated in place (updatePort). Safe
+// to call on every launch — after the first success it is a file check.
 func Register(paths pmdir.Paths) error {
 	if err := writePassFile(paths); err != nil {
 		return err
@@ -284,8 +319,18 @@ func Register(paths pmdir.Paths) error {
 		return err
 	}
 	_, dbErr := os.Stat(db)
-	if b, err := os.ReadFile(markerFile(paths)); err == nil && strings.TrimSpace(string(b)) == db && dbErr == nil {
-		return nil
+	if b, err := os.ReadFile(markerFile(paths)); err == nil && dbErr == nil {
+		if markedDB, markedPort := parseMarker(b); markedDB == db {
+			if markedPort == postgres.Port {
+				return nil
+			}
+			// Registered before, on another port: move that entry (a
+			// user-deleted entry simply matches nothing and stays gone).
+			if err := updatePort(paths, db); err != nil {
+				return err
+			}
+			return writeMarker(paths, db)
+		}
 	}
 
 	fmt.Println("Registering the Mullion server in pgAdmin 4...")
@@ -310,10 +355,15 @@ func Register(paths pmdir.Paths) error {
 		if err != nil {
 			return fmt.Errorf("pgAdmin dump-servers wrote nothing: %s", lastLines(out))
 		}
-		if found, err := hasServer(b); err != nil {
+		if found, port, err := hasServer(b); err != nil {
 			return err
 		} else if found {
-			return os.WriteFile(markerFile(paths), []byte(db+"\n"), 0o644)
+			if port != postgres.Port {
+				if err := updatePort(paths, db); err != nil {
+					return err
+				}
+			}
+			return writeMarker(paths, db)
 		}
 	}
 
@@ -333,7 +383,48 @@ func Register(paths pmdir.Paths) error {
 	if m := addedRe.FindStringSubmatch(out); m == nil || m[1] == "0" {
 		return fmt.Errorf("pgAdmin load-servers failed: %s", lastLines(out))
 	}
-	return os.WriteFile(markerFile(paths), []byte(db+"\n"), 0o644)
+	return writeMarker(paths, db)
+}
+
+// SyncPort points an already registered Mullion server at PostgreSQL's
+// current port (postgres.Port) after the user moved it, and rewrites
+// the password file (whose line carries the port too). No-op when
+// pgAdmin isn't installed or never registered the server — the next
+// Launch registers it with the right port.
+func SyncPort(paths pmdir.Paths) error {
+	if !Installed(paths) {
+		return nil
+	}
+	if _, err := os.Stat(markerFile(paths)); err != nil {
+		return writePassFile(paths)
+	}
+	return Register(paths)
+}
+
+// updatePortScript moves the Mullion server entry of one pgAdmin user
+// to a new port, straight in pgAdmin's SQLite config database (setup.py
+// can only add servers, or replace ALL of them — never edit one). Only
+// the entry by our name pointing at the loopback is touched.
+const updatePortScript = `import sqlite3, sys
+db, name, email, port = sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4])
+con = sqlite3.connect(db, timeout=15)
+cur = con.execute(
+    "UPDATE server SET port = ? WHERE name = ? AND host IN ('127.0.0.1', 'localhost') "
+    "AND user_id IN (SELECT id FROM \"user\" WHERE email = ?)",
+    (port, name, email))
+con.commit()
+print("updated %d" % cur.rowcount)`
+
+// updatePort runs updatePortScript with pgAdmin's bundled Python.
+func updatePort(paths pmdir.Paths, db string) error {
+	l := current(paths)
+	cmd := proc.Quiet(l.python, "-s", "-c", updatePortScript, db, ServerName, desktopUser, strconv.Itoa(postgres.Port))
+	cmd.Env = setupEnv(os.Environ(), filepath.Join(Dir(paths), ".pycache"))
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("updating the Mullion server's port in pgAdmin: %v: %s", err, lastLines(string(out)))
+	}
+	return nil
 }
 
 func writePassFile(paths pmdir.Paths) error {

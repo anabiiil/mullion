@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"slices"
+	"strconv"
 	"testing"
 	"time"
 
@@ -18,6 +19,7 @@ func TestEndToEnd(t *testing.T) {
 	if os.Getenv("MULLION_PG_E2E") != "1" {
 		t.Skip("set MULLION_PG_E2E=1 to run (downloads PostgreSQL)")
 	}
+	useE2EPort(t, "MULLION_PG_E2E_PORT")
 	if Running() {
 		t.Fatalf("port %d is already in use", Port)
 	}
@@ -120,4 +122,22 @@ func TestEndToEnd(t *testing.T) {
 	if err := Start(paths, version); err != nil {
 		t.Fatal(err)
 	}
+}
+
+// useE2EPort moves Port to the port named by the env variable, when
+// set: runs next to a server already on the default port, and
+// exercises a non-default one.
+func useE2EPort(t *testing.T, env string) {
+	t.Helper()
+	v := os.Getenv(env)
+	if v == "" {
+		return
+	}
+	p, err := strconv.Atoi(v)
+	if err != nil {
+		t.Fatalf("%s=%q: %v", env, v, err)
+	}
+	old := Port
+	Port = p
+	t.Cleanup(func() { Port = old })
 }

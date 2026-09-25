@@ -28,6 +28,12 @@ type SiteConf struct {
 	// the link is all the user does.
 	AgentPort int
 	Secure    bool
+	// Aliases are extra full hostnames the same block serves, e.g.
+	// "api.blog.test" or the wildcard "*.blog.test". Every host keeps
+	// its original Host header on the way to PHP, so framework
+	// subdomain routing works; proxied node sites also get it in
+	// X-Forwarded-Host (Caddy sets that by default).
+	Aliases []string
 }
 
 // Generate renders the full Caddyfile. Secured sites use Caddy's internal
@@ -41,11 +47,7 @@ func Generate(sites []SiteConf, logsDir string) string {
 	b.WriteString("{\n\tadmin 127.0.0.1:2019\n\tlocal_certs\n}\n")
 
 	for _, s := range sites {
-		addr := s.Host
-		if !s.Secure {
-			addr = "http://" + s.Host
-		}
-		b.WriteString("\n" + addr + " {\n")
+		b.WriteString("\n" + siteAddresses(s) + " {\n")
 		if s.Secure {
 			b.WriteString("\ttls internal\n")
 		}
@@ -94,6 +96,23 @@ func Generate(sites []SiteConf, logsDir string) string {
 		b.WriteString("}\n")
 	}
 	return b.String()
+}
+
+// siteAddresses is the block's address list: the site's host plus its
+// aliases, each forced to plain HTTP unless the site is secured (with
+// `tls internal`, a "*.blog.test" address gets a wildcard certificate
+// from Caddy's local CA).
+func siteAddresses(s SiteConf) string {
+	hosts := append([]string{s.Host}, s.Aliases...)
+	addrs := make([]string, 0, len(hosts))
+	for _, h := range hosts {
+		if s.Secure {
+			addrs = append(addrs, h)
+		} else {
+			addrs = append(addrs, "http://"+h)
+		}
+	}
+	return strings.Join(addrs, ", ")
 }
 
 // DocRoot picks the directory Caddy should serve for a project: public/

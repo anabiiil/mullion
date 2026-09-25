@@ -1,4 +1,4 @@
 // Package version is the single source of truth for Mullion's version.
 package version
 
-const Number = "1.7.3"
+const Number = "2.0.0"

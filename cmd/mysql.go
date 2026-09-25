@@ -323,7 +323,7 @@ func mustMysql() (*app.App, string, error) {
 }
 
 func init() {
-	mysqlCmd.AddCommand(mysqlInstallCmd, mysqlRestoreCmd, mysqlPasswordCmd, mysqlStartCmd, mysqlStopCmd, mysqlUninstallCmd)
+	mysqlCmd.AddCommand(mysqlInstallCmd, mysqlRestoreCmd, mysqlBackupCmd, mysqlPasswordCmd, mysqlStartCmd, mysqlStopCmd, mysqlUninstallCmd)
 	dbCmd.AddCommand(dbListCmd, dbCreateCmd, dbDropCmd)
 	rootCmd.AddCommand(mysqlCmd, mariadbCmd, dbCmd)
 }

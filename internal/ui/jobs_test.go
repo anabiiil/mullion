@@ -2,6 +2,7 @@ package ui
 
 import (
 	"errors"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -200,5 +201,84 @@ func TestJobExpiry(t *testing.T) {
 
 	if _, ok := r.get(id); ok {
 		t.Fatalf("expected job %q to have expired and been swept", id)
+	}
+}
+
+func waitDone(t *testing.T, r *jobRegistry, id string) JobStatus {
+	t.Helper()
+	deadline := time.After(2 * time.Second)
+	for {
+		st, ok := r.get(id)
+		if !ok {
+			t.Fatalf("job %q disappeared", id)
+		}
+		if st.Done {
+			return st
+		}
+		select {
+		case <-deadline:
+			t.Fatalf("job never finished")
+		case <-time.After(5 * time.Millisecond):
+		}
+	}
+}
+
+func TestStreamJobReportsOutputAsLog(t *testing.T) {
+	r := newJobRegistry(10 * time.Minute)
+	id := r.startStream(func(setStatus func(string), appendLog func([]byte)) (any, error) {
+		setStatus("running")
+		appendLog([]byte("hello "))
+		appendLog([]byte("world\n"))
+		return 0, nil
+	})
+	st := waitDone(t, r, id)
+	if st.Log != "hello world\n" {
+		t.Fatalf("log = %q, want the streamed output", st.Log)
+	}
+	if st.Status != "running" {
+		t.Fatalf("status = %q, want %q", st.Status, "running")
+	}
+	if st.LogDropped != 0 {
+		t.Fatalf("logDropped = %d, want 0", st.LogDropped)
+	}
+}
+
+func TestStreamJobOutputIsBounded(t *testing.T) {
+	r := newJobRegistry(10 * time.Minute)
+	line := []byte(strings.Repeat("x", 99) + "\n")
+	total := 0
+	id := r.startStream(func(_ func(string), appendLog func([]byte)) (any, error) {
+		for total < 3*jobOutputLimit {
+			appendLog(line)
+			total += len(line)
+		}
+		appendLog([]byte("last line\n"))
+		total += len("last line\n")
+		return nil, nil
+	})
+	st := waitDone(t, r, id)
+	if len(st.Log) > jobOutputLimit {
+		t.Fatalf("kept %d bytes, limit is %d", len(st.Log), jobOutputLimit)
+	}
+	if !strings.HasSuffix(st.Log, "last line\n") {
+		t.Fatalf("the newest output must be kept")
+	}
+	if !strings.HasPrefix(st.Log, "xxx") {
+		t.Fatalf("the kept output should start at a line boundary, got %q", st.Log[:10])
+	}
+	if int(st.LogDropped)+len(st.Log) != total {
+		t.Fatalf("dropped %d + kept %d != written %d", st.LogDropped, len(st.Log), total)
+	}
+}
+
+func TestPlainJobLogStaysTheStatusLine(t *testing.T) {
+	r := newJobRegistry(10 * time.Minute)
+	id := r.start(func(setStatus func(string)) (any, error) {
+		setStatus("step 2")
+		return nil, nil
+	})
+	st := waitDone(t, r, id)
+	if st.Log != "step 2" || st.Status != "" {
+		t.Fatalf("log=%q status=%q, want the status line as log", st.Log, st.Status)
 	}
 }

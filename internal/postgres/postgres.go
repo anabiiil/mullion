@@ -26,8 +26,14 @@ import (
 	"pm/internal/vcredist"
 )
 
-// Port is fixed: local dev tools expect the default.
-const Port = 5432
+// DefaultPort is PostgreSQL's standard port, which local dev tools expect.
+const DefaultPort = 5432
+
+// Port is the port Mullion's server listens on: DefaultPort unless the
+// user moved it (config postgresPort). app.ApplyPortConfig sets it from
+// the config at startup; mullion.conf, the client tools and the
+// readiness probe all read it at call time.
+var Port = DefaultPort
 
 // Superuser is the cluster's superuser role.
 const Superuser = "postgres"
@@ -262,6 +268,15 @@ func renderHba(goos string, password bool) string {
 		"host    replication  all   ::1/128       "+method,
 	)
 	return strings.Join(lines, "\n") + "\n"
+}
+
+// WriteConfig rewrites the major's mullion.conf (after a port change).
+// No-op until the cluster exists — EnsureInitialized writes it then.
+func WriteConfig(paths pmdir.Paths, version string) error {
+	if version == "" || !DataInitialized(paths, version) {
+		return nil
+	}
+	return writeConf(DataDir(paths, version))
 }
 
 // writeConf writes mullion.conf and makes sure postgresql.conf includes

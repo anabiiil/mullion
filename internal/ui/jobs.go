@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
@@ -20,6 +21,38 @@ type job struct {
 	result     any
 	status     string
 	finishedAt time.Time
+
+	// streaming jobs (startStream) keep the tail of their command's
+	// output here; dropped counts the bytes cut from the front once it
+	// outgrew jobOutputLimit.
+	streaming bool
+	output    []byte
+	dropped   int64
+}
+
+// jobOutputLimit bounds how much of a streaming job's output is kept —
+// a chatty `npm install` must not grow the panel's memory without end.
+const jobOutputLimit = 256 << 10
+
+// appendOutput adds a chunk of streamed output, keeping only the last
+// jobOutputLimit bytes.
+func (j *job) appendOutput(p []byte) {
+	if len(p) == 0 {
+		return
+	}
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	j.output = append(j.output, p...)
+	if over := len(j.output) - jobOutputLimit; over > 0 {
+		// Cut at a line start when one is near, so the kept output
+		// doesn't begin mid-line (or mid-rune).
+		cut := over
+		if i := bytes.IndexByte(j.output[over:], '\n'); i >= 0 && i < 4096 {
+			cut = over + i + 1
+		}
+		j.dropped += int64(cut)
+		j.output = append([]byte(nil), j.output[cut:]...)
+	}
 }
 
 func (j *job) setStatus(s string) {
@@ -45,6 +78,12 @@ type JobStatus struct {
 	Error  string `json:"error,omitempty"`
 	Result any    `json:"result,omitempty"`
 	Log    string `json:"log"`
+	// Status is the job's status line when Log carries streamed output
+	// (startStream jobs); empty otherwise.
+	Status string `json:"status,omitempty"`
+	// LogDropped is how many bytes of a streaming job's output were cut
+	// from the front of Log to keep it bounded.
+	LogDropped int64 `json:"logDropped,omitempty"`
 }
 
 // jobRegistry tracks in-flight and recently-finished jobs, and
@@ -84,8 +123,22 @@ func newJobID() string {
 // request's context — jobs must outlive the request that started
 // them) and returns immediately with a job id to poll.
 func (r *jobRegistry) start(fn func(setStatus func(string)) (any, error)) string {
+	return r.launch(&job{}, fn)
+}
+
+// startStream is like start for jobs that run a command: fn also gets
+// appendLog to stream the command's output (the last jobOutputLimit
+// bytes are kept). /api/job then reports that output as log — polled
+// repeatedly, it grows — and the status line as status.
+func (r *jobRegistry) startStream(fn func(setStatus func(string), appendLog func([]byte)) (any, error)) string {
+	j := &job{streaming: true}
+	return r.launch(j, func(setStatus func(string)) (any, error) {
+		return fn(setStatus, j.appendOutput)
+	})
+}
+
+func (r *jobRegistry) launch(j *job, fn func(setStatus func(string)) (any, error)) string {
 	id := newJobID()
-	j := &job{}
 
 	r.mu.Lock()
 	r.jobs[id] = j
@@ -125,6 +178,10 @@ func (r *jobRegistry) get(id string) (JobStatus, bool) {
 	}
 	j.mu.Lock()
 	defer j.mu.Unlock()
+	if j.streaming {
+		return JobStatus{Done: j.done, Error: j.err, Result: j.result,
+			Log: string(j.output), Status: j.status, LogDropped: j.dropped}, true
+	}
 	return JobStatus{Done: j.done, Error: j.err, Result: j.result, Log: j.status}, true
 }
 

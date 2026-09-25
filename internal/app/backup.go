@@ -258,6 +258,29 @@ func (a *App) ListBackups() ([]BackupInfo, error) {
 // every database in the backup; a name restores just that one. dir's
 // basename must end in -mysql, -postgres or -mongo (as BackupEngine
 // names them) so the right engine's restore logic is used.
+// DeleteBackup permanently removes one backup directory. It refuses
+// anything that isn't a mullion backup sitting directly inside
+// BackupsDir() — a real directory (not a symlink) whose name ends in
+// -mysql, -postgres or -mongo — so a bad path can't delete elsewhere.
+func (a *App) DeleteBackup(dir string) error {
+	clean := filepath.Clean(dir)
+	root := filepath.Clean(a.Paths.BackupsDir())
+	if filepath.Dir(clean) != root {
+		return fmt.Errorf("%s is not inside the backups folder %s", dir, root)
+	}
+	if _, ok := backupEngineFromName(filepath.Base(clean)); !ok {
+		return fmt.Errorf("%s doesn't look like a mullion backup", filepath.Base(clean))
+	}
+	info, err := os.Lstat(clean)
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("%s is not a backup directory", clean)
+	}
+	return os.RemoveAll(clean)
+}
+
 func (a *App) RestoreBackup(ctx context.Context, dir, db string) error {
 	info, err := os.Stat(dir)
 	if err != nil || !info.IsDir() {

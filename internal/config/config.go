@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -53,6 +54,22 @@ type Config struct {
 	MongoStopped bool `json:"mongoStopped,omitempty"`
 	// GlobalNode is the full Node version the node/current junction points at.
 	GlobalNode string `json:"globalNode,omitempty"`
+	// BackupDir is where database backups are written ("" = the default
+	// next to the install root, which survives an uninstall).
+	BackupDir string `json:"backupDir,omitempty"`
+	// MySQLPort, PostgresPort and MongoPort override the engines' default
+	// ports (3306, 5432, 27017) when they collide with something else.
+	MySQLPort    int `json:"mysqlPort,omitempty"`
+	PostgresPort int `json:"postgresPort,omitempty"`
+	MongoPort    int `json:"mongoPort,omitempty"`
+	// UI holds the control panel's preferences (terminal placement,
+	// remembered tabs, favorite commands…). They live here, not in the
+	// browser's storage, because the panel's origin (a random port)
+	// changes on every launch and would forget them.
+	UI map[string]string `json:"ui,omitempty"`
+	// WildcardDNS enables Mullion's local DNS resolver for *.<tld>, so
+	// sites' wildcard subdomains resolve without hosts-file entries.
+	WildcardDNS bool `json:"wildcardDns,omitempty"`
 }
 
 type Site struct {
@@ -77,6 +94,33 @@ type Site struct {
 	// purpose — Mullion must not resurrect it until they start it again.
 	DevPaused bool `json:"devPaused,omitempty"`
 	Secure    bool `json:"secure"`
+	// Aliases are extra subdomain labels served by this site, e.g.
+	// "api" -> api.<name>.<tld>. A "*" entry serves every subdomain
+	// (resolution then needs WildcardDNS).
+	Aliases []string `json:"aliases,omitempty"`
+	// Pinned floats the site to the top of the Sites page.
+	Pinned bool `json:"pinned,omitempty"`
+	// Workers are long-running background commands supervised for this
+	// site (queue workers, the Laravel scheduler, custom daemons).
+	Workers []Worker `json:"workers,omitempty"`
+}
+
+// Worker is one supervised background command of a site.
+type Worker struct {
+	// ID is stable and unique within the site (used in pid/log names).
+	ID string `json:"id"`
+	// Name is the label shown in the UI ("Queue: default").
+	Name string `json:"name"`
+	// Kind hints the UI and defaults: "queue", "scheduler", "custom".
+	Kind string `json:"kind"`
+	// Command runs in the site's folder through the platform shell,
+	// with the site's PHP/Node on PATH (e.g. "php artisan queue:work").
+	Command string `json:"command"`
+	// AutoStart brings it up with the stack (and restarts it if it
+	// crashes); false = only when started by hand.
+	AutoStart bool `json:"autoStart,omitempty"`
+	// Paused records a deliberate stop, like DevPaused.
+	Paused bool `json:"paused,omitempty"`
 }
 
 // IsPHP reports whether the site is served through php_fastcgi.
@@ -186,5 +230,29 @@ func writeJSON(path string, v any) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, append(data, '\n'), 0o644)
+	// Write a temp file and rename it over the target: the panel reads
+	// these files on every request, and a reader racing a plain
+	// truncate-and-write would see an empty or half-written file.
+	tmp, err := os.CreateTemp(filepath.Dir(path), filepath.Base(path)+".*.tmp")
+	if err != nil {
+		return err
+	}
+	if _, err := tmp.Write(append(data, '\n')); err != nil {
+		tmp.Close()
+		os.Remove(tmp.Name())
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		os.Remove(tmp.Name())
+		return err
+	}
+	if err := os.Chmod(tmp.Name(), 0o644); err != nil {
+		os.Remove(tmp.Name())
+		return err
+	}
+	if err := os.Rename(tmp.Name(), path); err != nil {
+		os.Remove(tmp.Name())
+		return err
+	}
+	return nil
 }

@@ -41,13 +41,8 @@ func writeElevated(path, content string) error {
 
 	fmt.Println("Updating the hosts file needs administrator rights — please accept the UAC prompt.")
 	inner := fmt.Sprintf("Copy-Item -Force '%s' '%s'; ipconfig /flushdns | Out-Null", tmpPath, path)
-	ps := fmt.Sprintf(
-		`Start-Process -Verb RunAs -Wait -WindowStyle Hidden powershell -ArgumentList '-NoProfile','-Command',%s`,
-		psQuote(inner),
-	)
-	cmd := proc.Quiet("powershell", "-NoProfile", "-Command", ps)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("elevated hosts update failed (UAC declined?): %v: %s", err, out)
+	if err := RunElevated("to update the hosts file", inner); err != nil {
+		return fmt.Errorf("elevated hosts update failed (UAC declined?): %w", err)
 	}
 
 	// Verify the copy actually happened.
@@ -60,6 +55,23 @@ func writeElevated(path, content string) error {
 	}
 	return nil
 }
+
+// RunElevated runs a PowerShell command as administrator through a UAC
+// prompt and waits for it. reason is informational (shown by callers).
+func RunElevated(reason, command string) error {
+	ps := fmt.Sprintf(
+		`Start-Process -Verb RunAs -Wait -WindowStyle Hidden powershell -ArgumentList '-NoProfile','-Command',%s`,
+		psQuote(command),
+	)
+	cmd := proc.Quiet("powershell", "-NoProfile", "-Command", ps)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("%v: %s", err, out)
+	}
+	return nil
+}
+
+// PSQuote wraps s in PowerShell single quotes, escaping embedded quotes.
+func PSQuote(s string) string { return psQuote(s) }
 
 // psQuote wraps s in PowerShell single quotes, escaping embedded quotes.
 func psQuote(s string) string {

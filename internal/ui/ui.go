@@ -26,8 +26,10 @@ import (
 	"pm/internal/autostart"
 	"pm/internal/caddy"
 	"pm/internal/config"
+	"pm/internal/detect"
 	"pm/internal/devserver"
 	"pm/internal/fcgi"
+	"pm/internal/gitops"
 	"pm/internal/heidisql"
 	"pm/internal/mongodb"
 	"pm/internal/mongoexpress"
@@ -189,6 +191,8 @@ func newMux(token string) *http.ServeMux {
 		w.Header().Set("Content-Type", "image/png")
 		w.Write(faviconPNG)
 	})
+	registerTerminal(mux, token)
+	registerProjectAssets(mux)
 
 	api := func(path string, h func(a *app.App, r *http.Request) (any, error)) {
 		mux.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
@@ -211,6 +215,10 @@ func newMux(token string) *http.ServeMux {
 			json.NewEncoder(w).Encode(map[string]any{"ok": false, "error": err.Error()})
 		})
 	}
+
+	// The project page registers its own endpoints (project.go).
+	registerProject(api)
+	registerPrefs(api)
 
 	api("/api/state", getState)
 	api("/api/start", func(a *app.App, r *http.Request) (any, error) {
@@ -966,6 +974,13 @@ func newMux(token string) *http.ServeMux {
 		}
 		return map[string]string{"job": id}, nil
 	})
+	api("/api/backups/delete", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Dir string }
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			return nil, err
+		}
+		return nil, a.DeleteBackup(in.Dir)
+	})
 	api("/api/backups/restore", func(a *app.App, r *http.Request) (any, error) {
 		var in struct{ Dir, Db string }
 		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
@@ -1150,6 +1165,7 @@ func newMux(token string) *http.ServeMux {
 		})
 		return map[string]string{"job": id}, nil
 	})
+	registerPanelPages(api)
 	return mux
 }
 
@@ -1190,6 +1206,12 @@ func getState(a *app.App, r *http.Request) (any, error) {
 		DevPaused bool   `json:"devPaused"`
 		Secure    bool   `json:"secure"`
 		URL       string `json:"url"`
+		// Sites-page extras: detected project info, the pin flag, and
+		// every hostname the site answers on (apex first).
+		Detect  detect.Info `json:"detect"`
+		Pinned  bool        `json:"pinned"`
+		Aliases []string    `json:"aliases"`
+		Hosts   []string    `json:"hosts"`
 	}
 	sites := make([]site, 0, len(a.State.Sites))
 	for _, s := range a.State.Sites {
@@ -1222,6 +1244,10 @@ func getState(a *app.App, r *http.Request) (any, error) {
 			DevPaused: s.DevPaused,
 			Secure:    s.Secure,
 			URL:       scheme + "://" + a.State.Host(s),
+			Detect:    detect.Project(s.Path),
+			Pinned:    s.Pinned,
+			Aliases:   nonNilStrings(s.Aliases),
+			Hosts:     app.SiteHosts(s, a.State.Config.TLD),
 		})
 	}
 
@@ -1276,6 +1302,7 @@ func getState(a *app.App, r *http.Request) (any, error) {
 		"globalPhp":     a.State.Config.GlobalPHP,
 		"phpInstalled":  installed,
 		"nodeInstalled": nodeInstalled,
+		"nodeNpm":       nonNilNodeNpm(a.NodeVersionsWithNpm()),
 		"globalNode":    a.State.Config.GlobalNode,
 		"phpCgi":        cgis,
 		"mysql":         mysqlState,
@@ -1310,4 +1337,283 @@ func homeDir() string {
 		return "~"
 	}
 	return home
+}
+
+// registerPanelPages adds the endpoints behind the Sites cards, the
+// Settings backup-folder card, the Node page's npm picker, and the
+// Ports & SSL page. Anything that can take a while — or asks for an
+// admin password — runs as a job (see jobs.go).
+func registerPanelPages(api func(path string, h func(a *app.App, r *http.Request) (any, error))) {
+	/* ── sites ──────────────────────────────────────────────── */
+	type siteInfo struct {
+		app.SiteInfo
+		Aliases []string `json:"aliases"`
+		Hosts   []string `json:"hosts"`
+		// Git is the card's branch chip (absent outside a repository).
+		Git *gitops.Summary `json:"git,omitempty"`
+	}
+	api("/api/sites/info", func(a *app.App, r *http.Request) (any, error) {
+		out := []siteInfo{}
+		git := a.GitSummaries(r.Context())
+		for _, si := range a.SitesInfo() {
+			s := a.State.FindSite(si.Name)
+			if s == nil {
+				continue
+			}
+			out = append(out, siteInfo{SiteInfo: si, Aliases: nonNilStrings(s.Aliases), Hosts: app.SiteHosts(*s, a.State.Config.TLD), Git: git[si.Name]})
+		}
+		return out, nil
+	})
+	api("/api/sites/pin", func(a *app.App, r *http.Request) (any, error) {
+		var in struct {
+			Name   string
+			Pinned bool
+		}
+		if err := decodeJSON(r, &in); err != nil {
+			return nil, err
+		}
+		return nil, a.SetSitePinned(in.Name, in.Pinned)
+	})
+	// Read-only: the cards only show aliases as chips — editing them
+	// belongs to the project page.
+	api("/api/sites/aliases", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Name string }
+		if err := decodeJSON(r, &in); err != nil {
+			return nil, err
+		}
+		s := a.State.FindSite(in.Name)
+		if s == nil {
+			return nil, fmt.Errorf("no site named %q", in.Name)
+		}
+		return map[string]any{
+			"aliases": nonNilStrings(s.Aliases),
+			"hosts":   app.SiteHosts(*s, a.State.Config.TLD),
+		}, nil
+	})
+
+	/* ── settings: backup folder ────────────────────────────── */
+	api("/api/settings/backup-dir", func(a *app.App, r *http.Request) (any, error) {
+		var in struct {
+			Action string // "" / "get", "set", "reset"
+			Dir    string
+		}
+		if err := decodeJSON(r, &in); err != nil {
+			return nil, err
+		}
+		switch in.Action {
+		case "", "get":
+		case "set":
+			if strings.TrimSpace(in.Dir) == "" {
+				return nil, errors.New("choose a folder first")
+			}
+			if err := a.SetBackupDir(in.Dir); err != nil {
+				return nil, err
+			}
+		case "reset":
+			if err := a.SetBackupDir(""); err != nil {
+				return nil, err
+			}
+		default:
+			return nil, fmt.Errorf("unknown action %q", in.Action)
+		}
+		dir, isDefault, free := a.BackupDirInfo()
+		return map[string]any{"dir": dir, "isDefault": isDefault, "freeBytes": free}, nil
+	})
+
+	/* ── node: npm versions ─────────────────────────────────── */
+	api("/api/node/npm-versions", func(a *app.App, r *http.Request) (any, error) {
+		versions, err := nodever.NpmVersions(r.Context())
+		if err != nil {
+			return nil, err
+		}
+		return nonNilStrings(versions), nil
+	})
+
+	/* ── ports ──────────────────────────────────────────────── */
+	api("/api/ports", func(a *app.App, r *http.Request) (any, error) {
+		list := a.PortsOverview()
+		if list == nil {
+			list = []app.PortInfo{}
+		}
+		return list, nil
+	})
+	api("/api/ports/suggest", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Start int }
+		if err := decodeJSON(r, &in); err != nil {
+			return nil, err
+		}
+		return a.SuggestFreePort(in.Start), nil
+	})
+	// Port changes restart services (and can fail on a foreign
+	// listener): jobs. A PortInUseError is not a failure the page should
+	// toast — it's a question ("use anyway?") — so it comes back as a
+	// result with inUse set.
+	portJob := func(label string, set func(a2 *app.App) ([]string, error)) (any, error) {
+		id, err := jobs.startInstall(func(setStatus func(string)) (any, error) {
+			setStatus(label)
+			a2, err := app.New()
+			if err != nil {
+				return nil, err
+			}
+			hints, err := set(a2)
+			var inUse *app.PortInUseError
+			if errors.As(err, &inUse) {
+				return map[string]any{"inUse": map[string]any{"port": inUse.Port, "pid": inUse.PID, "name": inUse.Name}, "message": inUse.Error()}, nil
+			}
+			if err != nil {
+				return nil, err
+			}
+			return map[string]any{"hints": nonNilStrings(hints)}, nil
+		})
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{"job": id}, nil
+	}
+	api("/api/ports/engine", func(a *app.App, r *http.Request) (any, error) {
+		var in struct {
+			Engine string
+			Port   int
+			Force  bool
+		}
+		if err := decodeJSON(r, &in); err != nil {
+			return nil, err
+		}
+		return portJob(fmt.Sprintf("Moving %s to port %d…", in.Engine, in.Port), func(a2 *app.App) ([]string, error) {
+			return a2.SetEnginePort(in.Engine, in.Port, in.Force)
+		})
+	})
+	api("/api/ports/dev", func(a *app.App, r *http.Request) (any, error) {
+		var in struct {
+			Site  string
+			Port  int
+			Force bool
+		}
+		if err := decodeJSON(r, &in); err != nil {
+			return nil, err
+		}
+		return portJob(fmt.Sprintf("Moving %s's dev server to port %d…", in.Site, in.Port), func(a2 *app.App) ([]string, error) {
+			return a2.SetSiteDevPort(in.Site, in.Port, in.Force)
+		})
+	})
+
+	/* ── SSL ────────────────────────────────────────────────── */
+	api("/api/ssl", func(a *app.App, r *http.Request) (any, error) {
+		return a.SSLInfo(), nil
+	})
+	api("/api/ssl/trust", func(a *app.App, r *http.Request) (any, error) {
+		id, err := jobs.startInstall(func(setStatus func(string)) (any, error) {
+			if runtime.GOOS == "windows" {
+				setStatus("Trusting the certificate… (confirm the Windows security prompt)")
+			} else {
+				setStatus("Trusting the certificate… (macOS asks for your password)")
+			}
+			a2, err := app.New()
+			if err != nil {
+				return nil, err
+			}
+			return nil, a2.TrustCA()
+		})
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{"job": id}, nil
+	})
+	api("/api/ssl/export", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Dest string }
+		if err := decodeJSON(r, &in); err != nil {
+			return nil, err
+		}
+		if strings.TrimSpace(in.Dest) == "" {
+			return nil, errors.New("choose a folder first")
+		}
+		target := app.ExportCATarget(in.Dest)
+		if err := a.ExportCA(in.Dest); err != nil {
+			return nil, err
+		}
+		return target, nil
+	})
+	api("/api/ssl/secure-all", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Secure bool }
+		if err := decodeJSON(r, &in); err != nil {
+			return nil, err
+		}
+		id, err := jobs.startInstall(func(setStatus func(string)) (any, error) {
+			if in.Secure {
+				setStatus("Switching every site to HTTPS…")
+			} else {
+				setStatus("Switching every site to plain HTTP…")
+			}
+			a2, err := app.New()
+			if err != nil {
+				return nil, err
+			}
+			return nil, a2.SecureAll(in.Secure)
+		})
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{"job": id}, nil
+	})
+
+	/* ── wildcard DNS ───────────────────────────────────────── */
+	api("/api/dns", func(a *app.App, r *http.Request) (any, error) {
+		enabled, resolver, server, note := a.WildcardDNSStatus()
+		return map[string]any{
+			"enabled":           enabled,
+			"resolverInstalled": resolver,
+			"serverRunning":     server,
+			"note":              note,
+			"tld":               a.State.Config.TLD,
+		}, nil
+	})
+	api("/api/dns/set", func(a *app.App, r *http.Request) (any, error) {
+		var in struct{ Enable bool }
+		if err := decodeJSON(r, &in); err != nil {
+			return nil, err
+		}
+		id, err := jobs.startInstall(func(setStatus func(string)) (any, error) {
+			if in.Enable {
+				setStatus("Turning on wildcard DNS… (asks for administrator rights)")
+			} else {
+				setStatus("Turning off wildcard DNS…")
+			}
+			a2, err := app.New()
+			if err != nil {
+				return nil, err
+			}
+			return nil, a2.SetWildcardDNS(in.Enable)
+		})
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{"job": id}, nil
+	})
+}
+
+// decodeJSON decodes an optional JSON request body: a GET (or an empty
+// POST) leaves v at its zero value instead of failing.
+func decodeJSON(r *http.Request, v any) error {
+	if r.Body == nil {
+		return nil
+	}
+	if err := json.NewDecoder(r.Body).Decode(v); err != nil && !errors.Is(err, io.EOF) {
+		return err
+	}
+	return nil
+}
+
+// nonNilStrings keeps JSON arrays arrays: the page reads .length.
+func nonNilStrings(s []string) []string {
+	if s == nil {
+		return []string{}
+	}
+	return s
+}
+
+func nonNilNodeNpm(s []app.NodeNpm) []app.NodeNpm {
+	if s == nil {
+		return []app.NodeNpm{}
+	}
+	return s
 }

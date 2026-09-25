@@ -166,3 +166,43 @@ func mustLoadState(t *testing.T, paths pmdir.Paths) *config.State {
 	}
 	return state
 }
+
+func TestDeleteBackupOnlyDeletesRealBackups(t *testing.T) {
+	home := t.TempDir()
+	paths := pmdir.Paths{Home: filepath.Join(home, "mullion")}
+	backups := paths.BackupsDir()
+	mk := func(p string) string {
+		if err := os.MkdirAll(p, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		os.WriteFile(filepath.Join(p, "db.sql"), []byte("x"), 0o644)
+		return p
+	}
+	good := mk(filepath.Join(backups, "2026-01-01_000000-mysql"))
+	notBackup := mk(filepath.Join(backups, "2026-01-01_000000-migrate-8.4.11"))
+	outside := mk(filepath.Join(home, "elsewhere", "2026-01-01_000000-mysql"))
+	nested := mk(filepath.Join(backups, "2026-01-01_000000-mysql", "inner-mysql"))
+	link := filepath.Join(backups, "2026-02-02_000000-postgres")
+	if err := os.Symlink(outside, link); err != nil {
+		t.Fatal(err)
+	}
+	a := &App{Paths: paths, State: mustLoadState(t, paths), skipApply: true}
+
+	for _, bad := range []string{notBackup, outside, nested, link, backups, filepath.Join(backups, "..", "x-mysql")} {
+		if err := a.DeleteBackup(bad); err == nil {
+			t.Errorf("DeleteBackup(%s) = nil, want refusal", bad)
+		}
+	}
+	if _, err := os.Stat(outside); err != nil {
+		t.Fatalf("symlink target outside backups was touched: %v", err)
+	}
+	if err := a.DeleteBackup(good); err != nil {
+		t.Fatalf("DeleteBackup(good) = %v", err)
+	}
+	if _, err := os.Stat(good); !os.IsNotExist(err) {
+		t.Fatalf("backup still exists: %v", err)
+	}
+	if _, err := os.Stat(notBackup); err != nil {
+		t.Fatalf("unrelated dir removed: %v", err)
+	}
+}

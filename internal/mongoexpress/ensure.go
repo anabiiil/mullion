@@ -12,6 +12,25 @@ import (
 // SiteName is the fixed site mongo-express is linked as: https://mongo.<tld>.
 const SiteName = "mongo"
 
+// Follow a moved MongoDB port: point start.js at the new URI and bounce
+// a running mongo-express so it reconnects there. (Registered as a hook
+// because this package imports app, not the other way around.)
+func init() {
+	app.OnEnginePortChange(func(a *app.App, engine string) error {
+		if engine != "mongo" {
+			return nil
+		}
+		changed, err := RefreshConfig(a.Paths)
+		if err != nil || !changed {
+			return err
+		}
+		if devserver.Running(a.Paths, SiteName) > 0 {
+			return a.RestartDevServer(SiteName)
+		}
+		return nil
+	})
+}
+
 // Ensure installs mongo-express (a no-op once it already is) and links
 // it as a secured node site named "mongo", converging the machine so
 // https://mongo.<tld> serves it. It returns that URL.

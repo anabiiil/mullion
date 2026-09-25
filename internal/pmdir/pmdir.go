@@ -12,6 +12,9 @@ import (
 
 type Paths struct {
 	Home string
+	// Backups overrides where backups go (the user's choice in
+	// Settings); "" = the default next to Home.
+	Backups string
 }
 
 func New() (Paths, error) {
@@ -31,7 +34,12 @@ func New() (Paths, error) {
 
 // BackupsDir lives OUTSIDE Home on purpose: `mullion uninstall` wipes
 // Home, and a backup that dies with the thing it backs up is no backup.
-func (p Paths) BackupsDir() string { return p.Home + "-Backups" }
+func (p Paths) BackupsDir() string {
+	if p.Backups != "" {
+		return p.Backups
+	}
+	return p.Home + "-Backups"
+}
 
 func (p Paths) BinDir() string                  { return filepath.Join(p.Home, "bin") }
 func (p Paths) CaddyExe() string                { return filepath.Join(p.BinDir(), exeName("caddy")) }

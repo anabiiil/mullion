@@ -54,8 +54,10 @@ func New() (*App, error) {
 	if err != nil {
 		return nil, err
 	}
+	ApplyPortConfig(state.Config)
 	mysql.RootPassword = state.Config.MySQLPassword
 	postgres.Password = state.Config.PostgresPassword
+	paths.Backups = state.Config.BackupDir
 	return &App{Paths: paths, State: state}, nil
 }
 
@@ -87,11 +89,14 @@ func (a *App) NeededVersions() []string {
 	return out
 }
 
-// Hostnames of all linked sites.
+// Hostnames of all linked sites, plus their explicit subdomain aliases
+// (a hosts file can't express the "*" wildcard — that needs WildcardDNS).
 func (a *App) Hostnames() []string {
 	out := make([]string, 0, len(a.State.Sites))
 	for _, s := range a.State.Sites {
-		out = append(out, a.State.Host(s))
+		host := a.State.Host(s)
+		out = append(out, host)
+		out = append(out, explicitAliasHosts(s, host)...)
 	}
 	return out
 }
@@ -103,10 +108,11 @@ func (a *App) WriteCaddyfile(devPorts map[string]int) error {
 	var confs []caddy.SiteConf
 	for _, s := range a.State.Sites {
 		conf := caddy.SiteConf{
-			Name:   s.Name,
-			Host:   a.State.Host(s),
-			Kind:   s.Kind,
-			Secure: s.Secure,
+			Name:    s.Name,
+			Host:    a.State.Host(s),
+			Aliases: SiteHosts(s, a.State.Config.TLD)[1:],
+			Kind:    s.Kind,
+			Secure:  s.Secure,
 		}
 		switch s.Kind {
 		case "node":
@@ -265,11 +271,10 @@ func (a *App) Apply() error {
 			firstErr = err
 		}
 	}
-	for _, s := range a.State.Sites {
-		if s.Kind == "node" {
-			keep(agent.Ensure(a.Paths))
-			break
-		}
+	// The agent wakes node sites' dev servers and hosts the wildcard
+	// DNS server.
+	if a.needsAgent() {
+		keep(agent.Ensure(a.Paths))
 	}
 	keep(hosts.Sync(a.Hostnames()))
 	for _, v := range a.NeededVersions() {

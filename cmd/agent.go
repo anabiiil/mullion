@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"html"
@@ -15,9 +16,13 @@ import (
 
 	"pm/internal/agent"
 	"pm/internal/app"
+	"pm/internal/config"
 	"pm/internal/devserver"
+	"pm/internal/dnsd"
+	"pm/internal/pmdir"
 	"pm/internal/sysproc"
 	"pm/internal/version"
+	"pm/internal/workers"
 )
 
 // Idle limits: with no tab open (no live connection) a dev server
@@ -36,6 +41,24 @@ var agentCmd = &cobra.Command{
 	Use:    "agent",
 	Hidden: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		// Supervise the sites' workers (queues, scheduler, daemons):
+		// autostart them and restart them after a crash.
+		go workers.Supervise(context.Background(),
+			func() (*config.State, pmdir.Paths, error) {
+				a, err := app.New()
+				if err != nil {
+					return nil, pmdir.Paths{}, err
+				}
+				return a.State, a.Paths, nil
+			},
+			func(s config.Site) []string {
+				a, err := app.New()
+				if err != nil {
+					return nil
+				}
+				return a.SiteEnv(s)
+			})
+
 		var (
 			mu       sync.Mutex
 			inFlight = map[string]bool{}
@@ -159,6 +182,8 @@ var agentCmd = &cobra.Command{
 			w.WriteHeader(http.StatusServiceUnavailable)
 			fmt.Fprintf(w, wakePage, html.EscapeString(name))
 		})
+		startWildcardDNS()
+
 		fmt.Printf("mullion agent %s listening on 127.0.0.1:%d\n", version.Number, agent.Port)
 		return http.ListenAndServe(fmt.Sprintf("127.0.0.1:%d", agent.Port), nil)
 	},
@@ -203,6 +228,44 @@ async function tick() {
 setTimeout(tick, 2000);
 </script>
 </body></html>`
+
+// startWildcardDNS runs the *.<tld> DNS server inside the agent when
+// wildcard DNS is on (read once at startup — toggling it restarts the
+// agent). The zone is re-read from config every few seconds, so a TLD
+// change needs no restart. Bind failures are logged, never fatal: wake
+// on demand must keep working even if a DNS port is taken.
+func startWildcardDNS() {
+	a, err := app.New()
+	if err != nil || !a.State.Config.WildcardDNS {
+		return
+	}
+	var (
+		zmu     sync.Mutex
+		zone    = a.State.Config.TLD
+		checked = time.Now()
+	)
+	srv := &dnsd.Server{Zone: func() string {
+		zmu.Lock()
+		defer zmu.Unlock()
+		if time.Since(checked) > 3*time.Second {
+			checked = time.Now()
+			if st, err := config.Load(a.Paths); err == nil {
+				zone = ""
+				if st.Config.WildcardDNS {
+					zone = st.Config.TLD
+				}
+			}
+		}
+		return zone
+	}}
+	for _, addr := range dnsd.ListenAddrs() {
+		if err := srv.Listen(addr); err != nil {
+			fmt.Printf("dns: cannot listen on %s: %v\n", addr, err)
+			continue
+		}
+		fmt.Printf("dns: answering *.%s on %s\n", a.State.Config.TLD, addr)
+	}
+}
 
 // latestSourceMtime finds the newest file change in a project, skipping
 // the heavy generated directories; the walk is capped so a minutely

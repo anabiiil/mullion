@@ -21,12 +21,19 @@ func ValidateTLD(tld string) (string, error) {
 
 // SetTLD validates tld and switches every linked site to it: it updates
 // the saved config and reconverges the machine (Caddyfile, hosts file,
-// certificates) so sites resolve under the new suffix immediately.
+// certificates) so sites resolve under the new suffix immediately. With
+// wildcard DNS on, the OS resolver hookup moves to the new TLD too (the
+// agent's DNS server picks the new zone up from config by itself).
 func (a *App) SetTLD(tld string) error {
 	t, err := ValidateTLD(tld)
 	if err != nil {
 		return err
 	}
+	if a.State.Config.WildcardDNS {
+		if err := moveResolver(a.State.Config.TLD, t); err != nil {
+			return err
+		}
+	}
 	a.State.Config.TLD = t
-	return a.Apply()
+	return a.applyIfEnabled()
 }

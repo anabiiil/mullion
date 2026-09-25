@@ -49,22 +49,46 @@ func Ensure(paths pmdir.Paths) error {
 		if runningVersion() == version.Number {
 			return nil
 		}
-		// A stale agent (older build, or one whose pid record is gone)
-		// must actually die — kill the PORT OWNER, not just the pid
-		// file, and never report success while it still answers.
-		Stop(paths)
-		if pid, name := sysproc.PortOwner(Port); pid > 0 &&
-			strings.Contains(strings.ToLower(name), "mullion") {
-			sysproc.KillProcess(pid)
-		}
-		for i := 0; i < 30 && Running(); i++ {
-			time.Sleep(100 * time.Millisecond)
-		}
-		if Running() {
-			pid, name := sysproc.PortOwner(Port)
-			return fmt.Errorf("a stale process (%s, PID %d) is holding the agent port %d and could not be stopped", name, pid, Port)
+		if err := kill(paths); err != nil {
+			return err
 		}
 	}
+	return spawn(paths)
+}
+
+// Restart replaces the running agent (if any) with a fresh one, so it
+// re-reads settings it only reads at startup (e.g. wildcard DNS).
+func Restart(paths pmdir.Paths) error {
+	if Running() {
+		if err := kill(paths); err != nil {
+			return err
+		}
+	}
+	return spawn(paths)
+}
+
+// kill stops the running agent and waits for its port to free up.
+func kill(paths pmdir.Paths) error {
+	// A stale agent (older build, or one whose pid record is gone)
+	// must actually die — kill the PORT OWNER, not just the pid
+	// file, and never report success while it still answers.
+	Stop(paths)
+	if pid, name := sysproc.PortOwner(Port); pid > 0 &&
+		strings.Contains(strings.ToLower(name), "mullion") {
+		sysproc.KillProcess(pid)
+	}
+	for i := 0; i < 30 && Running(); i++ {
+		time.Sleep(100 * time.Millisecond)
+	}
+	if Running() {
+		pid, name := sysproc.PortOwner(Port)
+		return fmt.Errorf("a stale process (%s, PID %d) is holding the agent port %d and could not be stopped", name, pid, Port)
+	}
+	return nil
+}
+
+// spawn starts the detached agent process and waits for it to listen.
+func spawn(paths pmdir.Paths) error {
 	exe, err := os.Executable()
 	if err != nil {
 		return err

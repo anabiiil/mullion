@@ -12,10 +12,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	"pm/internal/archive"
 	"pm/internal/download"
+	"pm/internal/mysql"
 	"pm/internal/pmdir"
 )
 
@@ -106,7 +109,8 @@ func latestVersion(ctx context.Context) (string, error) {
 
 // writeSession seeds the portable settings with a "Mullion" session for
 // the local server, so the first launch connects with one click. Only
-// written when no settings exist yet — HeidiSQL owns the file afterwards.
+// written when no settings exist yet — HeidiSQL owns the file afterwards
+// (apart from the session's port, which SyncPort keeps current).
 //
 // Line format is <key>\t<datatype>\t<value> where the datatype is the
 // ordinal of HeidiSQL's TAppSettingDataType: 0=Int, 1=Bool, 2=String.
@@ -115,10 +119,55 @@ func latestVersion(ctx context.Context) (string, error) {
 func writeSession(paths pmdir.Paths) error {
 	settings := filepath.Join(Dir(paths), "portable_settings.txt")
 	if _, err := os.Stat(settings); err == nil {
-		return nil
+		return SyncPort(paths) // only ever follows a moved port
 	}
 	content := "Servers\\Mullion\\Host\t2\t127.0.0.1\r\n" +
 		"Servers\\Mullion\\User\t2\troot\r\n" +
-		"Servers\\Mullion\\Port\t0\t3306\r\n"
+		portSetting(mysql.Port) + "\r\n"
 	return os.WriteFile(settings, []byte(content), 0o644)
+}
+
+const portKey = "Servers\\Mullion\\Port\t"
+
+// portSetting is the Mullion session's port line (datatype 0 = Int).
+func portSetting(port int) string { return portKey + "0\t" + strconv.Itoa(port) }
+
+// SyncPort points the seeded "Mullion" session at the MySQL server's
+// current port (mysql.Port) after the user moved it. Only that one line
+// changes — everything else in HeidiSQL's settings file is HeidiSQL's.
+// No-op when HeidiSQL (or its settings, or the session) isn't there.
+func SyncPort(paths pmdir.Paths) error {
+	settings := filepath.Join(Dir(paths), "portable_settings.txt")
+	b, err := os.ReadFile(settings)
+	if err != nil {
+		return nil
+	}
+	out, changed := replacePort(string(b), mysql.Port)
+	if !changed {
+		return nil
+	}
+	return os.WriteFile(settings, []byte(out), 0o644)
+}
+
+// replacePort rewrites the Mullion session's port line in a settings
+// file's content, reporting whether anything changed.
+func replacePort(content string, port int) (string, bool) {
+	lines := strings.Split(content, "\n")
+	changed := false
+	for i, l := range lines {
+		cr := strings.HasSuffix(l, "\r")
+		body := strings.TrimSuffix(l, "\r")
+		if !strings.HasPrefix(body, portKey) {
+			continue
+		}
+		want := portSetting(port)
+		if body != want {
+			if cr {
+				want += "\r"
+			}
+			lines[i] = want
+			changed = true
+		}
+	}
+	return strings.Join(lines, "\n"), changed
 }

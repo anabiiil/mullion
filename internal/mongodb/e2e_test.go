@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"testing"
 	"time"
 
@@ -36,6 +37,7 @@ func e2eHome(t *testing.T) pmdir.Paths {
 
 func TestE2EInstallStartCreateDropStop(t *testing.T) {
 	paths := e2eHome(t)
+	useE2EPort(t, "MULLION_MONGO_E2E_PORT")
 	if Running() {
 		t.Fatalf("port %d is already in use — refusing to test against someone else's server", Port)
 	}
@@ -189,4 +191,22 @@ func findDirWithName(staging, exe string) (string, error) {
 		}
 	}
 	return "", os.ErrNotExist
+}
+
+// useE2EPort moves Port to the port named by the env variable, when
+// set: runs next to a server already on the default port, and
+// exercises a non-default one.
+func useE2EPort(t *testing.T, env string) {
+	t.Helper()
+	v := os.Getenv(env)
+	if v == "" {
+		return
+	}
+	p, err := strconv.Atoi(v)
+	if err != nil {
+		t.Fatalf("%s=%q: %v", env, v, err)
+	}
+	old := Port
+	Port = p
+	t.Cleanup(func() { Port = old })
 }
