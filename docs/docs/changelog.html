@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Changelog · Mullion</title>
+<meta name="description" content="What changed in each release.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#1C2333">
+<meta property="og:title" content="Changelog · Mullion">
+<meta property="og:description" content="What changed in each release.">
+<meta property="og:image" content="https://anabiiil.github.io/mullion/assets/screenshots/hero.png">
+<meta property="og:type" content="website">
+<link rel="icon" href="../assets/brand/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../assets/brand/apple-touch-icon.png">
+<link rel="stylesheet" href="../assets/css/site.css">
+<script>try{var t=localStorage.getItem('mullion-theme');document.documentElement.setAttribute('data-theme',t||(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'))}catch(e){}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="header-in">
+    <button class="icon-btn menu-btn" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+    <a class="brand" href="../index.html" aria-label="Mullion home"><img src="../assets/brand/mullion-mark.svg" alt="" width="28" height="28">Mullion<span class="ver">v2.0.0</span></a>
+    <nav class="nav" aria-label="Main">
+      <a href="../docs/" class="">Docs</a><a href="../docs/cli.html" class="hide-sm">CLI</a><a href="../docs/changelog.html" aria-current="page" class="hide-sm">Changelog</a>
+      <a href="https://github.com/anabiiil/mullion" aria-label="Mullion on GitHub" title="GitHub"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.1c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.9 1.3 1.9 1.3 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.7 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg></a>
+      <button class="icon-btn theme-btn" type="button" aria-label="Toggle theme"><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+    </nav>
+  </div>
+</header>
+<div class="docs">
+<nav class="sidebar" id="sidebar" aria-label="Documentation">
+<ul><li><a href="index.html">Overview</a></li></ul>
+<h4>Start</h4><ul>
+<li><a href="getting-started.html">Getting started</a></li>
+<li><a href="installation.html">Installation</a></li>
+</ul>
+<h4>Using Mullion</h4><ul>
+<li><a href="sites.html">Sites &amp; domains</a></li>
+<li><a href="project-page.html">Project page</a></li>
+<li><a href="terminal.html">Terminal</a></li>
+<li><a href="git.html">Git</a></li>
+<li><a href="databases.html">Databases</a></li>
+<li><a href="php.html">PHP</a></li>
+<li><a href="node.html">Node</a></li>
+<li><a href="ports-ssl.html">Ports &amp; SSL</a></li>
+<li><a href="settings.html">Settings</a></li>
+</ul>
+<h4>Reference</h4><ul>
+<li><a href="troubleshooting.html">Troubleshooting &amp; FAQ</a></li>
+<li><a href="cli.html">CLI reference</a></li>
+<li><a href="changelog.html" aria-current="page">Changelog</a></li>
+</ul>
+</nav>
+<main class="content" id="main">
+<div class="crumb">Reference</div>
+<h1>Changelog</h1>
+<p class="lede">What changed in each release.</p>
+<p>All notable changes to Mullion. Versions follow <a href="https://semver.org">semantic versioning</a>.</p>
+<h2 id="2-0-0-2026-09-25">2.0.0 — 2026-09-25</h2>
+<p>The biggest release so far: a new identity, a native macOS app, a page for every project (commands, workers, packages, Git, terminal, domains), a built-in terminal, PostgreSQL and MongoDB next to MySQL, backups, and a Ports &amp; SSL page.</p>
+<h3 id="highlights">Highlights</h3>
+<ul><li>
+<strong>New look.</strong> New logo and app icon, and a redesigned "Midnight + coral" control panel with a dark mode and in-app dialogs in place of browser pop-ups.
+</li><li>
+<strong>Mullion.app on macOS.</strong> Setup puts a native app in <code>/Applications</code> (<code>mullion app</code> reinstalls it). It uses real windows, and those windows merge into macOS window tabs. On Windows the panel opens in its own app window.
+</li><li>
+<strong>Sites as cards.</strong> Mullion detects each project's framework and language. The page has search, filters, pinning, and project tabs.
+</li><li>
+<strong>A page for every project</strong>, with Commands, Workers, Packages, Git, Terminal, Domains and Settings tabs.
+</li><li>
+<strong>A built-in terminal</strong> with tabs and suggestions as you type. Each project's own PHP and Node versions are on <code>PATH</code>.
+</li><li>
+<strong>PostgreSQL and MongoDB</strong>, alongside MySQL/MariaDB, each with its own admin tool (pgAdmin 4 and mongo-express). Also new: backups and restore.
+</li><li>
+<strong>Ports &amp; SSL.</strong> Shows every port Mullion uses and who holds it. You can change ports, manage the local certificate authority, and turn on wildcard DNS.
+</li></ul>
+<h3 id="added">Added</h3>
+<ul><li>
+<strong>Sites page</strong>
+<ul><li>
+Cards detect the framework (Laravel, Symfony, WordPress, Drupal, CodeIgniter, Yii, CakePHP, Slim, Nuxt, Next.js, SvelteKit, Astro, Angular, Remix, Vue, React, Svelte, Vite, …) with its major version, the language, and the package manager.
+</li><li>
+Search by name, domain, path or framework; filter by Backend, Frontend or Pinned; pin sites to the top.
+</li><li>
+Copy path and Show in Finder/Explorer from each card. Cards also show the Git branch and a count of changes.
+</li><li>
+Project tabs keep several projects open side by side. A project can also open in its own window.
+</li></ul>
+</li><li>
+<strong>Project page</strong>
+<ul><li>
+<strong>Commands</strong> — artisan (Laravel), <code>bin/console</code> (Symfony), Composer and npm scripts. Commands run with live output, and you can mark favorites. Quick actions cover the common tasks.
+</li><li>
+<strong>Workers</strong> — supervised queue workers, the scheduler (<code>schedule:work</code>, no cron needed), Horizon, Reverb, Symfony Messenger, or any custom command.
+<ul><li>
+A worker can start with the stack (autostart).
+</li><li>
+Crashed workers restart with backoff (1s, 2s, 4s… capped at a minute). After 5 crashes within 2 minutes a worker is marked crash-looping and retries stop.
+</li><li>
+Each worker has a log in <code>~/.mullion/logs</code>.
+</li></ul>
+</li><li>
+<strong>Packages</strong> — search Packagist and the npm registry, then install or remove packages. Both can go in as dev dependencies.
+</li><li>
+<strong>Git</strong>
+<ul><li>
+Status, stage/unstage, discard, and a side-by-side diff.
+</li><li>
+Commit, amend, and "Commit &amp; Push".
+</li><li>
+Fetch, then pull by merge, rebase or fast-forward only.
+</li><li>
+Push, publish a new branch, or push with <code>--force-with-lease</code>.
+</li><li>
+Branches (create, switch, delete), history, and stashes.
+</li><li>
+A banner appears during a merge or rebase with conflicts.
+</li></ul>
+</li><li>
+<strong>Domains</strong> — subdomain aliases (<code>api.shop.test</code>) and a wildcard (<code>*.shop.test</code>).
+</li><li>
+<strong>Terminal</strong> and <strong>Settings</strong> tabs.
+</li></ul>
+</li><li>
+<strong>Terminal</strong> (xterm.js)
+<ul><li>
+Tabs.
+</li><li>
+Suggestions for paths, commands, npm and Composer scripts, artisan commands and Git branches; Tab or Enter accepts one.
+</li><li>
+The project's own PHP, Node and Composer are first on <code>PATH</code>.
+</li><li>
+Opens on the Terminal page, in a separate window, or on the project page, as chosen in Settings.
+</li></ul>
+</li><li>
+<strong>Databases</strong>
+<ul><li>
+Tabs for MySQL, PostgreSQL and MongoDB. Each engine installs, starts and stops on its own, and a stopped engine stays stopped.
+</li><li>
+Create and drop databases.
+</li><li>
+Backups: back up now, restore, delete, and choose a backup folder.
+</li><li>
+Uninstalling an engine offers a backup first.
+</li><li>
+Admin tools (phpMyAdmin, pgAdmin 4, mongo-express) sit in the top bar and can be uninstalled.
+</li></ul>
+</li><li>
+<strong>PHP</strong>
+<ul><li>
+Extension toggles: all extensions on Windows; OPcache and APCu on macOS, where builds are static.
+</li><li>
+A php.ini editor for the common settings (memory and upload limits, execution time, errors, timezone, OPcache timestamps).
+</li><li>
+On macOS, the LDAP extension is built automatically when a version is installed. This needs the Command Line Tools.
+</li><li>
+Uninstall a version, and install or update Composer.
+</li></ul>
+</li><li>
+<strong>Node</strong> — choose the npm version for each Node install, uninstall versions, and view diagnostics.
+</li><li>
+<strong>Ports &amp; SSL</strong>
+<ul><li>
+Every port Mullion uses and which process holds it.
+</li><li>
+Move database or dev-server ports, with conflict detection.
+</li><li>
+Trust or export the local CA, and turn HTTPS on or off for every site.
+</li><li>
+Wildcard DNS: a built-in DNS server plus <code>/etc/resolver</code> (macOS) or an NRPT rule (Windows).
+</li></ul>
+</li><li>
+<strong>Settings</strong> — change the TLD, choose where terminals open, set the backup folder, and run diagnostics (doctor).
+</li><li>
+<strong>New commands:</strong> <code>postgres</code> (<code>pg</code>), <code>mongo</code>, <code>pgadmin</code>, <code>mongo-express</code>, <code>phpmyadmin uninstall</code>, <code>backups</code>, <code>alias</code>, <code>dns</code>, <code>ports</code>, <code>port set</code>, <code>port dev</code>, <code>ssl</code> (<code>trust</code>, <code>export</code>, <code>all</code>), <code>worker</code>, <code>run</code>, <code>pkg</code>, <code>php ini</code>, <code>app</code>.
+</li></ul>
+<h3 id="changed">Changed</h3>
+<ul><li>
+Rebranded panel, app icon, Windows <code>.exe</code> icon and favicon.
+</li><li>
+Panel preferences (theme, open project tabs, terminal placement, favorite commands, …) are now stored in <code>config.json</code> under <code>ui</code> instead of the browser's storage.
+</li><li>
+The sidebar has new pages: Sites (backend and frontend together), Terminal, and Ports &amp; SSL. The old separate Backend and Frontend pages are gone.
+</li><li>
+Managed dev servers and a project's commands now trust Mullion's local CA (<code>NODE_EXTRA_CA_CERTS</code>), so server-side calls to other <code>https://*.test</code> sites work.
+</li></ul>
+<h3 id="fixed">Fixed</h3>
+<ul><li>
+New domains added from the panel or the wake agent work right away. Background processes were mistaken for an interactive terminal, so the hosts-file update asked for a <code>sudo</code> password that nobody could type. Mullion now detects a real terminal and otherwise shows the system password dialog.
+</li><li>
+Stopped the bursts of 502 errors on Vite pages that load many modules at once (<code>max_conns_per_host</code> on the dev-server proxy).
+</li><li>
+Config files are written atomically, so a crash in the middle of a write can no longer corrupt <code>config.json</code> or <code>sites.json</code>.
+</li><li>
+Stopping a database engine now sticks: Mullion no longer restarts an engine you stopped on purpose.
+</li></ul>
+<h3 id="notes-for-upgrading">Notes for upgrading</h3>
+<ul><li>
+Run <code>mullion setup</code> once after upgrading (it's idempotent). On macOS this installs Mullion.app into <code>/Applications</code>.
+</li><li>
+Panel preferences start fresh once. They now live in <code>~/.mullion/config.json</code> (<code>C:\Mullion\config.json</code> on Windows) instead of the browser's storage. The reason: the panel runs on a random <code>127.0.0.1</code> port each launch, so anything the browser saved for one launch was lost on the next.
+</li><li>
+Wildcard aliases (<code>*.site.test</code>) need <code>mullion dns on</code> once, which asks for administrator rights. Named aliases (<code>api.site.test</code>) keep using the hosts file.
+</li><li>
+Existing sites, PHP/Node versions and MySQL data carry over unchanged.
+</li></ul>
+<h2 id="1-x-august-2026">1.x (August 2026)</h2>
+<ul><li>
+<strong>1.7.0 – 1.7.3</strong>
+<ul><li>
+Wake-on-demand dev servers: opening a stopped frontend site starts it, with a live "Starting…" page.
+</li><li>
+Idle sleep: after 2 minutes with no tab open, or 10 minutes with an idle tab.
+</li><li>
+Startup failures show their real cause on the page.
+</li><li>
+Reliability fixes for the wake agent and Caddy reloads.
+</li></ul>
+</li><li>
+<strong>1.6.0</strong>
+<ul><li>
+Redesigned panel: sidebar pages (Overview, Backend, Frontend, PHP, Node, Database) and light/dark themes.
+</li><li>
+Rename sites from the panel and with <code>mullion rename</code>.
+</li></ul>
+</li><li>
+<strong>1.5.0 – 1.5.10</strong>
+<ul><li>
+Start, stop and restart each dev server.
+</li><li>
+Switch a domain between dev and build (<code>mullion serve</code>), with an automatic build when there is none yet.
+</li><li>
+Added <code>mullion doctor</code> and <code>mullion node which</code>.
+</li><li>
+Replacing another MySQL always offers a backup first.
+</li><li>
+Vite host fixes, and many self-healing fixes.
+</li></ul>
+</li><li>
+<strong>1.4.0 – 1.4.1</strong> — Node.js support:
+<ul><li>
+Version manager, per-project versions through <code>.nvmrc</code>-aware shims.
+</li><li>
+Managed dev servers behind <code>.test</code> domains.
+</li><li>
+<code>--build</code> links that serve a production build.
+</li></ul>
+</li><li>
+<strong>1.3.0</strong>
+<ul><li>
+MySQL root password and database management.
+</li><li>
+Automatic fixes for PHP versions shadowing Mullion's on <code>PATH</code>.
+</li></ul>
+</li><li>
+<strong>1.2.0 – 1.2.4</strong>
+<ul><li>
+macOS support: static-php builds, php-fpm, launchd, <code>/etc/hosts</code>.
+</li><li>
+Homebrew tap, Scoop bucket, and an install script.
+</li></ul>
+</li><li>
+<strong>1.1.0</strong>
+<ul><li>
+Windows tray icon, PECL extensions, and in-place self-update.
+</li><li>
+Fixes for large backups.
+</li></ul>
+</li><li>
+<strong>1.0.0</strong>
+<ul><li>
+First release: a PHP version manager and local dev server for Windows.
+</li><li>
+Caddy, <code>.test</code> domains, HTTPS, MySQL and phpMyAdmin.
+</li></ul>
+</li></ul><p style="margin-top:32px">Also on <a href="https://github.com/anabiiil/mullion/blob/main/CHANGELOG.md">GitHub</a>, with downloads on the <a href="https://github.com/anabiiil/mullion/releases">Releases</a> page.</p>
+<nav class="pager" aria-label="Previous and next"><a class="prev" href="cli.html"><small>Previous</small><span>← CLI reference</span></a></nav>
+</main>
+<aside class="toc" aria-label="On this page"><h4>On this page</h4><ul></ul></aside>
+</div>
+<footer class="site-footer">
+  <div class="footer-in">
+    <span>Mullion v2.0.0 · MIT licensed · © 2026 Abdelrahman Nabil</span>
+    <nav aria-label="Footer">
+      <a href="../docs/getting-started.html">Get started</a>
+      <a href="../docs/cli.html">CLI reference</a>
+      <a href="../docs/changelog.html">Changelog</a>
+      <a href="https://github.com/anabiiil/mullion/releases/latest">Releases</a>
+      <a href="https://github.com/anabiiil/mullion/issues">Issues</a>
+    </nav>
+  </div>
+</footer>
+<script src="../assets/js/site.js"></script>
+</body>
+</html>

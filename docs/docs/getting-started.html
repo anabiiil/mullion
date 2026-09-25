@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Getting started · Mullion</title>
+<meta name="description" content="Install Mullion, link your first projects, and open the control panel. This takes about five minutes.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#1C2333">
+<meta property="og:title" content="Getting started · Mullion">
+<meta property="og:description" content="Install Mullion, link your first projects, and open the control panel. This takes about five minutes.">
+<meta property="og:image" content="https://anabiiil.github.io/mullion/assets/screenshots/hero.png">
+<meta property="og:type" content="website">
+<link rel="icon" href="../assets/brand/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../assets/brand/apple-touch-icon.png">
+<link rel="stylesheet" href="../assets/css/site.css">
+<script>try{var t=localStorage.getItem('mullion-theme');document.documentElement.setAttribute('data-theme',t||(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'))}catch(e){}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="header-in">
+    <button class="icon-btn menu-btn" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+    <a class="brand" href="../index.html" aria-label="Mullion home"><img src="../assets/brand/mullion-mark.svg" alt="" width="28" height="28">Mullion<span class="ver">v2.0.0</span></a>
+    <nav class="nav" aria-label="Main">
+      <a href="../docs/" aria-current="page" class="">Docs</a><a href="../docs/cli.html" class="hide-sm">CLI</a><a href="../docs/changelog.html" class="hide-sm">Changelog</a>
+      <a href="https://github.com/anabiiil/mullion" aria-label="Mullion on GitHub" title="GitHub"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.1c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.9 1.3 1.9 1.3 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.7 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg></a>
+      <button class="icon-btn theme-btn" type="button" aria-label="Toggle theme"><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+    </nav>
+  </div>
+</header>
+<div class="docs">
+<nav class="sidebar" id="sidebar" aria-label="Documentation">
+<ul><li><a href="index.html">Overview</a></li></ul>
+<h4>Start</h4><ul>
+<li><a href="getting-started.html" aria-current="page">Getting started</a></li>
+<li><a href="installation.html">Installation</a></li>
+</ul>
+<h4>Using Mullion</h4><ul>
+<li><a href="sites.html">Sites &amp; domains</a></li>
+<li><a href="project-page.html">Project page</a></li>
+<li><a href="terminal.html">Terminal</a></li>
+<li><a href="git.html">Git</a></li>
+<li><a href="databases.html">Databases</a></li>
+<li><a href="php.html">PHP</a></li>
+<li><a href="node.html">Node</a></li>
+<li><a href="ports-ssl.html">Ports &amp; SSL</a></li>
+<li><a href="settings.html">Settings</a></li>
+</ul>
+<h4>Reference</h4><ul>
+<li><a href="troubleshooting.html">Troubleshooting &amp; FAQ</a></li>
+<li><a href="cli.html">CLI reference</a></li>
+<li><a href="changelog.html">Changelog</a></li>
+</ul>
+</nav>
+<main class="content" id="main">
+<div class="crumb">Start</div>
+<h1>Getting started</h1>
+<p class="lede">Install Mullion, link your first projects, and open the control panel. This takes about five minutes.</p>
+
+<h2 id="what-mullion-is">What Mullion is</h2>
+<p>Mullion is a local development environment for <strong>macOS</strong> and <strong>Windows</strong>, shipped as a single binary. It serves:</p>
+<ul>
+<li>PHP backends (Laravel, Symfony, WordPress, …) through PHP-FPM or php-cgi</li>
+<li>JavaScript frontends (Nuxt, Next.js, Vite, Astro, …) through managed dev servers</li>
+</ul>
+<p>Each project gets its own <code>.test</code> domain with trusted HTTPS, handled by <a href="https://caddyserver.com">Caddy</a>. Mullion also manages PHP and Node versions, MySQL/MariaDB, PostgreSQL and MongoDB. You don't need Docker, a VM, or config files.</p>
+
+<h2 id="1-install">1. Install</h2>
+<p>On macOS, with Homebrew:</p>
+<pre><code><span class="p">$ </span>brew tap anabiiil/tap
+<span class="p">$ </span>brew trust anabiiil/tap
+<span class="p">$ </span>brew install mullion
+<span class="p">$ </span>mullion setup</code></pre>
+<p>On Windows, with Scoop:</p>
+<pre><code><span class="p">&gt; </span>scoop bucket add mullion https://github.com/anabiiil/scoop-bucket
+<span class="p">&gt; </span>scoop install mullion
+<span class="p">&gt; </span>mullion setup</code></pre>
+<p>For other ways to install, see <a href="installation.html">Installation</a>. When setup finishes, <strong>open a new terminal</strong>: <code>mullion</code>, <code>php</code>, <code>composer</code>, <code>node</code> and <code>npm</code> then work from any folder.</p>
+
+<h2 id="2-link-a-php-project">2. Link a PHP project</h2>
+<pre><code><span class="p">$ </span>cd ~/code/shop
+<span class="p">$ </span>mullion link<span class="c">           # → http://shop.test</span>
+<span class="p">$ </span>mullion secure<span class="c">         # → https://shop.test</span></code></pre>
+<p>Mullion detects the project type, including Laravel's <code>public/</code> folder. The site uses the global PHP version unless you pin another one with <code>mullion isolate 8.2</code>.</p>
+
+<h2 id="3-link-a-frontend-project">3. Link a frontend project</h2>
+<pre><code><span class="p">$ </span>cd ~/code/storefront
+<span class="p">$ </span>mullion link --secure<span class="c">  # → https://storefront.test</span></code></pre>
+<p>A project with a <code>dev</code> script in <code>package.json</code> gets a managed dev server. Mullion runs <code>npm run dev</code> for you (or pnpm or yarn, depending on the lockfile) and puts the domain in front of it. Just open the link: a stopped server starts automatically, and an idle one goes back to sleep.</p>
+
+<h2 id="4-open-the-control-panel">4. Open the control panel</h2>
+<ul>
+<li><strong>macOS:</strong> open <strong>Mullion.app</strong> from Applications (setup installs it), or run <code>mullion ui</code> to open the panel in your default browser.</li>
+<li><strong>Windows:</strong> double-click the desktop shortcut, or run <code>mullion ui</code>. The panel opens in its own app window.</li>
+</ul>
+<figure><div class="shot"><img src="../assets/screenshots/overview.png" alt="The Overview page: services running, backend and frontend counts, PHP, Node and database status" loading="lazy" width="2560" height="1600"></div></figure>
+<p>From here, the <a href="sites.html">Sites</a> page lists every project, and clicking a project's name opens its <a href="project-page.html">project page</a>, with commands, workers, packages, Git and a terminal.</p>
+
+<h2 id="where-things-live">Where things live</h2>
+<div class="table-wrap"><table><thead><tr><th scope="col"></th><th scope="col">macOS</th><th scope="col">Windows</th></tr></thead><tbody><tr><td>Install folder</td><td><code>~/.mullion</code></td><td><code>C:\Mullion</code></td></tr><tr><td>Settings &amp; sites</td><td><code>~/.mullion/config.json</code>, <code>sites.json</code></td><td><code>C:\Mullion\config.json</code>, <code>sites.json</code></td></tr><tr><td>Logs</td><td><code>~/.mullion/logs/</code></td><td><code>C:\Mullion\logs\</code></td></tr><tr><td>Database backups (default)</td><td><code>~/.mullion-Backups</code></td><td><code>C:\Mullion-Backups</code></td></tr></tbody></table></div>
+<div class="callout tip"><p>Your project folders are never moved or copied. Mullion only links to them, and <code>mullion uninstall</code> leaves them untouched.</p></div>
+
+<nav class="pager" aria-label="Previous and next"><a class="next" href="installation.html"><small>Next</small><span>Installation →</span></a></nav>
+</main>
+<aside class="toc" aria-label="On this page"><h4>On this page</h4><ul></ul></aside>
+</div>
+<footer class="site-footer">
+  <div class="footer-in">
+    <span>Mullion v2.0.0 · MIT licensed · © 2026 Abdelrahman Nabil</span>
+    <nav aria-label="Footer">
+      <a href="../docs/getting-started.html">Get started</a>
+      <a href="../docs/cli.html">CLI reference</a>
+      <a href="../docs/changelog.html">Changelog</a>
+      <a href="https://github.com/anabiiil/mullion/releases/latest">Releases</a>
+      <a href="https://github.com/anabiiil/mullion/issues">Issues</a>
+    </nav>
+  </div>
+</footer>
+<script src="../assets/js/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mullion — local dev environment for macOS &amp; Windows</title>
+<meta name="description" content="Mullion is a zero-setup local development environment for macOS and Windows: PHP and Node projects on .test domains with trusted HTTPS, plus MySQL, PostgreSQL and MongoDB, from one binary.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#1C2333">
+<meta property="og:title" content="Mullion — local dev environment for macOS &amp; Windows">
+<meta property="og:description" content="Mullion is a zero-setup local development environment for macOS and Windows: PHP and Node projects on .test domains with trusted HTTPS, plus MySQL, PostgreSQL and MongoDB, from one binary.">
+<meta property="og:image" content="https://anabiiil.github.io/mullion/assets/screenshots/hero.png">
+<meta property="og:type" content="website">
+<link rel="icon" href="assets/brand/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png">
+<link rel="stylesheet" href="assets/css/site.css">
+<script>try{var t=localStorage.getItem('mullion-theme');document.documentElement.setAttribute('data-theme',t||(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'))}catch(e){}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="header-in">
+    
+    <a class="brand" href="index.html" aria-label="Mullion home"><img src="assets/brand/mullion-mark.svg" alt="" width="28" height="28">Mullion<span class="ver">v2.0.0</span></a>
+    <nav class="nav" aria-label="Main">
+      <a href="docs/" class="">Docs</a><a href="docs/cli.html" class="hide-sm">CLI</a><a href="docs/changelog.html" class="hide-sm">Changelog</a>
+      <a href="https://github.com/anabiiil/mullion" aria-label="Mullion on GitHub" title="GitHub"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.1c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.9 1.3 1.9 1.3 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.7 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg></a>
+      <button class="icon-btn theme-btn" type="button" aria-label="Toggle theme"><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+    </nav>
+  </div>
+</header>
+<main id="main">
+<section class="hero">
+  <div class="hero-in">
+    <a class="eyebrow" href="docs/changelog.html">v2.0.0 · the biggest release yet →</a>
+    <h1>Your whole local dev stack, <em>one binary</em>.</h1>
+    <p class="lead">Mullion serves PHP and Node projects on <code style="background:rgba(255,255,255,.08)">.test</code> domains with trusted HTTPS. It also manages PHP, Node, MySQL, PostgreSQL and MongoDB, with a panel for every project. It runs on macOS and Windows, with no Docker or config files.</p>
+    <div class="ctas">
+      <a class="btn primary" href="#install"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>Install Mullion</a>
+      <a class="btn" href="docs/getting-started.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5v14zM4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/></svg>Read the docs</a>
+      <a class="btn" href="https://github.com/anabiiil/mullion"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.1c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.9 1.3 1.9 1.3 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.7 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg>GitHub</a>
+    </div>
+    <div class="hero-shot">
+      <div class="frame"><div class="bar"><i></i><i></i><i></i><span>Mullion</span></div>
+      <img src="assets/screenshots/sites.png" alt="The Mullion control panel: linked projects as cards with framework badges, domains and status" width="2560" height="1800"></div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-head">
+    <div class="kicker">Features</div>
+    <h2>Everything a project needs, already running</h2>
+    <p>Laravel and Symfony next to Nuxt and Next.js, each with its own domain and runtime version.</p>
+  </div>
+  <div class="grid"><div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg></div><h3>A domain per project</h3><p><code>mullion link</code> in any folder serves it at <code>https://&lt;name&gt;.test</code>, with subdomain aliases and wildcards.</p><a class="more" href="docs/sites.html">Learn more →</a></div><div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div><h3>Trusted HTTPS</h3><p>Caddy's local certificate authority, trusted once, gives every site a real padlock.</p><a class="more" href="docs/ports-ssl.html">Learn more →</a></div><div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h9l-1 8 10-12h-9z"/></svg></div><h3>Wake on demand</h3><p>Frontend dev servers start when you open their link and go to sleep when you stop using them.</p><a class="more" href="docs/sites.html#frontend-dev-servers">Learn more →</a></div><div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></div><h3>A page for every project</h3><p>Commands, workers, packages, Git, a terminal and domains for each project.</p><a class="more" href="docs/project-page.html">Learn more →</a></div><div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 9 3 3-3 3M13 15h4"/></svg></div><h3>Built-in terminal</h3><p>Tabs, the project's own PHP and Node on PATH, and suggestions for scripts, artisan commands and branches.</p><a class="more" href="docs/terminal.html">Learn more →</a></div><div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="8" r="2"/><path d="M6 8v8M18 10c0 4-6 3-11 6"/></svg></div><h3>Git, built in</h3><p>Diff, stage, commit, pull (rebase or fast-forward only), push, branches, history, stashes and conflicts.</p><a class="more" href="docs/git.html">Learn more →</a></div><div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg></div><h3>Three databases</h3><p>MySQL/MariaDB, PostgreSQL and MongoDB, with phpMyAdmin, pgAdmin 4, mongo-express and backups.</p><a class="more" href="docs/databases.html">Learn more →</a></div><div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m8 8-4 4 4 4M16 8l4 4-4 4"/></svg></div><h3>PHP &amp; Node versions</h3><p>Any version side by side, set globally, per project or from .nvmrc, with extensions, php.ini and npm.</p><a class="more" href="docs/php.html">Learn more →</a></div><div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4M4.9 19.1l2.8-2.8M16.3 7.7l2.8-2.8"/></svg></div><h3>Supervised workers</h3><p>Queue workers, the scheduler, Horizon and Reverb: autostarted, and restarted after a crash.</p><a class="more" href="docs/project-page.html#workers">Learn more →</a></div><div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v7M12 15v7M2 12h7M15 12h7"/></svg></div><h3>Ports &amp; SSL</h3><p>Every port and who holds it. Move ports that clash, and manage the CA and wildcard DNS.</p><a class="more" href="docs/ports-ssl.html">Learn more →</a></div><div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M12 4v16M3 10h9"/></svg></div><h3>Native app</h3><p>Mullion.app on macOS with native window tabs; an app window and tray icon on Windows.</p><a class="more" href="docs/installation.html#mullion-app-macos">Learn more →</a></div><div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div><h3>Self-diagnosing</h3><p><code>mullion doctor</code> checks the whole stack and says how to fix what it finds.</p><a class="more" href="docs/troubleshooting.html">Learn more →</a></div></div>
+</section>
+
+<section class="section" style="padding-top:0">
+  <div class="showcase">
+    <div class="text">
+      <div class="kicker">Project page</div>
+      <h3>Run commands with live output</h3>
+      <p>The Commands tab lists the project's artisan or <code>bin/console</code> commands, npm scripts and Composer scripts. Commands run with the project's own PHP and Node, and the output streams in live.</p>
+      <ul><li>Quick actions and favorites</li><li>Interactive commands go to a terminal tab</li><li><code>mullion run shop -- php artisan migrate</code> from a shell</li></ul>
+    </div>
+    <div class="shot"><img src="assets/screenshots/project-commands.png" alt="The Commands tab running php artisan migrate:status" loading="lazy" width="2560" height="1720"></div>
+  </div>
+  <div class="showcase flip">
+    <div class="text">
+      <div class="kicker">Git</div>
+      <h3>Review, commit and push without leaving the panel</h3>
+      <p>Staged, unstaged and untracked files, a side-by-side diff, commit or amend, and Commit &amp; Push. Branches, history, stashes, and a banner for merge and rebase conflicts.</p>
+      <a class="more" href="docs/git.html">Git in Mullion →</a>
+    </div>
+    <div class="shot"><img src="assets/screenshots/project-git.png" alt="The Git tab with a diff of CheckoutController.php" loading="lazy" width="2560" height="1720"></div>
+  </div>
+  <div class="showcase">
+    <div class="text">
+      <div class="kicker">Terminal</div>
+      <h3>A terminal that knows your project</h3>
+      <p>Every project terminal opens in the project folder with its PHP, Node and Composer first on <code>PATH</code>. As you type it suggests paths, npm and Composer scripts, artisan commands and Git branches; Tab or Enter accepts one.</p>
+      <a class="more" href="docs/terminal.html">Terminal →</a>
+    </div>
+    <div class="shot"><img src="assets/screenshots/terminal-dark.png" alt="The built-in terminal suggesting artisan migrate commands" loading="lazy" width="2560" height="1600"></div>
+  </div>
+  <div class="showcase flip">
+    <div class="text">
+      <div class="kicker">Databases</div>
+      <h3>MySQL, PostgreSQL and MongoDB</h3>
+      <p>Each engine installs, starts and stops on its own and comes with an admin tool that's already connected. Back up with one click, restore from the panel, and get a backup offered before any uninstall or version switch.</p>
+      <a class="more" href="docs/databases.html">Databases →</a>
+    </div>
+    <div class="shot"><img src="assets/screenshots/database-postgres.png" alt="The PostgreSQL tab listing databases" loading="lazy" width="2560" height="1720"></div>
+  </div>
+</section>
+
+<section class="section" id="install" style="padding-top:0">
+  <div class="section-head">
+    <div class="kicker">Install</div>
+    <h2>Up and running in one command</h2>
+    <p><code>mullion setup</code> installs Caddy, the latest PHP, Composer, Node LTS and MySQL with phpMyAdmin, and trusts the local certificate. Re-running it is always safe.</p>
+  </div>
+  <div class="install" data-tabs>
+    <div class="tabs" role="tablist" aria-label="Operating system">
+      <button role="tab" id="tab-mac" data-os="macos" aria-controls="panel-mac" aria-selected="true">macOS</button>
+      <button role="tab" id="tab-win" data-os="windows" aria-controls="panel-win" aria-selected="false" tabindex="-1">Windows</button>
+    </div>
+    <div class="tabpanel" id="panel-mac" role="tabpanel" aria-labelledby="tab-mac">
+      <pre><code><span class="p">$ </span>brew tap anabiiil/tap
+<span class="p">$ </span>brew trust anabiiil/tap
+<span class="p">$ </span>brew install mullion
+<span class="p">$ </span>mullion setup</code></pre>
+      <p class="note">Without Homebrew: <code>curl -fsSL https://raw.githubusercontent.com/anabiiil/mullion/main/install.sh | sh</code>. Setup installs Mullion.app into Applications.</p>
+    </div>
+    <div class="tabpanel" id="panel-win" role="tabpanel" aria-labelledby="tab-win" hidden>
+      <pre><code><span class="p">&gt; </span>scoop bucket add mullion https://github.com/anabiiil/scoop-bucket
+<span class="p">&gt; </span>scoop install mullion
+<span class="p">&gt; </span>mullion setup</code></pre>
+      <p class="note">Or download <code>mullion.exe</code> from <a href="https://github.com/anabiiil/mullion/releases/latest">Releases</a> and double-click it. Setup asks for administrator rights once.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section" style="padding-top:0">
+  <div class="cta-band">
+    <h2>Link your first project</h2>
+    <p><code style="background:rgba(255,255,255,.08)">cd ~/code/shop &amp;&amp; mullion link --secure</code> → https://shop.test</p>
+    <div class="ctas" style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+      <a class="btn primary" href="docs/getting-started.html">Get started</a>
+      <a class="btn" href="docs/cli.html">CLI reference</a>
+      <a class="btn" href="https://github.com/anabiiil/mullion/releases/latest">Download</a>
+    </div>
+  </div>
+</section>
+</main>
+<footer class="site-footer">
+  <div class="footer-in">
+    <span>Mullion v2.0.0 · MIT licensed · © 2026 Abdelrahman Nabil</span>
+    <nav aria-label="Footer">
+      <a href="docs/getting-started.html">Get started</a>
+      <a href="docs/cli.html">CLI reference</a>
+      <a href="docs/changelog.html">Changelog</a>
+      <a href="https://github.com/anabiiil/mullion/releases/latest">Releases</a>
+      <a href="https://github.com/anabiiil/mullion/issues">Issues</a>
+    </nav>
+  </div>
+</footer>
+<script src="assets/js/site.js"></script>
+</body>
+</html>

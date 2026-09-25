@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Git · Mullion</title>
+<meta name="description" content="Every project page has a Git tab: see what changed, commit, sync with the remote, and handle branches, history, stashes and conflicts.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#1C2333">
+<meta property="og:title" content="Git · Mullion">
+<meta property="og:description" content="Every project page has a Git tab: see what changed, commit, sync with the remote, and handle branches, history, stashes and conflicts.">
+<meta property="og:image" content="https://anabiiil.github.io/mullion/assets/screenshots/hero.png">
+<meta property="og:type" content="website">
+<link rel="icon" href="../assets/brand/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../assets/brand/apple-touch-icon.png">
+<link rel="stylesheet" href="../assets/css/site.css">
+<script>try{var t=localStorage.getItem('mullion-theme');document.documentElement.setAttribute('data-theme',t||(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'))}catch(e){}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="header-in">
+    <button class="icon-btn menu-btn" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+    <a class="brand" href="../index.html" aria-label="Mullion home"><img src="../assets/brand/mullion-mark.svg" alt="" width="28" height="28">Mullion<span class="ver">v2.0.0</span></a>
+    <nav class="nav" aria-label="Main">
+      <a href="../docs/" aria-current="page" class="">Docs</a><a href="../docs/cli.html" class="hide-sm">CLI</a><a href="../docs/changelog.html" class="hide-sm">Changelog</a>
+      <a href="https://github.com/anabiiil/mullion" aria-label="Mullion on GitHub" title="GitHub"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.1c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.9 1.3 1.9 1.3 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.7 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg></a>
+      <button class="icon-btn theme-btn" type="button" aria-label="Toggle theme"><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+    </nav>
+  </div>
+</header>
+<div class="docs">
+<nav class="sidebar" id="sidebar" aria-label="Documentation">
+<ul><li><a href="index.html">Overview</a></li></ul>
+<h4>Start</h4><ul>
+<li><a href="getting-started.html">Getting started</a></li>
+<li><a href="installation.html">Installation</a></li>
+</ul>
+<h4>Using Mullion</h4><ul>
+<li><a href="sites.html">Sites &amp; domains</a></li>
+<li><a href="project-page.html">Project page</a></li>
+<li><a href="terminal.html">Terminal</a></li>
+<li><a href="git.html" aria-current="page">Git</a></li>
+<li><a href="databases.html">Databases</a></li>
+<li><a href="php.html">PHP</a></li>
+<li><a href="node.html">Node</a></li>
+<li><a href="ports-ssl.html">Ports &amp; SSL</a></li>
+<li><a href="settings.html">Settings</a></li>
+</ul>
+<h4>Reference</h4><ul>
+<li><a href="troubleshooting.html">Troubleshooting &amp; FAQ</a></li>
+<li><a href="cli.html">CLI reference</a></li>
+<li><a href="changelog.html">Changelog</a></li>
+</ul>
+</nav>
+<main class="content" id="main">
+<div class="crumb">Using Mullion</div>
+<h1>Git</h1>
+<p class="lede">Every project page has a Git tab: see what changed, commit, sync with the remote, and handle branches, history, stashes and conflicts.</p>
+
+<figure><div class="shot"><img src="../assets/screenshots/project-git.png" alt="The Git tab: staged, unstaged and untracked changes with a side-by-side diff of CheckoutController.php" loading="lazy" width="2560" height="1720"></div></figure>
+<h2 id="status-and-diffs">Status and diffs</h2>
+<ul>
+<li>The top bar shows the branch, its upstream, and how many commits you're ahead or behind, with Fetch, Pull and Push buttons.</li>
+<li><strong>Changes</strong> groups files into staged, unstaged and untracked. Click a file to see its diff.</li>
+<li>Stage, unstage or discard a single file, or everything in a group at once.</li>
+<li>Site cards and the sidebar show a count of changes, which updates while the tab is open.</li>
+</ul>
+
+<h2 id="committing">Committing</h2>
+<ul>
+<li>Write a message and <strong>Commit</strong> (<kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>Enter</kbd>), or <strong>Commit &amp; Push</strong> in one step.</li>
+<li><strong>Amend last commit</strong> rewrites the previous commit.</li>
+<li><strong>Commit all changes</strong> includes unstaged files without staging them first.</li>
+<li>A counter under the message helps keep the subject line short.</li>
+</ul>
+
+<h2 id="syncing">Syncing</h2>
+<ul>
+<li><strong>Fetch</strong> updates the remote-tracking branches.</li>
+<li><strong>Pull</strong> merges by default; the menu next to it offers <strong>rebase</strong> and <strong>fast-forward only</strong>.</li>
+<li><strong>Push</strong> sends your commits. A branch with no upstream is <strong>published</strong>, which sets its upstream. <strong>Force push</strong> uses <code>--force-with-lease</code>, so it never overwrites work you haven't seen.</li>
+</ul>
+
+<h2 id="branches-history-and-stashes">Branches, history and stashes</h2>
+<ul>
+<li>The branch menu switches, creates and deletes branches.</li>
+<li><strong>History</strong> lists recent commits; click one to see its changes.</li>
+<li><strong>Stashes</strong> can be created, applied, popped and dropped.</li>
+</ul>
+
+<h2 id="merge-and-rebase-conflicts">Merge and rebase conflicts</h2>
+<p>During a merge, rebase or cherry-pick, a banner shows what's in progress and which files conflict. Fix the files, stage them, then press <strong>Continue</strong> (or commit, for a cherry-pick). Use <strong>Abort</strong> to go back to where you started.</p>
+
+<h2 id="signing-in-to-the-remote">Signing in to the remote</h2>
+<p>The panel can't answer a password or passphrase prompt. If a fetch, pull or push fails with a sign-in error, sign in once from a terminal; your credential helper or SSH agent remembers it after that.</p>
+<ul>
+<li>For <strong>HTTPS remotes</strong>, run the same Git command once in the <a href="terminal.html">built-in terminal</a>.</li>
+<li>For an <strong>SSH key with a passphrase</strong>, add it to your agent. On macOS: <code>ssh-add --apple-use-keychain ~/.ssh/id_ed25519</code>. On Windows, start the <em>OpenSSH Authentication Agent</em> service and run <code>ssh-add</code>.</li>
+</ul>
+<p>Credentials in remote URLs are never shown in the panel.</p>
+
+<nav class="pager" aria-label="Previous and next"><a class="prev" href="terminal.html"><small>Previous</small><span>← Terminal</span></a><a class="next" href="databases.html"><small>Next</small><span>Databases →</span></a></nav>
+</main>
+<aside class="toc" aria-label="On this page"><h4>On this page</h4><ul></ul></aside>
+</div>
+<footer class="site-footer">
+  <div class="footer-in">
+    <span>Mullion v2.0.0 · MIT licensed · © 2026 Abdelrahman Nabil</span>
+    <nav aria-label="Footer">
+      <a href="../docs/getting-started.html">Get started</a>
+      <a href="../docs/cli.html">CLI reference</a>
+      <a href="../docs/changelog.html">Changelog</a>
+      <a href="https://github.com/anabiiil/mullion/releases/latest">Releases</a>
+      <a href="https://github.com/anabiiil/mullion/issues">Issues</a>
+    </nav>
+  </div>
+</footer>
+<script src="../assets/js/site.js"></script>
+</body>
+</html>

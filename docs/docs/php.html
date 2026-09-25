@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PHP · Mullion</title>
+<meta name="description" content="Several PHP versions side by side, set globally or per project, with extensions, php.ini settings and Composer.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#1C2333">
+<meta property="og:title" content="PHP · Mullion">
+<meta property="og:description" content="Several PHP versions side by side, set globally or per project, with extensions, php.ini settings and Composer.">
+<meta property="og:image" content="https://anabiiil.github.io/mullion/assets/screenshots/hero.png">
+<meta property="og:type" content="website">
+<link rel="icon" href="../assets/brand/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../assets/brand/apple-touch-icon.png">
+<link rel="stylesheet" href="../assets/css/site.css">
+<script>try{var t=localStorage.getItem('mullion-theme');document.documentElement.setAttribute('data-theme',t||(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'))}catch(e){}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="header-in">
+    <button class="icon-btn menu-btn" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+    <a class="brand" href="../index.html" aria-label="Mullion home"><img src="../assets/brand/mullion-mark.svg" alt="" width="28" height="28">Mullion<span class="ver">v2.0.0</span></a>
+    <nav class="nav" aria-label="Main">
+      <a href="../docs/" aria-current="page" class="">Docs</a><a href="../docs/cli.html" class="hide-sm">CLI</a><a href="../docs/changelog.html" class="hide-sm">Changelog</a>
+      <a href="https://github.com/anabiiil/mullion" aria-label="Mullion on GitHub" title="GitHub"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.1c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.9 1.3 1.9 1.3 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.7 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg></a>
+      <button class="icon-btn theme-btn" type="button" aria-label="Toggle theme"><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+    </nav>
+  </div>
+</header>
+<div class="docs">
+<nav class="sidebar" id="sidebar" aria-label="Documentation">
+<ul><li><a href="index.html">Overview</a></li></ul>
+<h4>Start</h4><ul>
+<li><a href="getting-started.html">Getting started</a></li>
+<li><a href="installation.html">Installation</a></li>
+</ul>
+<h4>Using Mullion</h4><ul>
+<li><a href="sites.html">Sites &amp; domains</a></li>
+<li><a href="project-page.html">Project page</a></li>
+<li><a href="terminal.html">Terminal</a></li>
+<li><a href="git.html">Git</a></li>
+<li><a href="databases.html">Databases</a></li>
+<li><a href="php.html" aria-current="page">PHP</a></li>
+<li><a href="node.html">Node</a></li>
+<li><a href="ports-ssl.html">Ports &amp; SSL</a></li>
+<li><a href="settings.html">Settings</a></li>
+</ul>
+<h4>Reference</h4><ul>
+<li><a href="troubleshooting.html">Troubleshooting &amp; FAQ</a></li>
+<li><a href="cli.html">CLI reference</a></li>
+<li><a href="changelog.html">Changelog</a></li>
+</ul>
+</nav>
+<main class="content" id="main">
+<div class="crumb">Using Mullion</div>
+<h1>PHP</h1>
+<p class="lede">Several PHP versions side by side, set globally or per project, with extensions, php.ini settings and Composer.</p>
+
+<figure><div class="shot"><img src="../assets/screenshots/php.png" alt="The PHP page: installed versions, Composer, and the extensions card" loading="lazy" width="2560" height="1720"></div></figure>
+<h2 id="versions">Versions</h2>
+<pre><code><span class="p">$ </span>mullion php available<span class="c">     # current branches</span>
+<span class="p">$ </span>mullion php install 8.3<span class="c">    # or a full version, e.g. 8.3.26</span>
+<span class="p">$ </span>mullion php list
+<span class="p">$ </span>mullion use 8.4<span class="c">            # the global version (php on PATH)</span>
+<span class="p">$ </span>mullion php uninstall 8.2</code></pre>
+<ul>
+<li><strong>Windows</strong> uses the official builds from windows.php.net.</li>
+<li><strong>macOS</strong> uses static builds from <a href="https://static-php.dev">static-php.dev</a>, which have no dependencies. The common extensions are compiled in, including opcache, intl, imagick, redis, sodium and the pdo_mysql, pdo_sqlite and pdo_pgsql drivers.</li>
+</ul>
+<p>Each version runs its own FastCGI worker (<code>php-cgi</code> on Windows, <code>php-fpm</code> on macOS) on a port derived from the version: 8.3 uses 9083. Caddy sends each site to its own version's worker. The global <code>php</code> on your <code>PATH</code> is a symlink (a junction on Windows), so switching is instant.</p>
+
+<h2 id="per-project-versions">Per-project versions</h2>
+<pre><code><span class="p">$ </span>cd ~/code/legacy-app
+<span class="p">$ </span>mullion isolate 7.4<span class="c">        # this site keeps PHP 7.4</span>
+<span class="p">$ </span>mullion unisolate<span class="c">          # follow the global version again</span></code></pre>
+<p>You can also pin the version in the project page's header or Settings tab. Project commands, workers and project terminals always use the site's version.</p>
+
+<h2 id="extensions">Extensions</h2>
+<pre><code><span class="p">$ </span>mullion php ext list<span class="c">            # [x] = enabled; defaults to the global version</span>
+<span class="p">$ </span>mullion php ext enable intl 8.3
+<span class="p">$ </span>mullion php ext disable xdebug
+<span class="p">$ </span>mullion php ext get redis<span class="c">       # download a PECL extension and enable it (Windows)</span></code></pre>
+<ul>
+<li><strong>Windows:</strong> every extension can be switched on and off, and PECL extensions (redis, xdebug, imagick, …) can be downloaded.</li>
+<li><strong>macOS:</strong> extensions are compiled into the static builds. Only the ones with an ini on/off switch, <strong>OPcache</strong> and <strong>APCu</strong>, can be toggled. The panel shows the rest as read-only.</li>
+</ul>
+<h3 id="ldap-on-macos">LDAP on macOS</h3>
+<p>The static builds don't include <code>ldap</code>. When you install a PHP version on macOS, Mullion builds <code>ldap.so</code> from the matching php.net source and enables it; <code>mullion php ext enable ldap</code> does the same. This needs the Xcode Command Line Tools (<code>xcode-select --install</code>). If they're missing, PHP still installs, just without LDAP.</p>
+
+<h2 id="php-ini-settings">php.ini settings</h2>
+<p>The panel's <strong>Settings (php.ini)</strong> card and <code>mullion php ini</code> edit a curated set of directives for each version. Mullion validates each value and restarts that PHP version:</p>
+<div class="table-wrap"><table><thead><tr><th scope="col">Key</th><th scope="col">Kind</th></tr></thead><tbody><tr><td><code>memory_limit</code></td><td>size (e.g. 512M, -1)</td></tr><tr><td><code>upload_max_filesize</code>, <code>post_max_size</code></td><td>size</td></tr><tr><td><code>max_execution_time</code>, <code>max_input_time</code>, <code>max_input_vars</code></td><td>number</td></tr><tr><td><code>display_errors</code></td><td>on / off</td></tr><tr><td><code>error_reporting</code></td><td>one of the common presets</td></tr><tr><td><code>date.timezone</code></td><td>text</td></tr><tr><td><code>opcache.validate_timestamps</code></td><td>on / off</td></tr></tbody></table></div>
+<pre><code><span class="p">$ </span>mullion php ini<span class="c">                          # effective values for the global version</span>
+<span class="p">$ </span>mullion php ini 8.3
+<span class="p">$ </span>mullion php ini set memory_limit 1G
+<span class="p">$ </span>mullion php ini set display_errors on 8.2</code></pre>
+<p>From the panel you can also open the full <code>php.ini</code> in your text editor.</p>
+
+<h2 id="composer">Composer</h2>
+<pre><code><span class="p">$ </span>mullion composer install<span class="c">            # latest</span>
+<span class="p">$ </span>mullion composer install 2.2.25<span class="c">     # a specific version</span></code></pre>
+<p>The PHP page shows the Composer version with an <strong>Update</strong> button.</p>
+
+<h2 id="another-php-comes-first-on-path">Another PHP comes first on PATH</h2>
+<p>If <code>php -v</code> shows another install (Laragon or XAMPP on Windows, Homebrew on macOS), <code>mullion use</code> detects it and offers to disable that <code>PATH</code> entry. Then open a new terminal.</p>
+
+<nav class="pager" aria-label="Previous and next"><a class="prev" href="databases.html"><small>Previous</small><span>← Databases</span></a><a class="next" href="node.html"><small>Next</small><span>Node →</span></a></nav>
+</main>
+<aside class="toc" aria-label="On this page"><h4>On this page</h4><ul></ul></aside>
+</div>
+<footer class="site-footer">
+  <div class="footer-in">
+    <span>Mullion v2.0.0 · MIT licensed · © 2026 Abdelrahman Nabil</span>
+    <nav aria-label="Footer">
+      <a href="../docs/getting-started.html">Get started</a>
+      <a href="../docs/cli.html">CLI reference</a>
+      <a href="../docs/changelog.html">Changelog</a>
+      <a href="https://github.com/anabiiil/mullion/releases/latest">Releases</a>
+      <a href="https://github.com/anabiiil/mullion/issues">Issues</a>
+    </nav>
+  </div>
+</footer>
+<script src="../assets/js/site.js"></script>
+</body>
+</html>

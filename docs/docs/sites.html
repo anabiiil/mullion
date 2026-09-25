@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sites &amp; domains · Mullion</title>
+<meta name="description" content="Link any folder and it gets a domain. HTTPS, subdomain aliases, wildcard DNS and the Sites page are all covered here.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#1C2333">
+<meta property="og:title" content="Sites &amp; domains · Mullion">
+<meta property="og:description" content="Link any folder and it gets a domain. HTTPS, subdomain aliases, wildcard DNS and the Sites page are all covered here.">
+<meta property="og:image" content="https://anabiiil.github.io/mullion/assets/screenshots/hero.png">
+<meta property="og:type" content="website">
+<link rel="icon" href="../assets/brand/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../assets/brand/apple-touch-icon.png">
+<link rel="stylesheet" href="../assets/css/site.css">
+<script>try{var t=localStorage.getItem('mullion-theme');document.documentElement.setAttribute('data-theme',t||(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'))}catch(e){}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="header-in">
+    <button class="icon-btn menu-btn" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+    <a class="brand" href="../index.html" aria-label="Mullion home"><img src="../assets/brand/mullion-mark.svg" alt="" width="28" height="28">Mullion<span class="ver">v2.0.0</span></a>
+    <nav class="nav" aria-label="Main">
+      <a href="../docs/" aria-current="page" class="">Docs</a><a href="../docs/cli.html" class="hide-sm">CLI</a><a href="../docs/changelog.html" class="hide-sm">Changelog</a>
+      <a href="https://github.com/anabiiil/mullion" aria-label="Mullion on GitHub" title="GitHub"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.1c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.9 1.3 1.9 1.3 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.7 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg></a>
+      <button class="icon-btn theme-btn" type="button" aria-label="Toggle theme"><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+    </nav>
+  </div>
+</header>
+<div class="docs">
+<nav class="sidebar" id="sidebar" aria-label="Documentation">
+<ul><li><a href="index.html">Overview</a></li></ul>
+<h4>Start</h4><ul>
+<li><a href="getting-started.html">Getting started</a></li>
+<li><a href="installation.html">Installation</a></li>
+</ul>
+<h4>Using Mullion</h4><ul>
+<li><a href="sites.html" aria-current="page">Sites &amp; domains</a></li>
+<li><a href="project-page.html">Project page</a></li>
+<li><a href="terminal.html">Terminal</a></li>
+<li><a href="git.html">Git</a></li>
+<li><a href="databases.html">Databases</a></li>
+<li><a href="php.html">PHP</a></li>
+<li><a href="node.html">Node</a></li>
+<li><a href="ports-ssl.html">Ports &amp; SSL</a></li>
+<li><a href="settings.html">Settings</a></li>
+</ul>
+<h4>Reference</h4><ul>
+<li><a href="troubleshooting.html">Troubleshooting &amp; FAQ</a></li>
+<li><a href="cli.html">CLI reference</a></li>
+<li><a href="changelog.html">Changelog</a></li>
+</ul>
+</nav>
+<main class="content" id="main">
+<div class="crumb">Using Mullion</div>
+<h1>Sites &amp; domains</h1>
+<p class="lede">Link any folder and it gets a domain. HTTPS, subdomain aliases, wildcard DNS and the Sites page are all covered here.</p>
+
+<h2 id="linking-a-project">Linking a project</h2>
+<pre><code><span class="p">$ </span>cd ~/code/shop
+<span class="p">$ </span>mullion link<span class="c">             # name = folder name → shop.test</span>
+<span class="p">$ </span>mullion link store<span class="c">       # or pick a name → store.test</span>
+<span class="p">$ </span>mullion link --secure<span class="c">    # HTTPS right away</span>
+<span class="p">$ </span>mullion link --php<span class="c">       # force PHP serving for a folder with a package.json</span></code></pre>
+<p>Mullion detects the project type:</p>
+<ul>
+<li><strong>PHP projects</strong> are served by that version's FastCGI worker. Mullion finds Laravel's <code>public/</code> folder on its own.</li>
+<li><strong>Frontend projects</strong> (a <code>package.json</code> with a <code>dev</code> script) get a managed dev server behind the domain. See <a href="#frontend-dev-servers">Frontend dev servers</a>.</li>
+</ul>
+<p>Use <code>mullion links</code> (or <code>sites</code>) to list sites, <code>mullion unlink</code> to remove one, and <code>mullion rename [old] &lt;new&gt;</code> to change a domain. Dev servers follow a rename.</p>
+
+<h2 id="the-sites-page">The Sites page</h2>
+<p>Every linked project appears as a card. Each card shows:</p>
+<ul>
+<li>the framework and its major version, the language, and the package manager</li>
+<li>the PHP or Node version</li>
+<li>the Git branch, with a count of changes and of commits ahead</li>
+<li>every domain the site answers on</li>
+<li>its status: serving, dev server running, sleeping, or serving the build</li>
+</ul>
+<figure><div class="shot"><img src="../assets/screenshots/sites.png" alt="The Sites page: backend and frontend project cards with framework badges, domains and status" loading="lazy" width="2560" height="1800"></div></figure>
+<ul>
+<li><strong>Search</strong> by name, domain, path or framework. Press <kbd>/</kbd> to focus the search box.</li>
+<li><strong>Filter</strong> by All, Backend, Frontend or Pinned. <strong>Pin</strong> a card with the star to keep it at the top.</li>
+<li>Each card has <strong>Open</strong>, <strong>Terminal</strong> and <strong>Manage</strong> buttons, plus Copy path and Show in Finder/Explorer. The <strong>⋯</strong> menu has more actions.</li>
+<li>Click a project's name to open its <a href="project-page.html">project page</a>. Open projects appear as tabs, so you can keep several side by side, and each can pop out into its own window.</li>
+</ul>
+<p>Mullion detects these frameworks:</p>
+<ul>
+<li><strong>PHP:</strong> Laravel, Symfony, Drupal, CodeIgniter, Yii, CakePHP, Slim and WordPress, plus plain Composer projects.</li>
+<li><strong>JavaScript:</strong> Nuxt, Next.js, SvelteKit, Astro, Gatsby, Angular, Qwik, NestJS, Remix, Solid, Svelte, Vue, React, Express and Vite.</li>
+</ul>
+
+<h2 id="https">HTTPS</h2>
+<p>Caddy's local certificate authority signs a certificate for every <code>https://</code> site. Setup trusts that authority once, so browsers show a real padlock.</p>
+<pre><code><span class="p">$ </span>mullion secure [name]<span class="c">     # HTTPS for one site</span>
+<span class="p">$ </span>mullion unsecure [name]<span class="c">   # back to plain HTTP</span>
+<span class="p">$ </span>mullion ssl all on<span class="c">        # every site at once</span></code></pre>
+<p>For certificate trust and export, see <a href="ports-ssl.html">Ports &amp; SSL</a>.</p>
+
+<h2 id="subdomain-aliases">Subdomain aliases</h2>
+<p>A site can answer on extra subdomains, all served by the same project:</p>
+<pre><code><span class="p">$ </span>mullion alias shop add api<span class="c">       # api.shop.test</span>
+<span class="p">$ </span>mullion alias shop add v1.api<span class="c">    # v1.api.shop.test</span>
+<span class="p">$ </span>mullion alias shop add &#x27;*&#x27;<span class="c">       # every subdomain: tenant1.shop.test, …</span>
+<span class="p">$ </span>mullion alias shop list
+<span class="p">$ </span>mullion alias shop remove api</code></pre>
+<ul>
+<li>PHP apps see the real <code>Host</code> header, so Laravel subdomain routing works. Frontend dev servers get it in <code>X-Forwarded-Host</code>.</li>
+<li>Named aliases resolve through the hosts file.</li>
+<li>The <code>*</code> wildcard needs Mullion's local DNS: turn it on once with <code>mullion dns on</code>.</li>
+<li>You can also manage aliases in the project page's <strong>Domains</strong> tab.</li>
+</ul>
+
+<h2 id="wildcard-dns">Wildcard DNS</h2>
+<p>The hosts file can't express wildcards, so <code>tenant1.shop.test</code> only resolves through Mullion's own small DNS server, which runs inside the background agent.</p>
+<pre><code><span class="p">$ </span>mullion dns on<span class="c">       # install the OS hookup (asks for administrator rights once)</span>
+<span class="p">$ </span>mullion dns status<span class="c">   # what is in place</span>
+<span class="p">$ </span>mullion dns off</code></pre>
+<ul>
+<li><strong>macOS:</strong> <code>/etc/resolver/&lt;tld&gt;</code> sends <code>*.&lt;tld&gt;</code> lookups to <code>127.0.0.1</code>, port 53535.</li>
+<li><strong>Windows:</strong> an NRPT rule sends <code>.&lt;tld&gt;</code> lookups to <code>127.0.0.1</code> on port 53. That port must be free; Internet Connection Sharing or a local DNS proxy can hold it.</li>
+</ul>
+
+<h2 id="changing-the-tld">Changing the TLD</h2>
+<p>Every site uses <code>.test</code> by default. To change it for all sites at once:</p>
+<pre><code><span class="p">$ </span>mullion tld local<span class="c">   # shop.test → shop.local</span></code></pre>
+<div class="callout "><p>Avoid real public TLDs such as <code>.dev</code> or <code>.app</code>. Browsers force them to HTTPS (HSTS preload), which breaks plain-HTTP local sites.</p></div>
+
+<h2 id="frontend-dev-servers">Frontend dev servers</h2>
+<p>For a frontend site, Mullion runs the project's dev server with npm, pnpm or yarn, picked from the lockfile. It installs dependencies on the first run, uses the right Node version, detects the port the server actually opened, and proxies the domain to it, with HMR and websockets working.</p>
+<ul>
+<li><strong>Wake on demand.</strong> Opening a stopped site's link shows a short <em>Starting…</em> page, then your app. If the server can't start, the page shows the real error and the end of its log.</li>
+<li><strong>Idle sleep.</strong> A site with no open tab sleeps after 2 minutes. A site with an idle open tab sleeps after 10 minutes; requests and code edits reset that clock.</li>
+<li><strong>Manual control:</strong> <code>mullion dev start|stop|restart [name]</code>, or the buttons on the card. A site you stop stays stopped until you open its link or start it again.</li>
+<li><strong>Dev or build.</strong> <code>mullion serve build [name]</code> serves the last production build (<code>dist/</code>, <code>build/</code> or <code>out/</code>) as static files with an SPA fallback, and stops the dev server. If there's no build yet, Mullion runs one. Switch back with <code>mullion serve dev</code>.</li>
+<li><strong>Side by side.</strong> <code>mullion link --build</code> serves the build as a separate site, <code>&lt;name&gt;-build.test</code>, so you can compare it with the dev version.</li>
+</ul>
+
+<nav class="pager" aria-label="Previous and next"><a class="prev" href="installation.html"><small>Previous</small><span>← Installation</span></a><a class="next" href="project-page.html"><small>Next</small><span>Project page →</span></a></nav>
+</main>
+<aside class="toc" aria-label="On this page"><h4>On this page</h4><ul></ul></aside>
+</div>
+<footer class="site-footer">
+  <div class="footer-in">
+    <span>Mullion v2.0.0 · MIT licensed · © 2026 Abdelrahman Nabil</span>
+    <nav aria-label="Footer">
+      <a href="../docs/getting-started.html">Get started</a>
+      <a href="../docs/cli.html">CLI reference</a>
+      <a href="../docs/changelog.html">Changelog</a>
+      <a href="https://github.com/anabiiil/mullion/releases/latest">Releases</a>
+      <a href="https://github.com/anabiiil/mullion/issues">Issues</a>
+    </nav>
+  </div>
+</footer>
+<script src="../assets/js/site.js"></script>
+</body>
+</html>

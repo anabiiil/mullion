@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The project page · Mullion</title>
+<meta name="description" content="Everything about one project in one place: commands, workers, packages, Git, a terminal, domains and settings.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#1C2333">
+<meta property="og:title" content="The project page · Mullion">
+<meta property="og:description" content="Everything about one project in one place: commands, workers, packages, Git, a terminal, domains and settings.">
+<meta property="og:image" content="https://anabiiil.github.io/mullion/assets/screenshots/hero.png">
+<meta property="og:type" content="website">
+<link rel="icon" href="../assets/brand/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../assets/brand/apple-touch-icon.png">
+<link rel="stylesheet" href="../assets/css/site.css">
+<script>try{var t=localStorage.getItem('mullion-theme');document.documentElement.setAttribute('data-theme',t||(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'))}catch(e){}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="header-in">
+    <button class="icon-btn menu-btn" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+    <a class="brand" href="../index.html" aria-label="Mullion home"><img src="../assets/brand/mullion-mark.svg" alt="" width="28" height="28">Mullion<span class="ver">v2.0.0</span></a>
+    <nav class="nav" aria-label="Main">
+      <a href="../docs/" aria-current="page" class="">Docs</a><a href="../docs/cli.html" class="hide-sm">CLI</a><a href="../docs/changelog.html" class="hide-sm">Changelog</a>
+      <a href="https://github.com/anabiiil/mullion" aria-label="Mullion on GitHub" title="GitHub"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.1c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.9 1.3 1.9 1.3 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.7 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg></a>
+      <button class="icon-btn theme-btn" type="button" aria-label="Toggle theme"><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+    </nav>
+  </div>
+</header>
+<div class="docs">
+<nav class="sidebar" id="sidebar" aria-label="Documentation">
+<ul><li><a href="index.html">Overview</a></li></ul>
+<h4>Start</h4><ul>
+<li><a href="getting-started.html">Getting started</a></li>
+<li><a href="installation.html">Installation</a></li>
+</ul>
+<h4>Using Mullion</h4><ul>
+<li><a href="sites.html">Sites &amp; domains</a></li>
+<li><a href="project-page.html" aria-current="page">Project page</a></li>
+<li><a href="terminal.html">Terminal</a></li>
+<li><a href="git.html">Git</a></li>
+<li><a href="databases.html">Databases</a></li>
+<li><a href="php.html">PHP</a></li>
+<li><a href="node.html">Node</a></li>
+<li><a href="ports-ssl.html">Ports &amp; SSL</a></li>
+<li><a href="settings.html">Settings</a></li>
+</ul>
+<h4>Reference</h4><ul>
+<li><a href="troubleshooting.html">Troubleshooting &amp; FAQ</a></li>
+<li><a href="cli.html">CLI reference</a></li>
+<li><a href="changelog.html">Changelog</a></li>
+</ul>
+</nav>
+<main class="content" id="main">
+<div class="crumb">Using Mullion</div>
+<h1>The project page</h1>
+<p class="lede">Everything about one project in one place: commands, workers, packages, Git, a terminal, domains and settings.</p>
+
+<p>Open a project by clicking its name on the Sites page, with <strong>Manage</strong>, or by going to <code>#project/&lt;name&gt;</code> in the panel. The header shows:</p>
+<ul>
+<li>the framework, and the PHP or Node version (which you can change there)</li>
+<li>every domain, the serving status, and an HTTPS switch</li>
+<li>buttons for Open site, Terminal here, Copy path and Show in Finder/Explorer</li>
+</ul>
+<p>The tabs you see depend on the project: a PHP project gets Workers, and a project with a <code>composer.json</code> or <code>package.json</code> gets Packages.</p>
+
+<h2 id="commands">Commands</h2>
+<p>The Commands tab lists everything the project can run:</p>
+<ul>
+<li><strong>artisan</strong> commands (Laravel) or <strong><code>bin/console</code></strong> commands (Symfony), read from the framework itself</li>
+<li><strong>npm scripts</strong> from <code>package.json</code>, run with the project's package manager</li>
+<li><strong>Composer scripts</strong> from <code>composer.json</code></li>
+</ul>
+<p>Quick actions cover the usual tasks, such as <code>migrate</code>, <code>optimize:clear</code>, <code>route:list</code> and <code>npm run build</code>. Destructive ones are shown in red. Search the full list and mark favorites.</p>
+<p>Commands run in the project folder with the project's PHP and Node, and their output streams into the panel. Interactive commands such as <code>tinker</code>, a REPL, or anything that prompts go to a terminal tab instead.</p>
+<figure><div class="shot"><img src="../assets/screenshots/project-commands.png" alt="The Commands tab: quick actions, the artisan command list and a finished run of php artisan migrate:status" loading="lazy" width="2560" height="1720"></div></figure>
+<p>From a shell, <code>mullion run</code> does the same thing:</p>
+<pre><code><span class="p">$ </span>mullion run shop -- php artisan migrate
+<span class="p">$ </span>mullion run -- composer install<span class="c">       # the site linked to the current folder</span></code></pre>
+
+<h2 id="workers">Workers</h2>
+<p>Workers are long-running commands that Mullion keeps up for a project. It offers templates for the project's framework:</p>
+<ul>
+<li>a Laravel queue worker</li>
+<li>the scheduler (<code>schedule:work</code>, so you don't need cron)</li>
+<li>Horizon and Reverb</li>
+<li>Symfony Messenger</li>
+<li>any custom command</li>
+</ul>
+<figure><div class="shot"><img src="../assets/screenshots/project-workers.png" alt="The Workers tab: a running queue worker and scheduler, and a paused Reverb server" loading="lazy" width="2560" height="1720"></div></figure>
+<ul>
+<li>Each worker runs in the project folder with the project's PHP and Node on <code>PATH</code>.</li>
+<li>Its log is kept in <code>~/.mullion/logs/worker-&lt;site&gt;-&lt;id&gt;.log</code>. Open it from the <strong>Logs</strong> button.</li>
+<li>With <strong>Auto-start</strong>, a worker comes up with the stack.</li>
+<li>If a worker crashes, it restarts with backoff: 1s, 2s, 4s… capped at a minute. After 5 crashes within 2 minutes it's marked crash-looping and left stopped, so it doesn't spin forever.</li>
+<li>A worker you stop stays stopped until you start it.</li>
+<li>Long-running PHP workers don't see code or <code>.env</code> changes, so <strong>restart</strong> them after changing either.</li>
+</ul>
+<pre><code><span class="p">$ </span>mullion worker add shop --name Queue --kind queue --command &quot;php artisan queue:work --tries=3&quot; --autostart
+<span class="p">$ </span>mullion worker add shop --name Scheduler --kind scheduler --command &quot;php artisan schedule:work&quot; --autostart
+<span class="p">$ </span>mullion worker list
+<span class="p">$ </span>mullion worker logs shop queue -n 100
+<span class="p">$ </span>mullion worker restart shop queue</code></pre>
+
+<h2 id="packages">Packages</h2>
+<p>Search Packagist or the npm registry, then install or remove a package, either as a normal dependency or as a dev dependency. The tab also lists the Composer and npm packages already installed. The CLI works the same way:</p>
+<pre><code><span class="p">$ </span>mullion pkg search composer stripe
+<span class="p">$ </span>mullion pkg add shop composer laravel/horizon
+<span class="p">$ </span>mullion pkg add shop npm @tailwindcss/vite --dev
+<span class="p">$ </span>mullion pkg list shop
+<span class="p">$ </span>mullion pkg remove shop npm lodash</code></pre>
+
+<h2 id="git">Git</h2>
+<p>A full Git client for the project, covered on the <a href="git.html">Git page</a>.</p>
+
+<h2 id="terminal">Terminal</h2>
+<p>A terminal in the project folder, with the project's PHP and Node. See <a href="terminal.html">Terminal</a>. <strong>Open in window</strong> pops it out.</p>
+
+<h2 id="domains">Domains</h2>
+<ul>
+<li>Add and remove <a href="sites.html#subdomain-aliases">subdomain aliases</a> and the <code>*</code> wildcard.</li>
+<li>If wildcard DNS is off, a note tells you to turn it on.</li>
+<li>Frontend projects can also move their dev server to another port here. Mullion checks for conflicts and suggests a free port.</li>
+</ul>
+
+<h2 id="settings">Settings</h2>
+<ul>
+<li>The PHP version for this site (pinned, or following the global one), or the Node version.</li>
+<li>For frontend sites: the serve mode (dev server or production build).</li>
+<li>HTTPS, and renaming the site.</li>
+<li>A danger zone to <strong>unlink</strong> the site. The folder itself is never touched.</li>
+</ul>
+
+<nav class="pager" aria-label="Previous and next"><a class="prev" href="sites.html"><small>Previous</small><span>← Sites &amp; domains</span></a><a class="next" href="terminal.html"><small>Next</small><span>Terminal →</span></a></nav>
+</main>
+<aside class="toc" aria-label="On this page"><h4>On this page</h4><ul></ul></aside>
+</div>
+<footer class="site-footer">
+  <div class="footer-in">
+    <span>Mullion v2.0.0 · MIT licensed · © 2026 Abdelrahman Nabil</span>
+    <nav aria-label="Footer">
+      <a href="../docs/getting-started.html">Get started</a>
+      <a href="../docs/cli.html">CLI reference</a>
+      <a href="../docs/changelog.html">Changelog</a>
+      <a href="https://github.com/anabiiil/mullion/releases/latest">Releases</a>
+      <a href="https://github.com/anabiiil/mullion/issues">Issues</a>
+    </nav>
+  </div>
+</footer>
+<script src="../assets/js/site.js"></script>
+</body>
+</html>

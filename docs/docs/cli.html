@@ -1,0 +1,1078 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CLI reference · Mullion</title>
+<meta name="description" content="Every mullion command and subcommand, with its usage, flags and examples.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#1C2333">
+<meta property="og:title" content="CLI reference · Mullion">
+<meta property="og:description" content="Every mullion command and subcommand, with its usage, flags and examples.">
+<meta property="og:image" content="https://anabiiil.github.io/mullion/assets/screenshots/hero.png">
+<meta property="og:type" content="website">
+<link rel="icon" href="../assets/brand/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../assets/brand/apple-touch-icon.png">
+<link rel="stylesheet" href="../assets/css/site.css">
+<script>try{var t=localStorage.getItem('mullion-theme');document.documentElement.setAttribute('data-theme',t||(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'))}catch(e){}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="header-in">
+    <button class="icon-btn menu-btn" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+    <a class="brand" href="../index.html" aria-label="Mullion home"><img src="../assets/brand/mullion-mark.svg" alt="" width="28" height="28">Mullion<span class="ver">v2.0.0</span></a>
+    <nav class="nav" aria-label="Main">
+      <a href="../docs/" class="">Docs</a><a href="../docs/cli.html" aria-current="page" class="hide-sm">CLI</a><a href="../docs/changelog.html" class="hide-sm">Changelog</a>
+      <a href="https://github.com/anabiiil/mullion" aria-label="Mullion on GitHub" title="GitHub"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.1c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.9 1.3 1.9 1.3 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.7 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg></a>
+      <button class="icon-btn theme-btn" type="button" aria-label="Toggle theme"><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+    </nav>
+  </div>
+</header>
+<div class="docs">
+<nav class="sidebar" id="sidebar" aria-label="Documentation">
+<ul><li><a href="index.html">Overview</a></li></ul>
+<h4>Start</h4><ul>
+<li><a href="getting-started.html">Getting started</a></li>
+<li><a href="installation.html">Installation</a></li>
+</ul>
+<h4>Using Mullion</h4><ul>
+<li><a href="sites.html">Sites &amp; domains</a></li>
+<li><a href="project-page.html">Project page</a></li>
+<li><a href="terminal.html">Terminal</a></li>
+<li><a href="git.html">Git</a></li>
+<li><a href="databases.html">Databases</a></li>
+<li><a href="php.html">PHP</a></li>
+<li><a href="node.html">Node</a></li>
+<li><a href="ports-ssl.html">Ports &amp; SSL</a></li>
+<li><a href="settings.html">Settings</a></li>
+</ul>
+<h4>Reference</h4><ul>
+<li><a href="troubleshooting.html">Troubleshooting &amp; FAQ</a></li>
+<li><a href="cli.html" aria-current="page">CLI reference</a></li>
+<li><a href="changelog.html">Changelog</a></li>
+</ul>
+</nav>
+<main class="content" id="main">
+<div class="crumb">Reference</div>
+<h1>CLI reference</h1>
+<p class="lede">Every mullion command and subcommand, with its usage, flags and examples.</p>
+<p>This page is generated from the help output of the Mullion 2.0.0 binary. Run <code>mullion &lt;command&gt; --help</code> in a terminal for the same text.</p>
+<label for="cli-filter" class="crumb" style="display:block;margin-top:20px">Filter commands</label>
+<input id="cli-filter" class="cli-filter" type="search" placeholder="e.g. backup, port, worker…" autocomplete="off">
+<h2 id="index">All commands</h2><ul class="cli-index"><li><a href="#mullion-alias"><code>alias</code></a></li><li><a href="#mullion-app"><code>app</code></a></li><li><a href="#mullion-autostart"><code>autostart</code></a></li><li><a href="#mullion-backups"><code>backups</code></a></li><li><a href="#mullion-composer"><code>composer</code></a></li><li><a href="#mullion-db"><code>db</code></a></li><li><a href="#mullion-dev"><code>dev</code></a></li><li><a href="#mullion-dns"><code>dns</code></a></li><li><a href="#mullion-doctor"><code>doctor</code></a></li><li><a href="#mullion-heidisql"><code>heidisql</code></a></li><li><a href="#mullion-isolate"><code>isolate</code></a></li><li><a href="#mullion-link"><code>link</code></a></li><li><a href="#mullion-links"><code>links</code></a></li><li><a href="#mullion-mariadb"><code>mariadb</code></a></li><li><a href="#mullion-mongo"><code>mongo</code></a></li><li><a href="#mullion-mongo-express"><code>mongo-express</code></a></li><li><a href="#mullion-mysql"><code>mysql</code></a></li><li><a href="#mullion-node"><code>node</code></a></li><li><a href="#mullion-pgadmin"><code>pgadmin</code></a></li><li><a href="#mullion-php"><code>php</code></a></li><li><a href="#mullion-phpmyadmin"><code>phpmyadmin</code></a></li><li><a href="#mullion-pkg"><code>pkg</code></a></li><li><a href="#mullion-port"><code>port</code></a></li><li><a href="#mullion-ports"><code>ports</code></a></li><li><a href="#mullion-postgres"><code>postgres</code></a></li><li><a href="#mullion-rename"><code>rename</code></a></li><li><a href="#mullion-restart"><code>restart</code></a></li><li><a href="#mullion-run"><code>run</code></a></li><li><a href="#mullion-secure"><code>secure</code></a></li><li><a href="#mullion-serve"><code>serve</code></a></li><li><a href="#mullion-setup"><code>setup</code></a></li><li><a href="#mullion-ssl"><code>ssl</code></a></li><li><a href="#mullion-start"><code>start</code></a></li><li><a href="#mullion-status"><code>status</code></a></li><li><a href="#mullion-stop"><code>stop</code></a></li><li><a href="#mullion-tld"><code>tld</code></a></li><li><a href="#mullion-tray"><code>tray</code></a></li><li><a href="#mullion-ui"><code>ui</code></a></li><li><a href="#mullion-uninstall"><code>uninstall</code></a></li><li><a href="#mullion-unisolate"><code>unisolate</code></a></li><li><a href="#mullion-unlink"><code>unlink</code></a></li><li><a href="#mullion-unsecure"><code>unsecure</code></a></li><li><a href="#mullion-use"><code>use</code></a></li><li><a href="#mullion-worker"><code>worker</code></a></li></ul>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-alias">mullion alias</h2><pre data-nocopy><code>Give a site extra subdomains, served by the same project:
+
+  mullion alias shop add api       # api.shop.test
+  mullion alias shop add v1.api    # v1.api.shop.test
+  mullion alias shop add &#x27;*&#x27;       # every subdomain: tenant1.shop.test, ...
+  mullion alias shop remove api
+  mullion alias shop list
+
+PHP apps see the real Host header (Laravel subdomain routing works);
+frontend dev servers get it in X-Forwarded-Host.
+
+Named subdomains resolve through the hosts file. The &#x27;*&#x27; wildcard needs
+Mullion&#x27;s local DNS — enable it once with `mullion dns on`.
+
+Usage:
+  mullion alias &lt;site&gt; [add|remove|list] [subdomain] [flags]
+</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-app">mullion app</h2><pre data-nocopy><code>Install Mullion.app into Applications (macOS)
+
+Usage:
+  mullion app [flags]
+</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-autostart">mullion autostart</h2><pre data-nocopy><code>Start Mullion automatically when you sign in
+
+Usage:
+  mullion autostart [on|off] [flags]
+</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-backups">mullion backups</h2><pre data-nocopy><code>List database backups made with mullion mysql|postgres|mongo backup
+
+Usage:
+  mullion backups [flags]
+</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-composer">mullion composer</h2><pre data-nocopy><code>Manage the Composer installation
+
+Usage:
+  mullion composer [command]
+
+Available Commands:
+  install     Install Composer (latest by default, or a specific version like 2.2.25)
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-composer-install">mullion composer install</h3><pre data-nocopy><code>Install Composer (latest by default, or a specific version like 2.2.25)
+
+Usage:
+  mullion composer install [version] [flags]
+</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-db">mullion db</h2><pre data-nocopy><code>Manage databases on the local MySQL server
+
+Usage:
+  mullion db [command]
+
+Available Commands:
+  create      Create a database (utf8mb4)
+  drop        Delete a database and ALL its data
+  list        List your databases
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-db-create">mullion db create</h3><pre data-nocopy><code>Create a database (utf8mb4)
+
+Usage:
+  mullion db create &lt;name&gt; [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-db-drop">mullion db drop</h3><pre data-nocopy><code>Delete a database and ALL its data
+
+Usage:
+  mullion db drop &lt;name&gt; [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-db-list">mullion db list</h3><pre data-nocopy><code>List your databases
+
+Usage:
+  mullion db list [flags]
+</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-dev">mullion dev</h2><pre data-nocopy><code>Each linked frontend site gets a managed dev server (npm run dev)
+behind its .test domain. It starts with `mullion start` and stays up in
+the background. Stop one when you don&#x27;t need it — opening its link later
+wakes it automatically (a &quot;starting…&quot; page shows while it boots).
+
+Usage:
+  mullion dev [command]
+
+Available Commands:
+  restart     Restart a site&#x27;s dev server (picks up config/env changes)
+  start       Start (and unpause) a site&#x27;s dev server
+  stop        Stop a site&#x27;s dev server (frees RAM/CPU) — opening its link wakes it again
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-dev-restart">mullion dev restart</h3><pre data-nocopy><code>Restart a site&#x27;s dev server (picks up config/env changes)
+
+Usage:
+  mullion dev restart [name] [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-dev-start">mullion dev start</h3><pre data-nocopy><code>Start (and unpause) a site&#x27;s dev server
+
+Usage:
+  mullion dev start [name] [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-dev-stop">mullion dev stop</h3><pre data-nocopy><code>Stop a site&#x27;s dev server (frees RAM/CPU) — opening its link wakes it again
+
+Usage:
+  mullion dev stop [name] [flags]
+</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-dns">mullion dns</h2><pre data-nocopy><code>The hosts file can&#x27;t express wildcards, so tenant1.shop.test only resolves
+through Mullion&#x27;s own tiny DNS server (run by the background agent).
+
+  mullion dns on       install the OS hookup (asks for administrator rights once)
+  mullion dns off      remove it
+  mullion dns status   show what&#x27;s in place (default)
+
+macOS: /etc/resolver/&lt;tld&gt; sends *.&lt;tld&gt; lookups to 127.0.0.1 port 53535.
+Windows: an NRPT rule sends .&lt;tld&gt; lookups to 127.0.0.1 (port 53, which must
+be free — Internet Connection Sharing or a local DNS proxy can hold it).
+
+Usage:
+  mullion dns [on|off|status] [flags]
+</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-doctor">mullion doctor</h2><pre data-nocopy><code>Diagnose the whole stack — paste the output when reporting a problem
+
+Usage:
+  mullion doctor [flags]
+</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-heidisql">mullion heidisql</h2><pre data-nocopy><code>Downloads the latest portable HeidiSQL into ~/.mullion/heidisql on
+first use — preconfigured with a session for the local MySQL server
+(127.0.0.1, root, no password) — and opens it.
+
+Usage:
+  mullion heidisql [flags]
+</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-isolate">mullion isolate</h2><pre data-nocopy><code>Makes one site run on a different PHP version than the system default,
+e.g. an old client project on PHP 7.4 while everything else uses 8.3.
+
+Usage:
+  mullion isolate &lt;version&gt; [flags]
+
+Flags:
+      --site string   site name (defaults to the current directory&#x27;s link)</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-link">mullion link</h2><pre data-nocopy><code>Registers the current directory as a site. The name defaults to the
+directory name.
+
+The project type is detected automatically:
+  - PHP projects are served through PHP (Laravel public/ auto-detected)
+  - Frontend projects (a package.json with a dev script) get a managed
+    dev server: Mullion runs `npm run dev` for you and proxies the
+    .test domain to it — opening the link is all you do
+
+With --build, the project&#x27;s LAST PRODUCTION BUILD (dist/, build/, out/)
+is served as a separate static site named &lt;name&gt;-build — handy to
+compare the deployed state against the current dev version.
+
+Usage:
+  mullion link [name] [flags]
+
+Flags:
+      --build        serve the project&#x27;s production build as a static site (&lt;name&gt;-build)
+      --dir string   build output folder for --build (auto-detected: dist, build, out)
+      --php          force serving as a PHP site
+      --secure       serve over https immediately</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-links">mullion links</h2><pre data-nocopy><code>List linked sites
+
+Usage:
+  mullion links [flags]
+
+Aliases:
+  links, sites
+</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-mariadb">mullion mariadb</h2><pre data-nocopy><code>Installs MariaDB and makes it the active database server, migrating
+your databases from the current server (MySQL or MariaDB) after asking.
+Equivalent to: mullion mysql install mariadb
+
+Usage:
+  mullion mariadb [version] [flags]
+</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-mongo">mullion mongo</h2><pre data-nocopy><code>Manage the local MongoDB server
+
+Usage:
+  mullion mongo [flags]
+  mullion mongo [command]
+
+Available Commands:
+  backup      Export all your MongoDB databases to a timestamped backup folder
+  db          Manage databases on the local MongoDB server
+  install     Download MongoDB (newest 8.0 by default), initialize it, and start it
+  restore     Restore a MongoDB backup
+  start       Start the MongoDB server
+  status      Show whether MongoDB is installed and running
+  stop        Stop the MongoDB server
+  uninstall   Stop MongoDB, back it up, and remove it (binaries, data, and mongo-express)
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-mongo-backup">mullion mongo backup</h3><pre data-nocopy><code>Export all your MongoDB databases to a timestamped backup folder
+
+Usage:
+  mullion mongo backup [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-mongo-db">mullion mongo db</h3><pre data-nocopy><code>Manage databases on the local MongoDB server
+
+Usage:
+  mullion mongo db [command]
+
+Available Commands:
+  create      Create a database
+  drop        Delete a database and ALL its data
+  list        List your databases
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-mongo-db-create">mullion mongo db create</h3><pre data-nocopy><code>Create a database
+
+Usage:
+  mullion mongo db create &lt;name&gt; [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-mongo-db-drop">mullion mongo db drop</h3><pre data-nocopy><code>Delete a database and ALL its data
+
+Usage:
+  mullion mongo db drop &lt;name&gt; [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-mongo-db-list">mullion mongo db list</h3><pre data-nocopy><code>List your databases
+
+Usage:
+  mullion mongo db list [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-mongo-install">mullion mongo install</h3><pre data-nocopy><code>Installs and starts MongoDB. With no argument you get the newest
+release of the 8.0 series. Pass &quot;latest&quot; for the newest release
+overall, a series like &quot;7.0&quot; for the newest release of that series, or
+a full version like &quot;8.0.12&quot;.
+
+Usage:
+  mullion mongo install [version] [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-mongo-restore">mullion mongo restore</h3><pre data-nocopy><code>Restores databases into the running MongoDB server.
+
+Pass a backup folder (as mullion mongo backup creates) to restore every
+database in it, or add a database name to restore just that one. Pass a
+single .archive.gz file directly to restore it alone (the database it
+holds was fixed when it was dumped, so no database name is needed).
+
+Usage:
+  mullion mongo restore &lt;backup-folder-or-.archive.gz-file&gt; [database] [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-mongo-start">mullion mongo start</h3><pre data-nocopy><code>Start the MongoDB server
+
+Usage:
+  mullion mongo start [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-mongo-status">mullion mongo status</h3><pre data-nocopy><code>Show whether MongoDB is installed and running
+
+Usage:
+  mullion mongo status [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-mongo-stop">mullion mongo stop</h3><pre data-nocopy><code>Stop the MongoDB server
+
+Usage:
+  mullion mongo stop [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-mongo-uninstall">mullion mongo uninstall</h3><pre data-nocopy><code>Stop MongoDB, back it up, and remove it (binaries, data, and mongo-express)
+
+Usage:
+  mullion mongo uninstall [flags]
+
+Flags:
+      --keep-data   keep the data directory (binaries only)
+      --no-backup   skip the database backup
+      --yes         do not ask for confirmation</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-mongo-express">mullion mongo-express</h2><pre data-nocopy><code>Installs mongo-express (a web-based admin UI for MongoDB) into
+~/.mullion/mongo-express, pointed at mullion&#x27;s local MongoDB with admin
+access and no basic-auth prompt, and links it as a secured site at
+https://mongo.&lt;tld&gt;.
+
+Usage:
+  mullion mongo-express [flags]
+  mullion mongo-express [command]
+
+Aliases:
+  mongo-express, mongo-ui
+
+Available Commands:
+  uninstall   Remove mongo-express (the MongoDB server itself is untouched)
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-mongo-express-uninstall">mullion mongo-express uninstall</h3><pre data-nocopy><code>Remove mongo-express (the MongoDB server itself is untouched)
+
+Usage:
+  mullion mongo-express uninstall [flags]
+
+Flags:
+      --yes    do not ask for confirmation</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-mysql">mullion mysql</h2><pre data-nocopy><code>Manage the local MySQL server
+
+Usage:
+  mullion mysql [command]
+
+Available Commands:
+  install     Download MySQL (newest 8.4 LTS by default), initialize it, and start it
+  backup      Export all your MySQL databases to a timestamped backup folder
+  password    Change the MySQL root password (&#x27;&#x27; to remove it); phpMyAdmin follows automatically
+  restore     Import a backup: a single .sql file, or a backup folder
+  start       Start the MySQL server
+  stop        Stop the MySQL server
+  uninstall   Stop MySQL, back it up, and remove it (binaries, data, and phpMyAdmin)
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-mysql-backup">mullion mysql backup</h3><pre data-nocopy><code>go: downloading github.com/spf13/cobra v1.10.2
+go: downloading github.com/spf13/pflag v1.0.9
+Export all your MySQL databases to a timestamped backup folder
+
+Usage:
+  mullion mysql backup [flags]
+
+Flags:
+  -h, --help   help for backup
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-mysql-install">mullion mysql install</h3><pre data-nocopy><code>Installs and starts MySQL. With no argument you get the newest release
+of the 8.4 LTS branch. Pass &quot;latest&quot; for the newest release overall,
+a branch like &quot;8.0&quot; for the newest release of that branch, or a full
+version like &quot;8.4.11&quot;.
+
+When you switch versions, your databases are migrated automatically:
+they are dumped from the old server, the new one starts with a fresh
+data directory, and the dump is restored into it. The old data
+directory and the dump file are kept as backups.
+
+Usage:
+  mullion mysql install [version] [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-mysql-password">mullion mysql password</h3><pre data-nocopy><code>Change the MySQL root password (&#x27;&#x27; to remove it); phpMyAdmin follows automatically
+
+Usage:
+  mullion mysql password [new-password] [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-mysql-restore">mullion mysql restore</h3><pre data-nocopy><code>Imports databases into the running MySQL server.
+
+Pass a single .sql file (e.g. one database from a backup folder), or a
+whole backup folder — when the folder contains all-databases.sql that
+one file is imported, otherwise every .sql file in it is.
+
+Usage:
+  mullion mysql restore &lt;file-or-folder&gt; [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-mysql-start">mullion mysql start</h3><pre data-nocopy><code>Start the MySQL server
+
+Usage:
+  mullion mysql start [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-mysql-stop">mullion mysql stop</h3><pre data-nocopy><code>Stop the MySQL server
+
+Usage:
+  mullion mysql stop [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-mysql-uninstall">mullion mysql uninstall</h3><pre data-nocopy><code>Stop MySQL, back it up, and remove it (binaries, data, and phpMyAdmin)
+
+Usage:
+  mullion mysql uninstall [flags]
+</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-node">mullion node</h2><pre data-nocopy><code>Manage Node.js versions (official nodejs.org builds)
+
+Usage:
+  mullion node [command]
+
+Available Commands:
+  available   List installable Node versions (newest of each major)
+  install     Download and install a Node version (lts by default; latest, 22, 22.12.0)
+  isolate     Pin the current project&#x27;s site to a specific Node version
+  list        List installed Node versions (* = global default)
+  npm         Change the npm version bundled with a Node install (latest, 10, 10.9.2)
+  uninstall   Remove an installed Node version
+  unisolate   Make the current project&#x27;s site follow .nvmrc / the default Node again
+  use         Switch the default Node version (node/npm on PATH)
+  which       Explain which Node version this directory gets, and why
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-node-available">mullion node available</h3><pre data-nocopy><code>List installable Node versions (newest of each major)
+
+Usage:
+  mullion node available [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-node-install">mullion node install</h3><pre data-nocopy><code>Download and install a Node version (lts by default; latest, 22, 22.12.0)
+
+Usage:
+  mullion node install [version] [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-node-isolate">mullion node isolate</h3><pre data-nocopy><code>Pin the current project&#x27;s site to a specific Node version
+
+Usage:
+  mullion node isolate &lt;version&gt; [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-node-list">mullion node list</h3><pre data-nocopy><code>List installed Node versions (* = global default)
+
+Usage:
+  mullion node list [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-node-npm">mullion node npm</h3><pre data-nocopy><code>Change the npm version bundled with a Node install (latest, 10, 10.9.2)
+
+Usage:
+  mullion node npm &lt;npm-version&gt; [node-version] [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-node-uninstall">mullion node uninstall</h3><pre data-nocopy><code>Remove an installed Node version
+
+Usage:
+  mullion node uninstall &lt;version&gt; [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-node-unisolate">mullion node unisolate</h3><pre data-nocopy><code>Make the current project&#x27;s site follow .nvmrc / the default Node again
+
+Usage:
+  mullion node unisolate [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-node-use">mullion node use</h3><pre data-nocopy><code>Switch the default Node version (node/npm on PATH)
+
+Usage:
+  mullion node use &lt;version&gt; [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-node-which">mullion node which</h3><pre data-nocopy><code>Explain which Node version this directory gets, and why
+
+Usage:
+  mullion node which [flags]
+</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-pgadmin">mullion pgadmin</h2><pre data-nocopy><code>Installs pgAdmin 4 into ~/.mullion/pgadmin on first use — taken from the
+same EDB package as the installed PostgreSQL — and opens it with a
+&quot;Mullion (PostgreSQL)&quot; server (127.0.0.1:5432, user postgres) already
+registered, so connecting is one click.
+
+Usage:
+  mullion pgadmin [flags]
+  mullion pgadmin [command]
+
+Available Commands:
+  uninstall   Remove pgAdmin 4 (your saved servers in ~/.pgadmin are untouched)
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-pgadmin-uninstall">mullion pgadmin uninstall</h3><pre data-nocopy><code>Remove pgAdmin 4 (your saved servers in ~/.pgadmin are untouched)
+
+Usage:
+  mullion pgadmin uninstall [flags]
+
+Flags:
+      --yes    do not ask for confirmation</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-php">mullion php</h2><pre data-nocopy><code>Manage installed PHP versions
+
+Usage:
+  mullion php [command]
+
+Available Commands:
+  available   List PHP versions available to install (current branches)
+  ext         Manage the extensions of an installed PHP version
+  ini         Show the version&#x27;s curated php.ini settings; defaults to the global version
+  install     Download and install a PHP version (e.g. 8.3 or 8.3.26)
+  list        List installed PHP versions
+  uninstall   Remove an installed PHP version
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-php-available">mullion php available</h3><pre data-nocopy><code>List PHP versions available to install (current branches)
+
+Usage:
+  mullion php available [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-php-ext">mullion php ext</h3><pre data-nocopy><code>Manage the extensions of an installed PHP version
+
+Usage:
+  mullion php ext [command]
+
+Available Commands:
+  disable     Disable an extension
+  enable      Enable an extension (e.g. intl, soap, ldap)
+  get         Download a PECL extension the build doesn&#x27;t ship (redis, xdebug, imagick, ...) and enable it
+  list        List the version&#x27;s extensions ([x] = enabled); defaults to the global version
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-php-ext-disable">mullion php ext disable</h3><pre data-nocopy><code>Disable an extension
+
+Usage:
+  mullion php ext disable &lt;name&gt; [version] [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-php-ext-enable">mullion php ext enable</h3><pre data-nocopy><code>Enable an extension (e.g. intl, soap, ldap)
+
+Usage:
+  mullion php ext enable &lt;name&gt; [version] [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-php-ext-get">mullion php ext get</h3><pre data-nocopy><code>Download a PECL extension the build doesn&#x27;t ship (redis, xdebug, imagick, ...) and enable it
+
+Usage:
+  mullion php ext get &lt;name&gt; [version] [flags]
+
+Aliases:
+  get, add
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-php-ext-list">mullion php ext list</h3><pre data-nocopy><code>List the version&#x27;s extensions ([x] = enabled); defaults to the global version
+
+Usage:
+  mullion php ext list [version] [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-php-ini">mullion php ini</h3><pre data-nocopy><code>Show the version&#x27;s curated php.ini settings; defaults to the global version
+
+Usage:
+  mullion php ini [version] [flags]
+  mullion php ini [command]
+
+Available Commands:
+  set         Set a curated php.ini setting (e.g. memory_limit, display_errors) and restart PHP
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-php-ini-set">mullion php ini set</h3><pre data-nocopy><code>Set a curated php.ini setting (e.g. memory_limit, display_errors) and restart PHP
+
+Usage:
+  mullion php ini set &lt;key&gt; &lt;value&gt; [version] [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-php-install">mullion php install</h3><pre data-nocopy><code>Download and install a PHP version (e.g. 8.3 or 8.3.26)
+
+Usage:
+  mullion php install &lt;version&gt; [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-php-list">mullion php list</h3><pre data-nocopy><code>List installed PHP versions
+
+Usage:
+  mullion php list [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-php-uninstall">mullion php uninstall</h3><pre data-nocopy><code>Remove an installed PHP version
+
+Usage:
+  mullion php uninstall &lt;version&gt; [flags]
+</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-phpmyadmin">mullion phpmyadmin</h2><pre data-nocopy><code>Downloads phpMyAdmin (the latest release, or a specific version like
+5.2.2) into ~/.mullion/phpmyadmin, configures it to auto-connect to the local
+MySQL server (root, no password), and links it as a secured site at
+https://phpmyadmin.&lt;tld&gt;.
+
+Usage:
+  mullion phpmyadmin [version] [flags]
+  mullion phpmyadmin [command]
+
+Available Commands:
+  uninstall   Remove phpMyAdmin (the MySQL server itself is untouched)
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-phpmyadmin-uninstall">mullion phpmyadmin uninstall</h3><pre data-nocopy><code>Remove phpMyAdmin (the MySQL server itself is untouched)
+
+Usage:
+  mullion phpmyadmin uninstall [flags]
+
+Flags:
+      --yes    do not ask for confirmation</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-pkg">mullion pkg</h2><pre data-nocopy><code>Search, add, and remove Composer/npm packages for a linked site
+
+Usage:
+  mullion pkg [command]
+
+Available Commands:
+  add         Install a package into a linked site
+  list        List a linked site&#x27;s Composer and npm packages
+  remove      Remove a package from a linked site
+  search      Search Packagist or the npm registry for packages
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-pkg-add">mullion pkg add</h3><pre data-nocopy><code>Install a package into a linked site
+
+Usage:
+  mullion pkg add &lt;site&gt; &lt;composer|npm&gt; &lt;name&gt;[@version] [flags]
+
+Flags:
+      --dev    install as a dev/require-dev dependency</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-pkg-list">mullion pkg list</h3><pre data-nocopy><code>List a linked site&#x27;s Composer and npm packages
+
+Usage:
+  mullion pkg list &lt;site&gt; [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-pkg-remove">mullion pkg remove</h3><pre data-nocopy><code>Remove a package from a linked site
+
+Usage:
+  mullion pkg remove &lt;site&gt; &lt;composer|npm&gt; &lt;name&gt; [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-pkg-search">mullion pkg search</h3><pre data-nocopy><code>Search Packagist or the npm registry for packages
+
+Usage:
+  mullion pkg search &lt;composer|npm&gt; &lt;query...&gt; [flags]
+</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-port">mullion port</h2><pre data-nocopy><code>Change the port of a database engine or a dev server
+
+Usage:
+  mullion port [command]
+
+Available Commands:
+  dev         Assign a frontend site&#x27;s dev server another port (restarts it if running)
+  set         Move a database engine to another port (restarts it if running)
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-port-dev">mullion port dev</h3><pre data-nocopy><code>Assign a frontend site&#x27;s dev server another port (restarts it if running)
+
+Usage:
+  mullion port dev &lt;site&gt; &lt;port&gt; [flags]
+
+Flags:
+      --force   use the port even though another process holds it</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-port-set">mullion port set</h3><pre data-nocopy><code>Move a database engine to another port (restarts it if running)
+
+Usage:
+  mullion port set &lt;mysql|postgres|mongo&gt; &lt;port&gt; [flags]
+
+Flags:
+      --force   use the port even though another process holds it</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-ports">mullion ports</h2><pre data-nocopy><code>List the ports Mullion uses, who holds them, and any conflicts
+
+Usage:
+  mullion ports [flags]
+</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-postgres">mullion postgres</h2><pre data-nocopy><code>Manage the local PostgreSQL server
+
+Usage:
+  mullion postgres [flags]
+  mullion postgres [command]
+
+Aliases:
+  postgres, pg
+
+Available Commands:
+  backup      Export all your PostgreSQL databases (and roles) to a timestamped backup folder
+  db          Manage databases on the local PostgreSQL server
+  install     Download PostgreSQL (newest 17 by default), initialize it, and start it
+  password    Change the PostgreSQL superuser password (&#x27;&#x27; to remove it)
+  restore     Restore a PostgreSQL backup
+  start       Start the PostgreSQL server
+  status      Show whether PostgreSQL is installed and running
+  stop        Stop the PostgreSQL server
+  uninstall   Stop PostgreSQL, back it up, and remove it (binaries, data, and pgAdmin)
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-postgres-backup">mullion postgres backup</h3><pre data-nocopy><code>Export all your PostgreSQL databases (and roles) to a timestamped backup folder
+
+Usage:
+  mullion postgres backup [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-postgres-db">mullion postgres db</h3><pre data-nocopy><code>Manage databases on the local PostgreSQL server
+
+Usage:
+  mullion postgres db [command]
+
+Available Commands:
+  create      Create a database
+  drop        Delete a database and ALL its data
+  list        List your databases
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-postgres-db-create">mullion postgres db create</h3><pre data-nocopy><code>Create a database
+
+Usage:
+  mullion postgres db create &lt;name&gt; [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-postgres-db-drop">mullion postgres db drop</h3><pre data-nocopy><code>Delete a database and ALL its data
+
+Usage:
+  mullion postgres db drop &lt;name&gt; [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-postgres-db-list">mullion postgres db list</h3><pre data-nocopy><code>List your databases
+
+Usage:
+  mullion postgres db list [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-postgres-install">mullion postgres install</h3><pre data-nocopy><code>Installs and starts PostgreSQL. With no argument you get the newest
+release of the 17 series. Pass &quot;latest&quot; for the newest release
+overall, a major like &quot;16&quot; for the newest release of that major, or a
+full version like &quot;16.4&quot;.
+
+Switching to a different major stops the previous server — data
+directories are per-major, so the old data is left on disk untouched
+(where it&#x27;s kept is printed).
+
+Usage:
+  mullion postgres install [version] [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-postgres-password">mullion postgres password</h3><pre data-nocopy><code>Change the PostgreSQL superuser password (&#x27;&#x27; to remove it)
+
+Usage:
+  mullion postgres password [new-password] [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-postgres-restore">mullion postgres restore</h3><pre data-nocopy><code>Restores databases into the running PostgreSQL server.
+
+Pass a backup folder (as mullion postgres backup creates) to restore
+every database in it, plus its globals.sql (roles, tablespaces) on a
+best-effort basis; add a database name to restore just that one. Pass a
+single .dump file with a database name to restore that file alone.
+
+Usage:
+  mullion postgres restore &lt;backup-folder-or-.dump-file&gt; [database] [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-postgres-start">mullion postgres start</h3><pre data-nocopy><code>Start the PostgreSQL server
+
+Usage:
+  mullion postgres start [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-postgres-status">mullion postgres status</h3><pre data-nocopy><code>Show whether PostgreSQL is installed and running
+
+Usage:
+  mullion postgres status [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-postgres-stop">mullion postgres stop</h3><pre data-nocopy><code>Stop the PostgreSQL server
+
+Usage:
+  mullion postgres stop [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-postgres-uninstall">mullion postgres uninstall</h3><pre data-nocopy><code>Stop PostgreSQL, back it up, and remove it (binaries, data, and pgAdmin)
+
+Usage:
+  mullion postgres uninstall [flags]
+
+Flags:
+      --keep-data   keep the data directory (binaries only)
+      --no-backup   skip the database backup
+      --yes         do not ask for confirmation</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-rename">mullion rename</h2><pre data-nocopy><code>Renames a linked site (and therefore its domain). With one argument
+the site linked to the current directory is renamed; with two, the
+first names the site to rename.
+
+Usage:
+  mullion rename [old] &lt;new&gt; [flags]
+</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-restart">mullion restart</h2><pre data-nocopy><code>Restart everything
+
+Usage:
+  mullion restart [flags]
+</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-run">mullion run</h2><pre data-nocopy><code>Runs one command in a linked site&#x27;s folder with the site&#x27;s own PHP
+version, Node version and composer first on PATH — exactly what serves
+the site, even when it is pinned to a different version than the global
+one. Without a site name, the site linked to the current folder is used.
+
+Usage:
+  mullion run [site] -- &lt;command...&gt; [flags]
+
+Examples:
+  mullion run shop -- php artisan migrate
+  mullion run shop -- npm run build
+  mullion run -- composer install
+</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-secure">mullion secure</h2><pre data-nocopy><code>Serve a site over HTTPS with a locally-trusted certificate
+
+Usage:
+  mullion secure [name] [flags]
+</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-serve">mullion serve</h2><pre data-nocopy><code>Switches one frontend domain between two modes:
+
+  dev     the managed dev server (live code, HMR)
+  build   the last production build (dist/, build/, out/) served statically
+
+With &quot;build&quot; the dev server is stopped too — the domain costs nothing.
+Great for checking what&#x27;s actually deployed, or freeing resources.
+
+Usage:
+  mullion serve &lt;dev|build&gt; [name] [flags]
+</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-setup">mullion setup</h2><pre data-nocopy><code>Sets up a complete local dev stack in one go: creates ~/.mullion, downloads
+Caddy, puts mullion on your PATH, installs the latest PHP and makes it the
+system default, installs Composer, installs and starts the latest MySQL,
+and serves phpMyAdmin at https://phpmyadmin.&lt;tld&gt;.
+
+Every step is skipped when it&#x27;s already done, so re-running setup is safe.
+
+Usage:
+  mullion setup [flags]
+</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-ssl">mullion ssl</h2><pre data-nocopy><code>Show the local certificate authority behind https://*.test
+
+Usage:
+  mullion ssl [flags]
+  mullion ssl [command]
+
+Available Commands:
+  all         Serve every site over HTTPS (on) or plain HTTP (off)
+  export      Copy the local CA certificate (for Firefox, phones, VMs)
+  trust       Add the local CA to the system trust store (asks for your password / UAC)
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-ssl-all">mullion ssl all</h3><pre data-nocopy><code>Serve every site over HTTPS (on) or plain HTTP (off)
+
+Usage:
+  mullion ssl all &lt;on|off&gt; [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-ssl-export">mullion ssl export</h3><pre data-nocopy><code>Copy the local CA certificate (for Firefox, phones, VMs)
+
+Usage:
+  mullion ssl export &lt;file&gt; [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-ssl-trust">mullion ssl trust</h3><pre data-nocopy><code>Add the local CA to the system trust store (asks for your password / UAC)
+
+Usage:
+  mullion ssl trust [flags]
+</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-start">mullion start</h2><pre data-nocopy><code>Start Caddy and the PHP FastCGI workers for all sites
+
+Usage:
+  mullion start [flags]
+</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-status">mullion status</h2><pre data-nocopy><code>Show what&#x27;s running
+
+Usage:
+  mullion status [flags]
+</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-stop">mullion stop</h2><pre data-nocopy><code>Stop Caddy and all PHP FastCGI workers
+
+Usage:
+  mullion stop [flags]
+</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-tld">mullion tld</h2><pre data-nocopy><code>With no argument, prints the current TLD. With an argument, changes it —
+e.g. `mullion tld local` makes every site resolve as &lt;name&gt;.local.
+
+Avoid real public TLDs like .dev or .app: browsers force them to HTTPS
+(HSTS preload), which breaks plain-HTTP local sites.
+
+Usage:
+  mullion tld [new-tld] [flags]
+</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-tray">mullion tray</h2><pre data-nocopy><code>Starts the services, hides this console, and puts a Mullion icon next
+to the clock: double-click opens the dashboard, right-click gives Start,
+Stop, phpMyAdmin, and Quit. This is what runs at Windows sign-in when
+autostart is enabled.
+
+Usage:
+  mullion tray [flags]
+</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-ui">mullion ui</h2><pre data-nocopy><code>Opens Mullion&#x27;s control panel in an app-mode browser window: service
+status, PHP versions, Node, MySQL, and the linked sites — all clickable.
+The panel runs in the background: closing this terminal does not close it.
+
+Usage:
+  mullion ui [flags]
+</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-uninstall">mullion uninstall</h2><pre data-nocopy><code>Stops every service and removes everything Mullion put on this machine:
+~/.mullion (PHP versions, MySQL/PostgreSQL/MongoDB and their databases,
+phpMyAdmin, Composer), the hosts-file entries, the PATH entries, the
+trusted root certificate, and the autostart registration.
+
+Your project folders are NOT touched — Mullion only ever links to them.
+
+Before deleting, it offers to export every installed database server&#x27;s
+data (MySQL, PostgreSQL, MongoDB) to a timestamped backup folder next
+to ~/.mullion.
+
+Usage:
+  mullion uninstall [flags]
+
+Flags:
+      --backup      export databases before removing
+      --no-backup   skip the database backup
+      --yes         do not ask for confirmation</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-unisolate">mullion unisolate</h2><pre data-nocopy><code>Make the current project&#x27;s site follow the global PHP version again
+
+Usage:
+  mullion unisolate [flags]
+
+Flags:
+      --site string   site name (defaults to the current directory&#x27;s link)</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-unlink">mullion unlink</h2><pre data-nocopy><code>Stop serving a site (defaults to the current directory&#x27;s link)
+
+Usage:
+  mullion unlink [name] [flags]
+</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-unsecure">mullion unsecure</h2><pre data-nocopy><code>Go back to plain HTTP for a site
+
+Usage:
+  mullion unsecure [name] [flags]
+</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-use">mullion use</h2><pre data-nocopy><code>Switch the system-wide PHP version (php on PATH)
+
+Usage:
+  mullion use &lt;version&gt; [flags]
+</code></pre></div>
+</section>
+<section class="cmd-group">
+<div class="cmd-block"><h2 id="mullion-worker">mullion worker</h2><pre data-nocopy><code>Workers are long-running commands Mullion keeps up for a site: a
+Laravel queue worker (php artisan queue:work), the scheduler (php artisan
+schedule:work — no cron needed), Horizon, a Node job runner...
+
+Each runs in the site&#x27;s folder with the site&#x27;s PHP and Node on PATH, is
+logged to ~/.mullion/logs/worker-&lt;site&gt;-&lt;id&gt;.log, and — when added with
+--autostart — is started with the stack and restarted if it crashes.
+
+Usage:
+  mullion worker [command]
+
+Available Commands:
+  add         Add a worker to a site
+  list        List workers and whether they are running (all sites by default)
+  logs        Show the end of a worker&#x27;s log
+  remove      Stop and delete a worker
+  restart     Restart a worker (picks up code and .env changes)
+  start       Start a worker (and unpause it)
+  stop        Stop a worker (it stays stopped until started again)
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-worker-add">mullion worker add</h3><pre data-nocopy><code>Add a worker to a site
+
+Usage:
+  mullion worker add &lt;site&gt; --command &lt;cmd&gt; [flags]
+
+Examples:
+  mullion worker add shop --name Queue --kind queue --command &quot;php artisan queue:work --tries=3&quot; --autostart
+  mullion worker add shop --name Scheduler --kind scheduler --command &quot;php artisan schedule:work&quot; --autostart
+
+Flags:
+      --autostart        start it now, with the stack, and restart it if it crashes
+      --command string   command to run in the site&#x27;s folder (required)
+      --kind string      queue, scheduler or custom (default &quot;custom&quot;)
+      --name string      label shown in lists and the panel (defaults to the command)</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-worker-list">mullion worker list</h3><pre data-nocopy><code>List workers and whether they are running (all sites by default)
+
+Usage:
+  mullion worker list [site] [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-worker-logs">mullion worker logs</h3><pre data-nocopy><code>Show the end of a worker&#x27;s log
+
+Usage:
+  mullion worker logs &lt;site&gt; &lt;id&gt; [flags]
+
+Flags:
+  -n, --lines int   number of lines to show (default 50)</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-worker-remove">mullion worker remove</h3><pre data-nocopy><code>Stop and delete a worker
+
+Usage:
+  mullion worker remove &lt;site&gt; &lt;id&gt; [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-worker-restart">mullion worker restart</h3><pre data-nocopy><code>Restart a worker (picks up code and .env changes)
+
+Usage:
+  mullion worker restart &lt;site&gt; &lt;id&gt; [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-worker-start">mullion worker start</h3><pre data-nocopy><code>Start a worker (and unpause it)
+
+Usage:
+  mullion worker start &lt;site&gt; &lt;id&gt; [flags]
+</code></pre></div>
+<div class="cmd-block"><h3 id="mullion-worker-stop">mullion worker stop</h3><pre data-nocopy><code>Stop a worker (it stays stopped until started again)
+
+Usage:
+  mullion worker stop &lt;site&gt; &lt;id&gt; [flags]
+</code></pre></div>
+</section>
+<nav class="pager" aria-label="Previous and next"><a class="prev" href="troubleshooting.html"><small>Previous</small><span>← Troubleshooting &amp; FAQ</span></a><a class="next" href="changelog.html"><small>Next</small><span>Changelog →</span></a></nav>
+</main>
+<aside class="toc" aria-label="On this page"><h4>On this page</h4><ul></ul></aside>
+</div>
+<footer class="site-footer">
+  <div class="footer-in">
+    <span>Mullion v2.0.0 · MIT licensed · © 2026 Abdelrahman Nabil</span>
+    <nav aria-label="Footer">
+      <a href="../docs/getting-started.html">Get started</a>
+      <a href="../docs/cli.html">CLI reference</a>
+      <a href="../docs/changelog.html">Changelog</a>
+      <a href="https://github.com/anabiiil/mullion/releases/latest">Releases</a>
+      <a href="https://github.com/anabiiil/mullion/issues">Issues</a>
+    </nav>
+  </div>
+</footer>
+<script src="../assets/js/site.js"></script>
+</body>
+</html>

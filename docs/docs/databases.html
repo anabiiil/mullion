@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Databases · Mullion</title>
+<meta name="description" content="MySQL/MariaDB, PostgreSQL and MongoDB side by side. Each has its own admin tool, and backups are offered before anything destructive.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#1C2333">
+<meta property="og:title" content="Databases · Mullion">
+<meta property="og:description" content="MySQL/MariaDB, PostgreSQL and MongoDB side by side. Each has its own admin tool, and backups are offered before anything destructive.">
+<meta property="og:image" content="https://anabiiil.github.io/mullion/assets/screenshots/hero.png">
+<meta property="og:type" content="website">
+<link rel="icon" href="../assets/brand/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../assets/brand/apple-touch-icon.png">
+<link rel="stylesheet" href="../assets/css/site.css">
+<script>try{var t=localStorage.getItem('mullion-theme');document.documentElement.setAttribute('data-theme',t||(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'))}catch(e){}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="header-in">
+    <button class="icon-btn menu-btn" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+    <a class="brand" href="../index.html" aria-label="Mullion home"><img src="../assets/brand/mullion-mark.svg" alt="" width="28" height="28">Mullion<span class="ver">v2.0.0</span></a>
+    <nav class="nav" aria-label="Main">
+      <a href="../docs/" aria-current="page" class="">Docs</a><a href="../docs/cli.html" class="hide-sm">CLI</a><a href="../docs/changelog.html" class="hide-sm">Changelog</a>
+      <a href="https://github.com/anabiiil/mullion" aria-label="Mullion on GitHub" title="GitHub"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.1c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.9 1.3 1.9 1.3 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.7 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg></a>
+      <button class="icon-btn theme-btn" type="button" aria-label="Toggle theme"><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+    </nav>
+  </div>
+</header>
+<div class="docs">
+<nav class="sidebar" id="sidebar" aria-label="Documentation">
+<ul><li><a href="index.html">Overview</a></li></ul>
+<h4>Start</h4><ul>
+<li><a href="getting-started.html">Getting started</a></li>
+<li><a href="installation.html">Installation</a></li>
+</ul>
+<h4>Using Mullion</h4><ul>
+<li><a href="sites.html">Sites &amp; domains</a></li>
+<li><a href="project-page.html">Project page</a></li>
+<li><a href="terminal.html">Terminal</a></li>
+<li><a href="git.html">Git</a></li>
+<li><a href="databases.html" aria-current="page">Databases</a></li>
+<li><a href="php.html">PHP</a></li>
+<li><a href="node.html">Node</a></li>
+<li><a href="ports-ssl.html">Ports &amp; SSL</a></li>
+<li><a href="settings.html">Settings</a></li>
+</ul>
+<h4>Reference</h4><ul>
+<li><a href="troubleshooting.html">Troubleshooting &amp; FAQ</a></li>
+<li><a href="cli.html">CLI reference</a></li>
+<li><a href="changelog.html">Changelog</a></li>
+</ul>
+</nav>
+<main class="content" id="main">
+<div class="crumb">Using Mullion</div>
+<h1>Databases</h1>
+<p class="lede">MySQL/MariaDB, PostgreSQL and MongoDB side by side. Each has its own admin tool, and backups are offered before anything destructive.</p>
+
+<figure><div class="shot"><img src="../assets/screenshots/database-postgres.png" alt="The PostgreSQL tab: server status, superuser password and a list of databases" loading="lazy" width="2560" height="1720"></div></figure>
+<h2 id="engines">Engines</h2>
+<p>The Database page has a tab for each engine. Each one installs, starts and stops independently, and an engine you stop stays stopped until you start it. The stack and autostart won't bring it back.</p>
+<div class="table-wrap"><table><thead><tr><th scope="col">Engine</th><th scope="col">Default</th><th scope="col">Admin tool</th><th scope="col">CLI</th></tr></thead><tbody><tr><td>MySQL / MariaDB</td><td>8.4 LTS on <code>127.0.0.1:3306</code>, user <code>root</code>, no password</td><td>phpMyAdmin at <code>https://phpmyadmin.test</code> (HeidiSQL also available on Windows)</td><td><code>mullion mysql</code>, <code>db</code>, <code>mariadb</code></td></tr><tr><td>PostgreSQL</td><td>17 on <code>127.0.0.1:5432</code>, user <code>postgres</code></td><td>pgAdmin 4, with a "Mullion (PostgreSQL)" server already registered</td><td><code>mullion postgres</code> (<code>pg</code>), <code>pgadmin</code></td></tr><tr><td>MongoDB</td><td>8.0 on <code>127.0.0.1:27017</code></td><td>mongo-express at <code>https://mongo.test</code></td><td><code>mullion mongo</code>, <code>mongo-express</code></td></tr></tbody></table></div>
+<p>Installed admin tools appear as buttons in the panel's top bar and can be uninstalled from their engine's tab. Uninstalling an admin tool leaves the database server alone.</p>
+
+<h2 id="mysql-and-mariadb">MySQL and MariaDB</h2>
+<pre><code><span class="p">$ </span>mullion mysql install<span class="c">          # newest 8.4 LTS</span>
+<span class="p">$ </span>mullion mysql install 8.0<span class="c">      # a branch, &quot;latest&quot;, or a full version</span>
+<span class="p">$ </span>mullion mariadb<span class="c">                # switch to MariaDB (newest stable)</span>
+<span class="p">$ </span>mullion mysql password secret<span class="c">  # phpMyAdmin follows automatically</span>
+<span class="p">$ </span>mullion db create shop<span class="c">         # utf8mb4</span>
+<span class="p">$ </span>mullion db list
+<span class="p">$ </span>mullion mysql restore ~/Mullion-Backups/2026-09-23_092011-mysql</code></pre>
+<p>When you switch versions, your databases migrate automatically: Mullion dumps them from the old server, starts the new one with a fresh data folder, and restores the dump. The old data folder and the dump are kept as backups. If it replaces another MySQL (Laragon, XAMPP, a Homebrew service), it always offers a backup first and imports it.</p>
+
+<h2 id="postgresql">PostgreSQL</h2>
+<pre><code><span class="p">$ </span>mullion postgres install<span class="c">       # newest 17; &quot;16&quot;, &quot;latest&quot; or &quot;16.4&quot; also work</span>
+<span class="p">$ </span>mullion pg db create analytics
+<span class="p">$ </span>mullion pg password secret
+<span class="p">$ </span>mullion pgadmin<span class="c">                # installs (first time) and opens pgAdmin 4</span></code></pre>
+<p>Switching to a different major version stops the previous server. Data folders are per major version, so the old data stays on disk untouched, and Mullion prints where it is.</p>
+
+<h2 id="mongodb">MongoDB</h2>
+<pre><code><span class="p">$ </span>mullion mongo install<span class="c">          # newest 8.0; &quot;7.0&quot;, &quot;latest&quot; or a full version</span>
+<span class="p">$ </span>mullion mongo db create events
+<span class="p">$ </span>mullion mongo-express<span class="c">          # admin UI at https://mongo.test</span></code></pre>
+
+<h2 id="backups">Backups</h2>
+<ul>
+<li><strong>Back up now</strong> on an engine's tab writes a timestamped folder, such as <code>2026-09-24_181502-postgres</code>. You can also run <code>mullion mysql backup</code>, <code>mullion postgres backup</code>, or <code>mullion mongo backup</code>.</li>
+<li>Each engine's <strong>Backups</strong> card lists its backups with their size and contents, and has <strong>Restore</strong> and <strong>Delete</strong> buttons.</li>
+<li><code>mullion backups</code> lists every backup from the CLI.</li>
+<li>Backups go to a folder next to the install folder by default: <code>~/.mullion-Backups</code> or <code>C:\Mullion-Backups</code>. That way they survive an uninstall. Change the folder in <a href="settings.html#backups">Settings</a>.</li>
+</ul>
+<pre><code><span class="p">$ </span>mullion postgres restore &lt;backup-folder&gt;<span class="c">            # every database, plus roles (best effort)</span>
+<span class="p">$ </span>mullion postgres restore &lt;backup-folder&gt; shop<span class="c">       # just one database</span>
+<span class="p">$ </span>mullion mongo restore &lt;backup-folder-or-.archive.gz&gt;
+<span class="p">$ </span>mullion mysql restore &lt;file.sql-or-folder&gt;</code></pre>
+<div class="callout "><p>Backups are also taken automatically when you switch MySQL versions and, if you choose, before uninstalling an engine.</p></div>
+
+<h2 id="uninstalling-an-engine">Uninstalling an engine</h2>
+<p>An engine's <strong>Uninstall…</strong> button, or <code>mullion &lt;engine&gt; uninstall</code>, stops the server, backs it up, and removes the binaries, the data and its admin tool. The PostgreSQL and MongoDB commands take <code>--keep-data</code>, <code>--no-backup</code> and <code>--yes</code>.</p>
+
+<h2 id="changing-ports">Changing ports</h2>
+<p>If another program already uses a database's port, move the engine. Mullion checks the new port for conflicts and restarts the engine if it's running.</p>
+<pre><code><span class="p">$ </span>mullion port set postgres 5433
+<span class="p">$ </span>mullion port set mysql 3307 --force<span class="c">   # even if something holds it</span></code></pre>
+
+<nav class="pager" aria-label="Previous and next"><a class="prev" href="git.html"><small>Previous</small><span>← Git</span></a><a class="next" href="php.html"><small>Next</small><span>PHP →</span></a></nav>
+</main>
+<aside class="toc" aria-label="On this page"><h4>On this page</h4><ul></ul></aside>
+</div>
+<footer class="site-footer">
+  <div class="footer-in">
+    <span>Mullion v2.0.0 · MIT licensed · © 2026 Abdelrahman Nabil</span>
+    <nav aria-label="Footer">
+      <a href="../docs/getting-started.html">Get started</a>
+      <a href="../docs/cli.html">CLI reference</a>
+      <a href="../docs/changelog.html">Changelog</a>
+      <a href="https://github.com/anabiiil/mullion/releases/latest">Releases</a>
+      <a href="https://github.com/anabiiil/mullion/issues">Issues</a>
+    </nav>
+  </div>
+</footer>
+<script src="../assets/js/site.js"></script>
+</body>
+</html>

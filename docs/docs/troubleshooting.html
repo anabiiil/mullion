@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Troubleshooting &amp; FAQ · Mullion</title>
+<meta name="description" content="Start with mullion doctor. The rest of this page covers the questions people ask most.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#1C2333">
+<meta property="og:title" content="Troubleshooting &amp; FAQ · Mullion">
+<meta property="og:description" content="Start with mullion doctor. The rest of this page covers the questions people ask most.">
+<meta property="og:image" content="https://anabiiil.github.io/mullion/assets/screenshots/hero.png">
+<meta property="og:type" content="website">
+<link rel="icon" href="../assets/brand/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../assets/brand/apple-touch-icon.png">
+<link rel="stylesheet" href="../assets/css/site.css">
+<script>try{var t=localStorage.getItem('mullion-theme');document.documentElement.setAttribute('data-theme',t||(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'))}catch(e){}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="header-in">
+    <button class="icon-btn menu-btn" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+    <a class="brand" href="../index.html" aria-label="Mullion home"><img src="../assets/brand/mullion-mark.svg" alt="" width="28" height="28">Mullion<span class="ver">v2.0.0</span></a>
+    <nav class="nav" aria-label="Main">
+      <a href="../docs/" aria-current="page" class="">Docs</a><a href="../docs/cli.html" class="hide-sm">CLI</a><a href="../docs/changelog.html" class="hide-sm">Changelog</a>
+      <a href="https://github.com/anabiiil/mullion" aria-label="Mullion on GitHub" title="GitHub"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.1c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.9 1.3 1.9 1.3 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.7 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg></a>
+      <button class="icon-btn theme-btn" type="button" aria-label="Toggle theme"><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+    </nav>
+  </div>
+</header>
+<div class="docs">
+<nav class="sidebar" id="sidebar" aria-label="Documentation">
+<ul><li><a href="index.html">Overview</a></li></ul>
+<h4>Start</h4><ul>
+<li><a href="getting-started.html">Getting started</a></li>
+<li><a href="installation.html">Installation</a></li>
+</ul>
+<h4>Using Mullion</h4><ul>
+<li><a href="sites.html">Sites &amp; domains</a></li>
+<li><a href="project-page.html">Project page</a></li>
+<li><a href="terminal.html">Terminal</a></li>
+<li><a href="git.html">Git</a></li>
+<li><a href="databases.html">Databases</a></li>
+<li><a href="php.html">PHP</a></li>
+<li><a href="node.html">Node</a></li>
+<li><a href="ports-ssl.html">Ports &amp; SSL</a></li>
+<li><a href="settings.html">Settings</a></li>
+</ul>
+<h4>Reference</h4><ul>
+<li><a href="troubleshooting.html" aria-current="page">Troubleshooting &amp; FAQ</a></li>
+<li><a href="cli.html">CLI reference</a></li>
+<li><a href="changelog.html">Changelog</a></li>
+</ul>
+</nav>
+<main class="content" id="main">
+<div class="crumb">Reference</div>
+<h1>Troubleshooting &amp; FAQ</h1>
+<p class="lede">Start with mullion doctor. The rest of this page covers the questions people ask most.</p>
+
+<h2 id="start-with-doctor">Start with doctor</h2>
+<pre><code><span class="p">$ </span>mullion doctor</code></pre>
+<p>It checks:</p>
+<ul>
+<li>the binary</li>
+<li>every port and who owns it</li>
+<li>Caddy's identity and config</li>
+<li>PHP, Node and the databases</li>
+<li>the wake agent</li>
+<li>every site</li>
+</ul>
+<p>Each problem is marked in red, with its fix. You can also run it from <strong>Settings → Diagnostics</strong>. Please paste the output when you <a href="https://github.com/anabiiil/mullion/issues">open an issue</a>.</p>
+
+<h2 id="why-does-linking-a-site-ask-for-my-password">Why does linking a site ask for my password?</h2>
+<p>New domains are written to the hosts file (<code>/etc/hosts</code> or <code>C:\Windows\System32\drivers\etc\hosts</code>) inside a marked block that Mullion manages. Writing there needs administrator rights:</p>
+<ul>
+<li>From a terminal you get a <code>sudo</code> prompt.</li>
+<li>From the panel or the background agent you get the system password dialog on macOS, or UAC on Windows.</li>
+</ul>
+<p>Wildcard subdomains use <a href="sites.html#wildcard-dns">wildcard DNS</a> instead of the hosts file.</p>
+
+<h2 id="the-browser-says-the-certificate-isn-t-trusted">The browser says the certificate isn't trusted</h2>
+<p>Run <code>mullion ssl trust</code>, or click <strong>Trust again</strong> on the Ports &amp; SSL page. Firefox, phones and VMs have their own trust stores: run <code>mullion ssl export ~/mullion-ca.crt</code> and import the file there.</p>
+
+<h2 id="php-v-or-node-v-shows-another-version"><code>php -v</code> or <code>node -v</code> shows another version</h2>
+<p>Another install comes earlier on your <code>PATH</code>: Laragon or XAMPP on Windows, nvm or Homebrew on macOS. <code>mullion use</code> and <code>mullion node use</code> detect this and offer to disable the offending entry. Then open a <strong>new</strong> terminal. <code>mullion node which</code> explains exactly which Node resolves in the current folder and why.</p>
+
+<h2 id="a-frontend-link-shows-an-error-page">A frontend link shows an error page</h2>
+<p>The page shows the real reason and the end of the dev server's log. Fix it and refresh; <code>mullion doctor</code> shows the same details. Common causes:</p>
+<ul>
+<li>A dependency failed to install.</li>
+<li>The project needs a different Node version: pin it with <code>mullion node isolate</code> or add an <code>.nvmrc</code>.</li>
+<li>The dev script doesn't start a server.</li>
+</ul>
+
+<h2 id="vite-or-another-dev-server-and-ports">Vite (or another dev server) and ports</h2>
+<p>Each frontend site has a stable dev port, and Mullion proxies the domain to whatever port the server actually opened. If the assigned port is taken, pick another with <code>mullion port dev &lt;site&gt; &lt;port&gt;</code>, the project's Domains tab, or the Ports &amp; SSL page. Vite's "Blocked request. This host is not allowed" is handled for you: the proxy sends the dev server a <code>localhost</code> <code>Host</code> header, and the original name arrives in <code>X-Forwarded-Host</code>.</p>
+
+<h2 id="git-push-fails-from-the-panel"><code>git push</code> fails from the panel</h2>
+<p>The panel can't type a password or an SSH key passphrase. Sign in once in a terminal and your credential helper or SSH agent remembers it:</p>
+<pre><code><span class="p">$ </span>ssh-add --apple-use-keychain ~/.ssh/id_ed25519<span class="c">   # macOS: store the passphrase in the keychain</span></code></pre>
+<p>On Windows, start the <em>OpenSSH Authentication Agent</em> service and run <code>ssh-add</code>. For HTTPS remotes, run the Git command once in the built-in terminal.</p>
+
+<h2 id="wildcard-subdomains-don-t-resolve">Wildcard subdomains don't resolve</h2>
+<p><code>*</code> aliases need <code>mullion dns on</code>. <code>mullion dns status</code> shows whether the resolver hookup and the DNS server are in place. On Windows, port 53 must be free; Internet Connection Sharing and local DNS proxies can hold it.</p>
+
+<h2 id="a-port-is-already-in-use">A port is already in use</h2>
+<p><code>mullion ports</code> (or the Ports &amp; SSL page) shows who holds it. When an old stack or a resurrected Homebrew service holds 80, 443 or 3306, <code>mullion start</code> and setup offer to stop it. To keep both, move Mullion's database with <code>mullion port set</code>.</p>
+
+<h2 id="a-queue-worker-keeps-restarting">A queue worker keeps restarting</h2>
+<p>After 5 crashes within 2 minutes a worker is marked <em>crash-looping</em> and left stopped. Open its <strong>Logs</strong> (or run <code>mullion worker logs &lt;site&gt; &lt;id&gt;</code>), fix the cause, and start it again.</p>
+
+<h2 id="antivirus-flags-mullion-exe">Antivirus flags mullion.exe</h2>
+<p>Unsigned Go binaries are sometimes flagged. The build embeds an icon, version information and a manifest, and it's deliberately not stripped, all of which reduce false positives. If it happens, report the false positive to your antivirus vendor. Scoop and the Releases page publish the same binary.</p>
+
+<h2 id="where-are-the-logs">Where are the logs?</h2>
+<p>In <code>~/.mullion/logs/</code> (<code>C:\Mullion\logs\</code> on Windows), including one log per dev server and one per worker (<code>worker-&lt;site&gt;-&lt;id&gt;.log</code>).</p>
+
+<nav class="pager" aria-label="Previous and next"><a class="prev" href="settings.html"><small>Previous</small><span>← Settings</span></a><a class="next" href="cli.html"><small>Next</small><span>CLI reference →</span></a></nav>
+</main>
+<aside class="toc" aria-label="On this page"><h4>On this page</h4><ul></ul></aside>
+</div>
+<footer class="site-footer">
+  <div class="footer-in">
+    <span>Mullion v2.0.0 · MIT licensed · © 2026 Abdelrahman Nabil</span>
+    <nav aria-label="Footer">
+      <a href="../docs/getting-started.html">Get started</a>
+      <a href="../docs/cli.html">CLI reference</a>
+      <a href="../docs/changelog.html">Changelog</a>
+      <a href="https://github.com/anabiiil/mullion/releases/latest">Releases</a>
+      <a href="https://github.com/anabiiil/mullion/issues">Issues</a>
+    </nav>
+  </div>
+</footer>
+<script src="../assets/js/site.js"></script>
+</body>
+</html>

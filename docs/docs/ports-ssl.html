@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ports &amp; SSL · Mullion</title>
+<meta name="description" content="See every port Mullion uses and who holds it, move ports that clash, and manage the local certificate authority and wildcard DNS.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#1C2333">
+<meta property="og:title" content="Ports &amp; SSL · Mullion">
+<meta property="og:description" content="See every port Mullion uses and who holds it, move ports that clash, and manage the local certificate authority and wildcard DNS.">
+<meta property="og:image" content="https://anabiiil.github.io/mullion/assets/screenshots/hero.png">
+<meta property="og:type" content="website">
+<link rel="icon" href="../assets/brand/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../assets/brand/apple-touch-icon.png">
+<link rel="stylesheet" href="../assets/css/site.css">
+<script>try{var t=localStorage.getItem('mullion-theme');document.documentElement.setAttribute('data-theme',t||(window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'))}catch(e){}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="header-in">
+    <button class="icon-btn menu-btn" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+    <a class="brand" href="../index.html" aria-label="Mullion home"><img src="../assets/brand/mullion-mark.svg" alt="" width="28" height="28">Mullion<span class="ver">v2.0.0</span></a>
+    <nav class="nav" aria-label="Main">
+      <a href="../docs/" aria-current="page" class="">Docs</a><a href="../docs/cli.html" class="hide-sm">CLI</a><a href="../docs/changelog.html" class="hide-sm">Changelog</a>
+      <a href="https://github.com/anabiiil/mullion" aria-label="Mullion on GitHub" title="GitHub"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.1c-3.3.7-4-1.6-4-1.6-.6-1.4-1.4-1.8-1.4-1.8-1.1-.7.1-.7.1-.7 1.2.1 1.9 1.3 1.9 1.3 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-5.9 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.2 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0C17.3 4.7 18.3 5 18.3 5c.7 1.7.2 2.9.1 3.2.8.8 1.2 1.9 1.2 3.2 0 4.6-2.8 5.6-5.5 5.9.4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .5z"/></svg></a>
+      <button class="icon-btn theme-btn" type="button" aria-label="Toggle theme"><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+    </nav>
+  </div>
+</header>
+<div class="docs">
+<nav class="sidebar" id="sidebar" aria-label="Documentation">
+<ul><li><a href="index.html">Overview</a></li></ul>
+<h4>Start</h4><ul>
+<li><a href="getting-started.html">Getting started</a></li>
+<li><a href="installation.html">Installation</a></li>
+</ul>
+<h4>Using Mullion</h4><ul>
+<li><a href="sites.html">Sites &amp; domains</a></li>
+<li><a href="project-page.html">Project page</a></li>
+<li><a href="terminal.html">Terminal</a></li>
+<li><a href="git.html">Git</a></li>
+<li><a href="databases.html">Databases</a></li>
+<li><a href="php.html">PHP</a></li>
+<li><a href="node.html">Node</a></li>
+<li><a href="ports-ssl.html" aria-current="page">Ports &amp; SSL</a></li>
+<li><a href="settings.html">Settings</a></li>
+</ul>
+<h4>Reference</h4><ul>
+<li><a href="troubleshooting.html">Troubleshooting &amp; FAQ</a></li>
+<li><a href="cli.html">CLI reference</a></li>
+<li><a href="changelog.html">Changelog</a></li>
+</ul>
+</nav>
+<main class="content" id="main">
+<div class="crumb">Using Mullion</div>
+<h1>Ports &amp; SSL</h1>
+<p class="lede">See every port Mullion uses and who holds it, move ports that clash, and manage the local certificate authority and wildcard DNS.</p>
+
+<figure><div class="shot"><img src="../assets/screenshots/ports-dark.png" alt="The Ports &amp; SSL page in dark mode: every port with its status and owner" loading="lazy" width="2560" height="1800"></div></figure>
+<h2 id="ports">Ports</h2>
+<p>The Ports card, and <code>mullion ports</code>, list every port Mullion uses, with whether it's listening and which process holds it:</p>
+<ul>
+<li>Caddy HTTP and HTTPS (80 and 443) and its admin API (2019)</li>
+<li>the wake agent</li>
+<li>each PHP version's FastCGI port</li>
+<li>the database engines</li>
+<li>each frontend site's dev server</li>
+</ul>
+<p>A port held by another program is flagged as a conflict, with that program's name and PID.</p>
+<pre><code><span class="p">$ </span>mullion ports
+<span class="p">$ </span>mullion port set mongo 27018<span class="c">           # move a database engine</span>
+<span class="p">$ </span>mullion port dev storefront 3005<span class="c">       # give a dev server another port</span></code></pre>
+<p>Both commands, and the <strong>Change…</strong> buttons, check the new port. They refuse a port another process holds unless you pass <code>--force</code>, and they restart the service if it's running.</p>
+
+<h2 id="https-certificates">HTTPS certificates</h2>
+<figure><div class="shot"><img src="../assets/screenshots/ssl-dns-dark.png" alt="The HTTPS certificates and Wildcard DNS cards" loading="lazy" width="2560" height="1600"></div></figure>
+<p>Every <code>https://</code> site is signed by Mullion's local certificate authority, which comes from Caddy.</p>
+<pre><code><span class="p">$ </span>mullion ssl<span class="c">                   # CA details: file, subject, expiry, trusted?</span>
+<span class="p">$ </span>mullion ssl trust<span class="c">             # add it to the system trust store (password / UAC)</span>
+<span class="p">$ </span>mullion ssl export ~/ca.crt<span class="c">   # for Firefox, phones and VMs</span>
+<span class="p">$ </span>mullion ssl all on<span class="c">            # HTTPS for every site (&quot;off&quot; for plain HTTP)</span></code></pre>
+<p>Firefox, phones and virtual machines keep their own trust stores. Export the certificate and import it in each of them.</p>
+
+<h2 id="wildcard-dns">Wildcard DNS</h2>
+<p>The <strong>Wildcard DNS</strong> card and <code>mullion dns on|off|status</code> manage the resolver that <code>*</code> aliases need. For how it works on each OS, see <a href="sites.html#wildcard-dns">Sites &amp; domains → Wildcard DNS</a>.</p>
+
+<nav class="pager" aria-label="Previous and next"><a class="prev" href="node.html"><small>Previous</small><span>← Node</span></a><a class="next" href="settings.html"><small>Next</small><span>Settings →</span></a></nav>
+</main>
+<aside class="toc" aria-label="On this page"><h4>On this page</h4><ul></ul></aside>
+</div>
+<footer class="site-footer">
+  <div class="footer-in">
+    <span>Mullion v2.0.0 · MIT licensed · © 2026 Abdelrahman Nabil</span>
+    <nav aria-label="Footer">
+      <a href="../docs/getting-started.html">Get started</a>
+      <a href="../docs/cli.html">CLI reference</a>
+      <a href="../docs/changelog.html">Changelog</a>
+      <a href="https://github.com/anabiiil/mullion/releases/latest">Releases</a>
+      <a href="https://github.com/anabiiil/mullion/issues">Issues</a>
+    </nav>
+  </div>
+</footer>
+<script src="../assets/js/site.js"></script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <title>Mullion</title>
+  <defs>
+    <!-- the window: a rounded square, radius ≈ 27% of the size -->
+    <clipPath id="m-window"><rect width="24" height="24" rx="6.5"/></clipPath>
+  </defs>
+  <g clip-path="url(#m-window)">
+    <rect width="24" height="24" fill="#FF6B4A"/>
+    <!-- transom: a half-strength bar across the left pane -->
+    <rect x="0" y="8.5" width="12" height="2" fill="#1C2333" fill-opacity=".34"/>
+    <!-- the mullion: the full-height bar that divides the window into two panes -->
+    <rect x="10.75" y="0" width="2.5" height="24" fill="#1C2333"/>
+  </g>
+</svg>
