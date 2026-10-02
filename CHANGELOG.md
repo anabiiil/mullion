@@ -2,6 +2,20 @@
 
 All notable changes to Mullion. Versions follow [semantic versioning](https://semver.org).
 
+## Unreleased
+
+- **Mullion Terminal.** The panel can use the standalone Mullion Terminal
+  app as your terminal. A first-run dialog asks which terminal you want
+  and installs Mullion Terminal if you pick it. Settings → Terminal
+  switches between the two and installs or updates the app. Terminal
+  buttons then open the project folder as a new tab there; a project
+  page's own Terminal tab stays built-in and gains an "Open in Mullion
+  Terminal" button. New CLI commands: `mullion terminal [path|site]` and
+  `mullion terminal install`.
+- **Project tabs live on the Sites page.** Open projects show as tabs
+  next to a fixed "All" tab, and the separate "Projects" sidebar entry is
+  gone. Clicking "Sites" in the sidebar closes every project tab.
+
 ## 2.0.0 — 2026-09-25
 
 The biggest release so far: a new identity, a native macOS app, a page for

@@ -219,6 +219,7 @@ func newMux(token string) *http.ServeMux {
 	// The project page registers its own endpoints (project.go).
 	registerProject(api)
 	registerPrefs(api)
+	registerMterm(api)
 
 	api("/api/state", getState)
 	api("/api/start", func(a *app.App, r *http.Request) (any, error) {

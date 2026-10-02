@@ -105,6 +105,8 @@ html[data-theme=dark] .mp-seg button.active { background: var(--seg-active); col
 .mp button:disabled:hover { border-color: var(--border-strong); color: inherit; }
 .mp-btn-ic { display: inline-flex; align-items: center; gap: 6px; }
 .mp-btn-ic svg { width: 13px; height: 13px; flex: none; }
+/* Mullion Terminal buttons: shown only while the app is installed */
+.mp [data-mterm][hidden] { display: none !important; }
 
 /* ── commands ───────────────────────────────────────────────── */
 .mp-cmd-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }

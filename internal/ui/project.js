@@ -295,6 +295,7 @@
   }
   const onVisibility = () => checkVisible();
   document.addEventListener('visibilitychange', onVisibility);
+  window.addEventListener('mullion:mterm-status', syncMterm);
   let io = null;
   if (typeof IntersectionObserver === 'function') {
     io = new IntersectionObserver(() => checkVisible());
@@ -340,6 +341,7 @@
     closeBranchPop();
     destroyTerminal();
     document.removeEventListener('visibilitychange', onVisibility);
+    window.removeEventListener('mullion:mterm-status', syncMterm);
     if (io) io.disconnect();
     root.innerHTML = '';
     root.classList.remove('mp-root');
@@ -459,6 +461,7 @@
         <div class="mp-hero-actions">
           <button class="primary sm" data-hero="open">${ICON.open}Open site</button>
           <button class="sm" data-hero="term">${ICON.term}Terminal here</button>
+          <button class="sm" data-hero="mterm" data-mterm hidden title="Open this folder as a new tab in Mullion Terminal">${ICON.open}Mullion Terminal</button>
           <button class="sm" data-hero="copy" title="copy ${esc(info.path)}">${ICON.copy}Copy path</button>
           <button class="sm" data-hero="reveal">${ICON.folder}${reveal}</button>
         </div>
@@ -475,6 +478,8 @@
     const q = s => els.hero.querySelector(`[data-hero="${s}"]`);
     q('open').onclick = () => window.open(info.url, '_blank');
     q('term').onclick = () => openTerminal();
+    q('mterm').onclick = () => openInMterm();
+    syncMterm();
     q('copy').onclick = async () => say(await copyText(info.path) ? 'Path copied' : 'Could not copy — ' + info.path);
     q('reveal').onclick = () => call('/api/open-path', { path: info.path }).catch(e => say('Error: ' + e.message));
     q('secure').onchange = e => setSecure(e.target.checked);
@@ -513,10 +518,34 @@
     action('Switching Node version…', '/api/sites/node', { name: cur, version: v }, 'Node version updated');
   }
 
+  // Mullion Terminal (the standalone app; index.html's MullionExtTerm).
+  // Its buttons show whenever it's installed, whatever terminal the user
+  // chose; plain "open a terminal" actions go there only when chosen.
+  function mtermInstalled() {
+    const X = window.MullionExtTerm;
+    return !!(X && typeof X.installed === 'function' && X.installed());
+  }
+  function syncMterm() {
+    const on = mtermInstalled();
+    root.querySelectorAll('[data-mterm]').forEach(b => { b.hidden = !on; });
+  }
+  function openInMterm() {
+    const X = window.MullionExtTerm;
+    if (!X) return;
+    Promise.resolve(X.open(cur)).then(() => say('Opened in Mullion Terminal')).catch(e => say('Mullion Terminal: ' + e.message));
+  }
+
   // openTerminal opens (or focuses) a terminal in the project; with a
   // command it opens a fresh tab and types it there — or, when the
-  // terminal isn't available, copies it for pasting.
+  // terminal isn't available, copies it for pasting. A plain open (no
+  // command) follows the terminal.app preference; a command always needs
+  // the built-in terminal, since it's typed into the new shell.
   async function openTerminal(command) {
+    const X = window.MullionExtTerm;
+    if (!command && X && typeof X.route === 'function' && X.route(cur, () => openBuiltinTerminal())) return;
+    return openBuiltinTerminal(command);
+  }
+  async function openBuiltinTerminal(command) {
     const MT = window.MullionTerminal;
     if (!MT || typeof MT.openInProject !== 'function') {
       if (command) {
@@ -572,9 +601,12 @@
     if (!box.firstChild) {
       box.innerHTML = `<section class="card mp-term-card">
           <div class="card-head">${ICON.term}<h2>Terminal</h2><span class="hint" title="${esc(info.path)}">In the project folder, with the site's ${isNode() ? 'Node' : 'PHP'}</span>
+            <button class="sm mp-btn-ic" data-term="mterm" data-mterm hidden title="Open this folder as a new tab in Mullion Terminal">${ICON.term}Open in Mullion Terminal</button>
             <button class="sm mp-btn-ic" data-term="window">${ICON.open}Open in window</button></div>
           <div class="mp-term-host"></div>
         </section>`;
+      box.querySelector('[data-term="mterm"]').onclick = () => openInMterm();
+      syncMterm();
       box.querySelector('[data-term="window"]').onclick = () => {
         const MT = window.MullionTerminal;
         if (MT && typeof MT.openWindow === 'function') {

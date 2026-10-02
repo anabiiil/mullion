@@ -256,6 +256,25 @@ window, or the project page.
   <img src="docs/assets/screenshots/terminal-dark.png" alt="The built-in terminal suggesting artisan commands" width="820">
 </p>
 
+### Mullion Terminal (optional)
+
+[Mullion Terminal](https://github.com/anabiiil/mullion-terminal) is a
+standalone terminal app with tabs, a folder sidebar, learned command
+suggestions and open-in-editor buttons. On first launch the panel asks
+which terminal you want; pick Mullion Terminal and it downloads and
+installs it for you (about 100 MB). After that, the panel's Terminal
+buttons open the project folder as a new tab in Mullion Terminal. Switch
+back, install, or update it under Settings → Terminal. The Terminal tab
+on a project's page always uses the built-in terminal, and commands the
+panel types for you (Composer, artisan) still run there.
+
+```bash
+mullion terminal install   # install or update it, and make it your terminal
+mullion terminal myapp     # open a site (or a folder) in it
+```
+
+It is built for Apple-silicon Macs and 64-bit Windows.
+
 ## Git
 
 Every project has a Git tab. It covers:

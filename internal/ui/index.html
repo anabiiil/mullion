@@ -512,7 +512,7 @@
   .ptab-pane[hidden] { display: none; }
 
   /* project tabs: one per open project, side by side */
-  .ptabs-bar { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .ptabs-bar { display: flex; align-items: center; gap: 10px; min-width: 0; margin-bottom: 20px; }
   .ptabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; min-width: 0; flex: 0 1 auto;
            background: var(--card); border: 1px solid var(--border); border-radius: 14px;
            padding: 4px; box-shadow: var(--shadow); }
@@ -532,15 +532,13 @@
   .ptab .x:hover { opacity: 1; background: rgba(127, 127, 127, .22); }
   .ptab.dragging { opacity: .45; }
   .ptab.drop-before { box-shadow: inset 2px 0 0 var(--accent); }
-  /* Sites toolbar: the projects open in tabs, one click away */
-  .open-proj { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
-  .open-proj .lbl { font-size: 11px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase;
-                    color: var(--faint); margin-right: 2px; }
-  .open-proj button { display: inline-flex; align-items: center; gap: 7px; padding: 3px 11px 3px 3px;
-                      border-radius: 999px; font-size: 12.5px; background: var(--card); box-shadow: var(--shadow); }
-  .open-proj button.active { border-color: var(--accent); color: var(--accent-text); }
-  .open-proj .fw-mark.xs { width: 22px; height: 22px; border-radius: 999px; font-size: 9.5px; }
-  .open-proj .fw-mark.xs svg { width: 12px; height: 12px; }
+  /* the fixed first tab: every site (not closable, not draggable) */
+  .ptab.all { padding: 4px 12px 4px 6px; }
+  .ptab.all .ic { width: 24px; height: 24px; border-radius: 7px; flex: none; display: inline-flex;
+                  align-items: center; justify-content: center; background: var(--accent-soft); color: var(--accent); }
+  .ptab.all .ic svg { width: 13px; height: 13px; }
+  .ptab.all.active .ic { background: rgba(255, 255, 255, .12); color: var(--accent); }
+  .ptabs .sep { width: 1px; flex: none; align-self: stretch; margin: 5px 3px; background: var(--border); }
   .fw-mark.xs { width: 24px; height: 24px; border-radius: 7px; font-size: 10.5px; letter-spacing: -.3px; }
   .fw-mark.xs svg { width: 14px; height: 14px; }
   .ptab.active .fw-mark.xs { background: color-mix(in srgb, var(--fw) 26%, transparent); }
@@ -565,6 +563,60 @@
   /* ── terminal page ───────────────────────────────────────── */
   #page-terminal.active { display: block; }
   #terminal-root { height: calc(100vh - 150px); min-height: 380px; }
+  #term-ext-note { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+  #term-ext-note span { flex: 1; min-width: 200px; }
+  #page-terminal.ext #terminal-root { height: calc(100vh - 214px); }
+
+  /* ── Mullion Terminal: settings, first-run choice, action toast ── */
+  .dimmed { opacity: .45; pointer-events: none; filter: saturate(.6); transition: opacity .15s; }
+  .mterm-status { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; }
+  .mterm-status .badge { font-size: 10.5px; }
+  .modal-card.tchoice { max-width: 640px; padding: 0; overflow: hidden; position: relative; }
+  .tchoice-head { padding: 26px 28px 6px; }
+  .tchoice-head .modal-message { max-width: 500px; }
+  .tchoice-x { position: absolute; top: 16px; right: 16px; }
+  .tchoice-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 18px 28px 4px; }
+  @media (max-width: 640px) { .tchoice-cards { grid-template-columns: 1fr; } }
+  .tcard { position: relative; display: flex; flex-direction: column; gap: 8px; text-align: left;
+           padding: 18px 18px 16px; border-radius: 18px; border: 1.5px solid var(--border);
+           background: var(--card); color: var(--text); font-weight: 500; line-height: 1.5; box-shadow: var(--shadow); }
+  .tcard:hover { border-color: var(--border-strong); color: var(--text); }
+  .tcard.sel { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+  .tcard[disabled] { opacity: .55; cursor: not-allowed; pointer-events: none; }
+  .tcard .tc-top { display: flex; align-items: center; gap: 11px; }
+  .tcard .tc-ic { width: 38px; height: 38px; border-radius: 12px; flex: none; display: flex;
+                  align-items: center; justify-content: center; background: var(--accent-soft); color: var(--accent); }
+  .tcard.ink .tc-ic { background: var(--ink-card); color: var(--accent); }
+  .tcard .tc-ic svg { width: 19px; height: 19px; }
+  .tcard .tc-name { font-size: 14px; font-weight: 700; letter-spacing: -.15px; }
+  .tcard .tc-tag { display: inline-block; font-size: 10px; font-weight: 750; letter-spacing: .6px; text-transform: uppercase;
+                   color: var(--accent-ink); background: var(--accent); border-radius: 999px; padding: 1px 8px; margin-top: 2px; }
+  .tcard .tc-tag.plain { color: var(--muted); background: var(--inset); border: 1px solid var(--border); }
+  .tcard ul { margin: 2px 0 0; padding: 0 0 0 16px; font-size: 12.5px; color: var(--muted); }
+  .tcard li { margin: 1px 0; }
+  .tcard .tc-foot { margin-top: auto; padding-top: 6px; font-size: 11.5px; font-weight: 650; color: var(--muted); }
+  .tcard .tc-foot.ok { color: var(--ok); }
+  .tcard .tc-radio { position: absolute; top: 16px; right: 16px; width: 18px; height: 18px; border-radius: 50%;
+                     border: 1.5px solid var(--border-strong); background: var(--card); }
+  .tcard.sel .tc-radio { border: 5px solid var(--accent); }
+  .tchoice-prog { margin: 14px 28px 0; padding: 12px 14px; border-radius: 14px; background: var(--inset);
+                  border: 1px solid var(--border); font-size: 12.5px; }
+  .tchoice-prog .lbl { display: flex; justify-content: space-between; gap: 10px; color: var(--muted); font-weight: 600; }
+  .tchoice-prog .bar { height: 6px; border-radius: 999px; background: var(--accent-soft); margin-top: 9px; overflow: hidden; }
+  .tchoice-prog .bar i { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--accent); transition: width .3s ease; }
+  .tchoice-prog .bar.indet i { width: 35%; animation: indet 1.1s ease-in-out infinite; }
+  @keyframes indet { from { transform: translateX(-100%); } to { transform: translateX(290%); } }
+  .tchoice-prog.err { background: var(--bad-bg); border-color: transparent; color: var(--bad); }
+  .tchoice-foot { display: flex; align-items: center; gap: 10px; padding: 20px 28px 24px; }
+  .tchoice-foot .muted { flex: 1; font-size: 11.5px; }
+  #toast-act { position: fixed; bottom: 24px; left: 50%; transform: translate(-50%, 12px); z-index: 61;
+               background: var(--toast); color: #fff; padding: 8px 8px 8px 16px; border-radius: 14px;
+               font-size: 13px; font-weight: 550; display: flex; align-items: center; gap: 12px;
+               opacity: 0; pointer-events: none; transition: opacity .22s, transform .22s;
+               max-width: 86%; box-shadow: var(--shadow-lg); }
+  #toast-act.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+  #toast-act button { padding: 5px 12px; font-size: 12px; border-radius: 8px; }
+  #toast-act .x { background: transparent; border-color: transparent; color: #aeb6c8; padding: 5px 8px; }
   .term-missing { padding: 40px; text-align: center; }
 
   /* ── ports & SSL ─────────────────────────────────────────── */
@@ -643,10 +695,6 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg>
         Sites <span class="count" id="nav-sites">0</span>
       </a>
-      <a href="#projects" data-page="projects" title="Open projects" id="nav-projects" style="display:none">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H10l2 2.5h6.5A2.5 2.5 0 0 1 21 10v7.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z"/><line x1="3" y1="11" x2="21" y2="11"/></svg>
-        Projects <span class="count" id="nav-projects-n">0</span>
-      </a>
       <a href="#terminal" data-page="terminal" title="Terminal">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="M6.5 9.5l3 2.5-3 2.5"/><line x1="12" y1="15" x2="17" y2="15"/></svg>
         Terminal
@@ -699,6 +747,13 @@
     </header>
 
     <main>
+      <!-- Sites' tab strip: "All" (the site list) + one tab per open
+           project. Shown on the Sites and project pages while a project
+           is open (renderTabStrip). -->
+      <div class="ptabs-bar" id="ptabs-bar" style="display:none">
+        <div class="ptabs" id="ptabs" role="tablist" aria-label="Sites and open projects"></div>
+      </div>
+
       <!-- ═══ OVERVIEW ═══ -->
       <div class="page" id="page-overview">
         <div id="shadow-warn" class="warn" style="display:none"></div>
@@ -750,7 +805,6 @@
             <button data-filter="frontend">Frontend <span class="n" id="chip-frontend"></span></button>
             <button data-filter="pinned">Pinned <span class="n" id="chip-pinned"></span></button>
           </div>
-          <div class="open-proj" id="open-proj" style="display:none" aria-label="Open projects"></div>
         </div>
 
         <div class="sec" id="sec-backend">
@@ -805,13 +859,6 @@
 
       <!-- ═══ PROJECT (reached from a site card's Manage) ═══ -->
       <div class="page" id="page-project">
-        <div class="ptabs-bar">
-          <button class="sm back-btn" id="btn-project-back" title="Back to all sites">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-            All sites
-          </button>
-          <div class="ptabs" id="ptabs" role="tablist" aria-label="Open projects"></div>
-        </div>
         <section class="card" id="project-head-card">
           <div class="proj-head" id="project-head"></div>
         </section>
@@ -820,6 +867,10 @@
 
       <!-- ═══ TERMINAL ═══ -->
       <div class="page" id="page-terminal">
+        <div class="note" id="term-ext-note" style="display:none">
+          <span>Mullion Terminal is your terminal — project &ldquo;Terminal&rdquo; buttons open there. This built-in terminal still works here.</span>
+          <button class="sm primary" id="btn-term-ext-open">Open Mullion Terminal</button>
+        </div>
         <div id="terminal-root"></div>
       </div>
 
@@ -1239,14 +1290,31 @@
           </div>
           <div class="card-body">
             <div class="row">
-              <span class="label">Open terminals in</span>
-              <div class="db-tabs" id="term-openin">
-                <button data-openin="page">Terminal page</button>
-                <button data-openin="window">Separate window</button>
-                <button data-openin="project">Project page</button>
+              <span class="label">Terminal app</span>
+              <div class="db-tabs" id="term-app">
+                <button data-app="internal">Built-in</button>
+                <button data-app="external">Mullion Terminal</button>
               </div>
             </div>
-            <p class="muted" id="term-openin-help" style="margin:12px 0 0"></p>
+            <div class="row">
+              <span class="label">Mullion Terminal</span>
+              <span class="mterm-status" id="mterm-status"><span class="muted">Checking…</span></span>
+              <span class="spacer"></span>
+              <button class="sm" id="btn-mterm-install" style="display:none">Install</button>
+              <button class="sm" id="btn-mterm-open" style="display:none">Open Mullion Terminal</button>
+            </div>
+            <p class="muted" id="term-app-help" style="margin:12px 0 0"></p>
+            <div id="term-openin-wrap" style="margin-top:18px; padding-top:16px; border-top:1px solid var(--row)">
+              <div class="row">
+                <span class="label">Open terminals in</span>
+                <div class="db-tabs" id="term-openin">
+                  <button data-openin="page">Terminal page</button>
+                  <button data-openin="window">Separate window</button>
+                  <button data-openin="project">Project page</button>
+                </div>
+              </div>
+              <p class="muted" id="term-openin-help" style="margin:12px 0 0"></p>
+            </div>
           </div>
         </section>
         <section class="card">
@@ -1291,6 +1359,7 @@
 
 <div id="termwin-root"></div>
 <div id="toast"></div>
+<div id="toast-act" role="status"><span></span><button class="primary"></button><button class="x" title="Dismiss">✕</button></div>
 <div id="busy"><div class="box"><div class="spin"></div><span id="busy-label">Working…</span></div></div>
 
 <!-- Page components served beside this file: the built-in terminal and
@@ -1552,9 +1621,10 @@ function alertModal(opts) {
 
 /* ── router ────────────────────────────────────────────────── */
 // Routes are the URL hash: #sites, #terminal, #ports, … plus
-// #project/<name> for a site's page (not in the nav — reached through a
-// card's Manage). The old #backend / #frontend deep links land on Sites
-// with the matching filter.
+// #project/<name> for a site's page — a tab on the Sites page (reached
+// through a card's name or Manage), so the sidebar keeps "Sites" lit.
+// The old #backend / #frontend deep links land on Sites with the
+// matching filter, and #projects on the last active project tab.
 const TITLES = {
   overview: ['Overview', 'Your whole local stack at a glance'],
   sites:    ['Sites', 'Every linked project — PHP backends and frontend dev servers'],
@@ -1576,7 +1646,7 @@ function showPage(route) {
     name = 'sites';
   }
   if (name === 'projects') {
-    // The sidebar's "Projects": back to the last active project tab.
+    // Old "Projects" deep link: back to the last active project tab.
     const t = activeTab() || projTabs[0];
     if (t) {
       activeTabId = t.id;
@@ -1596,17 +1666,18 @@ function showPage(route) {
   currentPage = name;
   document.querySelectorAll('.page').forEach(p =>
     p.classList.toggle('active', p.id === 'page-' + name));
-  const navName = name === 'project' ? 'projects' : name;
+  const navName = name === 'project' ? 'sites' : name;
   document.querySelectorAll('.nav a').forEach(a =>
     a.classList.toggle('active', a.dataset.page === navName));
   $('page-title').textContent = name === 'project' ? project : TITLES[name][0];
   $('page-sub').textContent = name === 'project' ? 'Commands, workers, packages, and domains' : TITLES[name][1];
   if (name === 'project') enterProject(project); else leaveProject();
+  renderTabStrip();
   if (name === 'database') showDbTab(dbTab, true);
   if (name === 'php' && state) loadIni();
   if (name === 'terminal') ensureTerminal();
   if (name === 'ports') loadPortsPage();
-  if (name === 'settings') loadBackupDir();
+  if (name === 'settings') { loadBackupDir(); MullionExtTerm.load(true); }
 }
 const pageActive = name => currentPage === name;
 
@@ -2706,53 +2777,68 @@ function closeTab(id) {
     renderTabStrip();
   }
 }
+const ALL_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg>';
+// renderTabStrip draws the Sites tab strip: a fixed "All" tab (the site
+// list) and one closable tab per open project. It shows on the Sites
+// and project pages, and only while at least one project is open.
 function renderTabStrip() {
   const strip = $('ptabs');
-  strip.innerHTML = projTabs.map(t => {
+  const onProject = pageActive('project');
+  $('ptabs-bar').style.display = projTabs.length && (onProject || pageActive('sites')) ? '' : 'none';
+  strip.innerHTML = `<div class="ptab all${onProject ? '' : ' active'}" role="tab" tabindex="0" data-all="1"
+      aria-selected="${!onProject}" title="All sites"><span class="ic">${ALL_ICON}</span><span class="nm">All</span></div>
+    <span class="sep" aria-hidden="true"></span>` + projTabs.map(t => {
     const x = findSite(t.name);
-    return `<div class="ptab${t.id === activeTabId ? ' active' : ''}" role="tab" tabindex="0" draggable="true"
-        aria-selected="${t.id === activeTabId}" data-tab="${t.id}" title="${esc(t.name)}">
+    const on = onProject && t.id === activeTabId;
+    return `<div class="ptab${on ? ' active' : ''}" role="tab" tabindex="0" draggable="true"
+        aria-selected="${on}" data-tab="${t.id}" title="${esc(t.name)}">
       ${fwMark(x && x.detect ? x.detect.icon : 'unknown', false).replace('fw-mark', 'fw-mark xs')}
       <span class="nm">${esc(t.name)}</span>
       <span class="x" data-close="${t.id}" title="Close tab" role="button">${X_ICON}</span></div>`;
   }).join('');
   const act = strip.querySelector('.ptab.active');
   if (act) act.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-  // Sidebar "Projects" item and the Sites toolbar chips follow the tabs.
-  $('nav-projects').style.display = projTabs.length ? '' : 'none';
-  $('nav-projects-n').textContent = projTabs.length;
-  const chips = $('open-proj');
-  chips.style.display = projTabs.length ? '' : 'none';
-  chips.innerHTML = projTabs.length ? '<span class="lbl">Open</span>' + projTabs.map(t => {
-    const x = findSite(t.name);
-    return `<button class="sm${t.id === activeTabId ? ' active' : ''}" data-opentab="${t.id}" title="Back to ${esc(t.name)}">` +
-      fwMark(x && x.detect ? x.detect.icon : 'unknown', false).replace('fw-mark', 'fw-mark xs') + esc(t.name) + '</button>';
-  }).join('') : '';
 }
-$('open-proj').addEventListener('click', e => {
-  const b = e.target.closest('[data-opentab]');
-  const t = b && projTabs.find(o => o.id === +b.dataset.opentab);
-  if (!t) return;
+// goTab shows a project tab, navigating from the "All" tab if needed.
+function goTab(t) {
   activateTab(t);
   const target = '#project/' + encodeURIComponent(t.name);
-  showPage(target.slice(1));
-  if (location.hash !== target) location.hash = target;
-});
+  if (!pageActive('project')) location.hash = target;
+  else history.replaceState(null, '', target);
+}
+// closeAllTabs closes every project tab, unmounting each instance (and
+// with it the project's embedded terminals). The sidebar's "Sites" does
+// this; the strip's "All" tab only switches.
+function closeAllTabs() {
+  if (!projTabs.length) return;
+  projTabs.forEach(t => {
+    if (t.inst) { try { t.inst.unmount(); } catch {} }
+    t.el.remove();
+  });
+  projTabs = [];
+  activeTabId = null;
+  currentProject = null;
+  saveTabs();
+  renderTabStrip();
+}
+document.querySelector('.nav a[data-page="sites"]').addEventListener('click', closeAllTabs);
 (() => {
   const strip = $('ptabs');
   const tabOf = e => { const el = e.target.closest('.ptab'); return el ? projTabs.find(t => t.id === +el.dataset.tab) : null; };
   strip.addEventListener('click', e => {
     const x = e.target.closest('[data-close]');
     if (x) { e.stopPropagation(); closeTab(+x.dataset.close); return; }
+    if (e.target.closest('[data-all]')) { if (!pageActive('sites')) location.hash = 'sites'; return; }
     const t = tabOf(e);
-    if (t && t.id !== activeTabId) { activateTab(t); history.replaceState(null, '', '#project/' + encodeURIComponent(t.name)); }
+    if (t && (t.id !== activeTabId || !pageActive('project'))) goTab(t);
   });
   strip.addEventListener('auxclick', e => { if (e.button === 1) { const t = tabOf(e); if (t) { e.preventDefault(); closeTab(t.id); } } });
   strip.addEventListener('mousedown', e => { if (e.button === 1) e.preventDefault(); }); // no autoscroll
   strip.addEventListener('keydown', e => {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('[data-all]')) { e.preventDefault(); location.hash = 'sites'; return; }
     const t = tabOf(e);
     if (!t) return;
-    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activateTab(t); history.replaceState(null, '', '#project/' + encodeURIComponent(t.name)); }
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); goTab(t); }
     if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); closeTab(t.id); }
   });
   // drag to reorder
@@ -2778,7 +2864,8 @@ $('open-proj').addEventListener('click', e => {
     const from = projTabs.findIndex(t => t.id === dragId);
     if (from >= 0) {
       const [t] = projTabs.splice(from, 1);
-      const to = over ? projTabs.findIndex(o => o.id === +over.dataset.tab) : projTabs.length;
+      // Dropping on "All" moves the tab to the front.
+      const to = !over ? projTabs.length : over.dataset.all ? 0 : projTabs.findIndex(o => o.id === +over.dataset.tab);
       projTabs.splice(to < 0 ? projTabs.length : to, 0, t);
       saveTabs();
     }
@@ -2890,7 +2977,6 @@ $('project-head').addEventListener('click', e => {
   e.preventDefault();
   siteAction(btn.dataset.a, currentProject, btn, e);
 });
-$('btn-project-back').onclick = () => { location.hash = 'sites'; };
 
 /* ── terminal page & routing ───────────────────────────────── */
 // Where "Terminal" buttons open a shell: the Terminal page (default), a
@@ -2909,13 +2995,22 @@ function renderTermOpenIn() {
   const v = termOpenIn();
   document.querySelectorAll('#term-openin button').forEach(b => b.classList.toggle('active', b.dataset.openin === v));
   $('term-openin-help').textContent = TERM_OPENIN_HELP[v];
+  renderTermApp();
 }
 document.querySelectorAll('#term-openin button').forEach(b => b.onclick = () => {
   MullionPrefs.set('terminal.openIn', b.dataset.openin);
   renderTermOpenIn();
   toast('Terminals now open in the ' + b.textContent.toLowerCase());
 });
+// openTerminalWindow and openTerminalFor are the panel's "open a
+// terminal" actions: with Mullion Terminal chosen (and installed) the
+// folder opens there instead; otherwise the built-in terminal routes as
+// before.
 function openTerminalWindow(site) {
+  if (MullionExtTerm.route(site, () => openBuiltinTerminalWindow(site))) return;
+  openBuiltinTerminalWindow(site);
+}
+function openBuiltinTerminalWindow(site) {
   const MT = window.MullionTerminal;
   if (MT && typeof MT.openWindow === 'function') return MT.openWindow(site);
   window.open(location.origin + '/?t=' + encodeURIComponent(token) + '#termwin' + (site ? '/' + encodeURIComponent(site) : ''),
@@ -2927,6 +3022,10 @@ function openProjectTerminal(site) {
   return t;
 }
 function openTerminalFor(name) {
+  if (MullionExtTerm.route(name, () => openBuiltinTerminalFor(name))) return;
+  return openBuiltinTerminalFor(name);
+}
+function openBuiltinTerminalFor(name) {
   const MT0 = window.MullionTerminal;
   // terminal.js v2 routes by the same preference (and calls
   // onRequestShow / onRequestProject back); v1 needs the shell to route.
@@ -2934,12 +3033,282 @@ function openTerminalFor(name) {
     return Promise.resolve(MT0.openInProject(name)).catch(e => toast('Terminal: ' + e.message));
   }
   const where = termOpenIn();
-  if (where === 'window') return openTerminalWindow(name);
+  if (where === 'window') return openBuiltinTerminalWindow(name);
   if (where === 'project') return openProjectTerminal(name);
   const MT = window.MullionTerminal;
   if (!MT) return toast('The terminal is not available in this build');
   Promise.resolve(MT.openInProject(name)).catch(e => toast('Terminal: ' + e.message));
 }
+/* ── Mullion Terminal (the standalone app) ─────────────────── */
+// Preference 'terminal.app' = 'internal' (the built-in xterm.js
+// terminal, the default) | 'external' (Mullion Terminal, a separate app
+// Mullion can install). 'terminal.appChosen' = '1' once the user has
+// answered the first-run "Choose your terminal" question. The project
+// page's embedded Terminal tab always stays built-in; project.js asks
+// route() only for plain "open a terminal here" actions.
+window.MullionExtTerm = (() => {
+  let status = null;
+  function load(latest) {
+    return api('/api/mterm/status', { latest: !!latest }).then(s => {
+      status = s;
+      window.dispatchEvent(new CustomEvent('mullion:mterm-status', { detail: s }));
+      return s;
+    }).catch(() => status);
+  }
+  const preferred = () => MullionPrefs.get('terminal.app', 'internal') === 'external';
+  const installed = () => !!(status && status.installed);
+  // open opens a site's folder (or dir, or just the app) in Mullion Terminal.
+  const open = (site, dir) => api('/api/mterm/open', site ? { site } : { dir: dir || '' });
+  // route takes a plain "open a terminal for site" action when Mullion
+  // Terminal is the chosen terminal, returning true; false means the
+  // caller uses the built-in terminal. A failed open (e.g. the app was
+  // deleted) falls back to the built-in one via fallback — never a hard
+  // error — and offers to reinstall.
+  function route(site, fallback) {
+    if (!preferred()) return false;
+    if (status && !status.installed) { offerReinstall(); return false; }
+    open(site).catch(async e => {
+      const s = await load(false);
+      if (s && !s.installed) offerReinstall(); else toast('Mullion Terminal: ' + e.message);
+      if (fallback) fallback();
+    });
+    return true;
+  }
+  return { load, preferred, installed, open, route, get status() { return status; } };
+})();
+let actToastTimer = 0;
+// actionToast is a toast with one action button (the plain toast can't
+// be clicked).
+function actionToast(msg, label, run) {
+  const t = $('toast-act');
+  t.querySelector('span').textContent = msg;
+  const b = t.querySelector('button.primary');
+  b.textContent = label;
+  b.onclick = () => { t.classList.remove('show'); run(); };
+  t.querySelector('button.x').onclick = () => t.classList.remove('show');
+  t.classList.add('show');
+  clearTimeout(actToastTimer);
+  actToastTimer = setTimeout(() => t.classList.remove('show'), 9000);
+}
+function offerReinstall() {
+  if (!MullionExtTerm.status || !MullionExtTerm.status.available) {
+    toast('Mullion Terminal isn\'t installed — using the built-in terminal');
+    return;
+  }
+  actionToast('Mullion Terminal isn\'t installed — using the built-in terminal.', 'Reinstall', () => installMterm());
+}
+// pollJob waits for a job-backed endpoint's job, reporting its status
+// line, and resolves its result (or throws its error).
+async function pollJob(id, onStatus) {
+  for (;;) {
+    await new Promise(r => setTimeout(r, 700));
+    const st = await api('/api/job', { id });
+    if (st.log && onStatus) onStatus(st.log);
+    if (st.done) {
+      if (st.error) throw new Error(st.error);
+      return st.result;
+    }
+  }
+}
+// installMterm installs or updates Mullion Terminal behind the busy
+// overlay (Settings, the reinstall toast); true on success.
+async function installMterm() {
+  const r = await runJob('Installing Mullion Terminal…', '/api/mterm/install', {},
+    r => 'Mullion Terminal ' + ((r && r.version) || '') + ' installed');
+  await MullionExtTerm.load(true);
+  renderTermApp();
+  return !!r;
+}
+const TERM_APP_HELP = {
+  internal: 'The built-in terminal runs inside this panel — nothing to install.',
+  external: 'Terminal buttons open the project\'s folder as a new tab in Mullion Terminal — a standalone app with tabs, a folder sidebar and learned suggestions. The project page\'s own Terminal tab stays built-in.',
+};
+function renderTermApp() {
+  const ext = MullionExtTerm.preferred();
+  const st = MullionExtTerm.status;
+  document.querySelectorAll('#term-app button').forEach(b => {
+    b.classList.toggle('active', b.dataset.app === (ext ? 'external' : 'internal'));
+    if (b.dataset.app === 'external') b.disabled = !!(st && !st.available && !st.installed);
+  });
+  $('term-app-help').textContent = TERM_APP_HELP[ext ? 'external' : 'internal'];
+  // "Open terminals in" only steers the built-in terminal.
+  $('term-openin-wrap').classList.toggle('dimmed', ext);
+  $('term-openin-wrap').title = ext ? 'Applies to the built-in terminal only' : '';
+  const out = $('mterm-status'), inst = $('btn-mterm-install'), openB = $('btn-mterm-open');
+  if (!st) {
+    out.innerHTML = '<span class="muted">Checking…</span>';
+    inst.style.display = openB.style.display = 'none';
+  } else if (st.installed) {
+    out.innerHTML = `<span class="badge on">installed</span><span class="mono">${esc(st.version ? 'v' + st.version : '')}</span>` +
+      (st.update ? `<span class="badge warnb">v${esc(st.latest)} available</span>` : '');
+    inst.textContent = 'Update';
+    inst.style.display = st.update ? '' : 'none';
+    openB.style.display = '';
+  } else if (!st.available) {
+    out.innerHTML = `<span class="muted">${esc(st.reason || 'Not available on this platform')}</span>`;
+    inst.style.display = openB.style.display = 'none';
+  } else {
+    out.innerHTML = '<span class="badge off">not installed</span>' + (st.latest ? `<span class="muted">latest v${esc(st.latest)} · ~100 MB</span>` : '');
+    inst.textContent = 'Install';
+    inst.style.display = '';
+    openB.style.display = 'none';
+  }
+  const note = $('term-ext-note');
+  const showNote = ext && !!(st && st.installed);
+  note.style.display = showNote ? '' : 'none';
+  $('page-terminal').classList.toggle('ext', showNote);
+}
+document.querySelectorAll('#term-app button').forEach(b => b.onclick = async () => {
+  if (b.dataset.app === 'internal') {
+    MullionPrefs.set('terminal.app', 'internal');
+    MullionPrefs.set('terminal.appChosen', '1');
+    renderTermApp();
+    toast('Terminals now open in the built-in terminal');
+    return;
+  }
+  let st = MullionExtTerm.status || await MullionExtTerm.load(false);
+  if (st && !st.installed) {
+    const ok = await confirmModal({
+      title: 'Install Mullion Terminal?',
+      message: 'Mullion Terminal is a standalone app (~100 MB download). Mullion installs it' +
+        (state && state.windows ? ' for your user' : ' into Applications') + ', then opens project folders in it.',
+      confirmText: 'Install',
+    });
+    if (!ok || !(await installMterm())) return;
+  }
+  MullionPrefs.set('terminal.app', 'external');
+  MullionPrefs.set('terminal.appChosen', '1');
+  renderTermApp();
+  toast('Terminals now open in Mullion Terminal');
+});
+$('btn-mterm-install').onclick = () => installMterm();
+const openMtermApp = () => MullionExtTerm.open('', '').catch(e => toast('Error: ' + e.message));
+$('btn-mterm-open').onclick = openMtermApp;
+$('btn-term-ext-open').onclick = openMtermApp;
+// With Mullion Terminal chosen, the sidebar's Terminal item launches the
+// app instead of opening the built-in Terminal page; if it can't (the
+// app was removed), the page opens as before.
+document.querySelector('.nav a[data-page="terminal"]').addEventListener('click', e => {
+  if (!MullionExtTerm.preferred() || (MullionExtTerm.status && !MullionExtTerm.status.installed)) return;
+  e.preventDefault();
+  MullionExtTerm.open('', '').catch(() => { location.hash = 'terminal'; });
+});
+
+// The first-run "Choose your terminal" dialog. Dismissing it without an
+// answer leaves terminal.appChosen unset, so it returns on the next
+// launch — but not on a reload within this one (sessionStorage is per
+// origin, and the panel gets a new port every launch).
+const TCHOICE_SKIP = 'mullion-terminal-choice-dismissed';
+function maybeAskTerminal() {
+  if (MullionPrefs.get('terminal.appChosen')) return;
+  try { if (sessionStorage.getItem(TCHOICE_SKIP)) return; } catch {}
+  const st = MullionExtTerm.status;
+  if (!st) return;
+  // Don't stack on top of another dialog; try again shortly.
+  if (document.querySelector('.modal-backdrop')) { setTimeout(maybeAskTerminal, 4000); return; }
+  showTerminalChoice(st);
+}
+function showTerminalChoice(st) {
+  const canExt = st.available || st.installed;
+  let pick = canExt ? 'external' : 'internal', busy = false;
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  const extFoot = st.installed ? `<div class="tc-foot ok">✓ Already installed${st.version ? ' · v' + esc(st.version) : ''}</div>`
+    : canExt ? '<div class="tc-foot">~100 MB download · installed for you</div>'
+    : `<div class="tc-foot">${esc(st.reason || 'Not available on this platform')}</div>`;
+  backdrop.innerHTML = `<div class="modal-card tchoice" role="dialog" aria-modal="true" aria-labelledby="tchoice-title">
+    <button class="icon-btn tchoice-x" title="Decide later">${X_ICON}</button>
+    <div class="tchoice-head">
+      <h3 class="modal-title" id="tchoice-title">Choose your terminal</h3>
+      <p class="modal-message">Where should Mullion open a shell for your projects? You can change this any time in Settings → Terminal.</p>
+    </div>
+    <div class="tchoice-cards">
+      <button class="tcard ink" data-pick="external"${canExt ? '' : ' disabled'}>
+        <span class="tc-radio"></span>
+        <div class="tc-top"><span class="tc-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="M6.5 9.5l3 2.5-3 2.5"/><line x1="12" y1="15" x2="17" y2="15"/><line x1="2" y1="8" x2="22" y2="8"/></svg></span>
+          <div><div class="tc-name">Mullion Terminal</div><span class="tc-tag">Recommended</span></div></div>
+        <ul><li>A standalone app, with tabs</li><li>Folder sidebar for your projects</li><li>Learns your commands and suggests them</li><li>Open-in-editor buttons</li></ul>
+        ${extFoot}
+      </button>
+      <button class="tcard" data-pick="internal">
+        <span class="tc-radio"></span>
+        <div class="tc-top"><span class="tc-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="M6.5 9.5l3 2.5-3 2.5"/><line x1="12" y1="15" x2="17" y2="15"/></svg></span>
+          <div><div class="tc-name">Built-in terminal</div><span class="tc-tag plain">Lightweight</span></div></div>
+        <ul><li>Runs inside this panel</li><li>Terminal page, window or project page</li><li>Nothing extra to install</li></ul>
+        <div class="tc-foot">No download</div>
+      </button>
+    </div>
+    <div class="tchoice-prog" hidden><div class="lbl"><span class="st">Starting…</span><span class="pc"></span></div><div class="bar indet"><i></i></div></div>
+    <div class="tchoice-foot"><span class="muted">The project page's Terminal tab is always the built-in terminal.</span>
+      <button class="primary" data-tgo="1"></button></div>
+  </div>`;
+  document.body.appendChild(backdrop);
+  const card = backdrop.querySelector('.modal-card');
+  const go = card.querySelector('[data-tgo]');
+  const prog = card.querySelector('.tchoice-prog');
+  const sync = () => {
+    card.querySelectorAll('.tcard').forEach(c => c.classList.toggle('sel', c.dataset.pick === pick));
+    go.textContent = pick === 'internal' ? 'Use the built-in terminal'
+      : st.installed ? 'Use Mullion Terminal' : 'Install Mullion Terminal';
+  };
+  sync();
+  requestAnimationFrame(() => { backdrop.classList.add('show'); go.focus(); });
+  const close = () => {
+    document.removeEventListener('keydown', onKey, true);
+    backdrop.classList.remove('show');
+    setTimeout(() => backdrop.remove(), 200);
+  };
+  const dismiss = () => {
+    if (busy) return;
+    try { sessionStorage.setItem(TCHOICE_SKIP, '1'); } catch {}
+    close();
+  };
+  const onKey = e => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); dismiss(); } };
+  document.addEventListener('keydown', onKey, true);
+  card.querySelector('.tchoice-x').onclick = dismiss;
+  backdrop.addEventListener('mousedown', e => { if (e.target === backdrop) dismiss(); });
+  card.querySelectorAll('.tcard').forEach(c => c.onclick = () => { if (!busy) { pick = c.dataset.pick; sync(); } });
+  const choose = app => {
+    MullionPrefs.set('terminal.app', app);
+    MullionPrefs.set('terminal.appChosen', '1');
+    renderTermApp();
+    close();
+  };
+  go.onclick = async () => {
+    if (pick === 'internal') { choose('internal'); toast('Using the built-in terminal'); return; }
+    if (st.installed) { choose('external'); toast('Terminals now open in Mullion Terminal'); return; }
+    busy = true;
+    go.disabled = true;
+    card.querySelectorAll('.tcard').forEach(c => { c.disabled = true; });
+    prog.hidden = false;
+    prog.classList.remove('err');
+    const bar = prog.querySelector('.bar'), stEl = prog.querySelector('.st'), pc = prog.querySelector('.pc');
+    try {
+      const { job } = await api('/api/mterm/install', {});
+      const res = await pollJob(job, line => {
+        const m = /(\d+)%/.exec(line);
+        stEl.textContent = line.replace(/\s*\d+%.*$/, '').replace(/…$/, '…');
+        const mb = /\(([^)]+)\)/.exec(line);
+        pc.textContent = m ? m[1] + '%' + (mb ? ' · ' + mb[1] : '') : '';
+        bar.classList.toggle('indet', !m);
+        if (m) bar.querySelector('i').style.width = m[1] + '%';
+      });
+      st = await MullionExtTerm.load(false) || st;
+      choose('external');
+      toast('Mullion Terminal ' + ((res && res.version) || '') + ' installed — terminals now open there');
+    } catch (e) {
+      busy = false;
+      go.disabled = false;
+      card.querySelectorAll('.tcard').forEach(c => { c.disabled = c.dataset.pick === 'external' && !canExt; });
+      prog.classList.add('err');
+      bar.classList.remove('indet');
+      stEl.textContent = 'Install failed: ' + e.message;
+      pc.textContent = '';
+      go.textContent = 'Try again';
+    }
+  };
+}
+window.addEventListener('mullion:mterm-status', () => renderTermApp());
 let terminalMounted = false, termInst = null;
 function ensureTerminal() {
   const MT = window.MullionTerminal;
@@ -3877,7 +4246,10 @@ $('btn-heidi').onclick = () =>
   renderTermOpenIn();
   showPage(location.hash.slice(1) || 'overview');
   await refresh();
-  if (!document.body.classList.contains('projwin')) restoreTabs();
+  if (!document.body.classList.contains('projwin')) {
+    restoreTabs();
+    MullionExtTerm.load(false).then(maybeAskTerminal);
+  } else MullionExtTerm.load(false);
   if ((location.hash.slice(1) || 'overview') === 'php') loadIni();
   try {
     const avail = await api('/api/php/available');
