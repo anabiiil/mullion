@@ -25,6 +25,7 @@ import (
 	"pm/internal/phpver"
 	"pm/internal/pmdir"
 	"pm/internal/shortcut"
+	"pm/internal/term"
 	"pm/internal/vcredist"
 	"pm/internal/version"
 )
@@ -56,6 +57,25 @@ func nodeSummary(a *app.App) string {
 		return v
 	}
 	return "not installed (mullion node install lts)"
+}
+
+// startStackUnelevated brings the stack up after the elevated setup
+// window finished. That window stops what it started: servers running as
+// administrator can't be stopped or restarted from a normal prompt, the
+// panel or the tray (`mullion restart` then left mysqld half-replaced),
+// and Windows hides their paths, so they looked like someone else's.
+func startStackUnelevated() {
+	if runtime.GOOS != "windows" {
+		return
+	}
+	fmt.Println("Starting the servers...")
+	startServices()
+	a, err := app.New()
+	if err != nil {
+		return
+	}
+	spawnSelf(filepath.Join(a.Paths.BinDir(), pmdir.ExeName("mullion")), "tray")
+	fmt.Println(term.Green("✓ Mullion is running."))
 }
 
 func panelHint() string {
@@ -104,6 +124,7 @@ func runSetup(cmd *cobra.Command) error {
 			err := elevate.Relaunch(exe, "setup", "--pause")
 			if err == nil {
 				fmt.Println("\nSetup finished successfully in the elevated window.")
+				startStackUnelevated()
 				return nil
 			}
 			fmt.Println("\nSetup did NOT finish — check the error shown in the elevated window.")
@@ -345,7 +366,12 @@ func doSetup(cmd *cobra.Command, wantAutostart bool, dbChoice string) error {
 
 		// Put the tray icon up right away (also the sign-in behavior).
 		// macOS has no tray icon (yet); the LaunchAgent covers sign-in.
-		if runtime.GOOS == "windows" {
+		// The elevated relaunch instead hands the stack back to the
+		// window that launched it (see startStackUnelevated).
+		if runtime.GOOS == "windows" && setupPause && elevate.IsElevated() {
+			fmt.Println("\nHanding the servers over to your normal (non-administrator) session...")
+			stopServices()
+		} else if runtime.GOOS == "windows" {
 			if exe, err := os.Executable(); err == nil {
 				trayExe := filepath.Join(a.Paths.BinDir(), pmdir.ExeName("mullion"))
 				if _, statErr := os.Stat(trayExe); statErr != nil {

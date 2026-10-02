@@ -26,6 +26,7 @@ import (
 	"pm/internal/download"
 	"pm/internal/pmdir"
 	"pm/internal/proc"
+	"pm/internal/sysproc"
 	"pm/internal/term"
 )
 
@@ -348,6 +349,9 @@ func Start(paths pmdir.Paths, version string) error {
 	if Running() {
 		return nil
 	}
+	// A server that was just told to stop (by another command, or a crash
+	// still unwinding) keeps the data files locked until it exits.
+	waitExited(paths, version, 30*time.Second)
 	// Keep my.ini in step with Port even when the caller skipped
 	// EnsureInitialized (the port may have changed since it last ran).
 	if err := writeIni(paths, version); err != nil {
@@ -414,7 +418,23 @@ func Stop(paths pmdir.Paths, version string) error {
 	for i := 0; i < 120 && Running(); i++ {
 		time.Sleep(250 * time.Millisecond)
 	}
+	// The port closes first; InnoDB then flushes for up to a second or so
+	// while still holding ibdata1. A restart that starts the next mysqld
+	// in that window fails with "ibdata1 must be writable".
+	waitExited(paths, version, 60*time.Second)
 	return nil
+}
+
+// waitExited waits until no server process runs from the version's
+// folder (mysqld, or mariadbd for MariaDB), or the timeout passes.
+func waitExited(paths pmdir.Paths, version string, timeout time.Duration) {
+	dir := paths.MysqlVersionDir(version)
+	for deadline := time.Now().Add(timeout); time.Now().Before(deadline); {
+		if len(sysproc.ProcessesUnder(dir, "")) == 0 {
+			return
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
 }
 
 // Running reports whether something is serving the MySQL port.
