@@ -496,7 +496,19 @@ func newMux(token string) *http.ServeMux {
 			return nil, fmt.Errorf("could not derive a valid site name; type one")
 		}
 		if existing := a.State.FindSite(name); existing != nil {
-			return nil, fmt.Errorf("site %q already links to %s", name, existing.Path)
+			if !strings.EqualFold(filepath.Clean(existing.Path), path) {
+				return nil, fmt.Errorf("site %q already links to %s", name, existing.Path)
+			}
+			// Linking the same folder again retries the hosts update a
+			// declined UAC prompt skipped (the site was saved already).
+			if err := a.Apply(); err != nil {
+				return nil, err
+			}
+			scheme := "http://"
+			if existing.Secure {
+				scheme = "https://"
+			}
+			return scheme + a.State.Host(*existing), nil
 		}
 		site := config.Site{Name: name, Path: path, Kind: app.DetectProjectKind(path)}
 		if site.Kind == "node" {

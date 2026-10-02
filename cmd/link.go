@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -68,7 +69,17 @@ compare the deployed state against the current dev version.`,
 			return fmt.Errorf("could not derive a valid site name; pass one explicitly: mullion link myapp")
 		}
 		if existing := a.State.FindSite(name); existing != nil {
-			return fmt.Errorf("site %q already links to %s (use `mullion unlink %s` first)", name, existing.Path, name)
+			if !strings.EqualFold(filepath.Clean(existing.Path), filepath.Clean(dir)) {
+				return fmt.Errorf("site %q already links to %s (use `mullion unlink %s` first)", name, existing.Path, name)
+			}
+			// Same folder again: the site is saved before the hosts file is
+			// updated, so a declined UAC prompt left it unreachable — and
+			// re-running link used to refuse instead of retrying.
+			if err := a.Apply(); err != nil {
+				return err
+			}
+			fmt.Printf("%s is already linked — refreshed its domain and server config.\n", a.State.Host(*existing))
+			return nil
 		}
 
 		site := config.Site{Name: name, Path: dir, Kind: kind, BuildDir: buildDir, Secure: linkSecure}
