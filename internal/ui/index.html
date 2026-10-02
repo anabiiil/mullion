@@ -1333,7 +1333,7 @@
             <div class="row" style="margin-top:16px">
               <button id="btn-backup-dir-change" class="primary">Change…</button>
               <button id="btn-backup-dir-reset">Reset to default</button>
-              <button id="btn-backup-dir-show">Show in Finder</button>
+              <button id="btn-backup-dir-show">Show folder</button>
             </div>
             <p class="muted" style="margin:12px 0 0">
               Backups already written stay where they are — only new ones go to the new folder.
@@ -2218,7 +2218,9 @@ $('btn-doctor').onclick = async () => {
 /* ── small helpers ─────────────────────────────────────────── */
 const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-const fileManager = () => (state && state.windows ? 'Explorer' : 'Finder');
+// Before /api/state answers (Settings opened first), fall back to the
+// browser's platform so Windows never reads "Show in Finder".
+const fileManager = () => ((state ? state.windows : /^Win/.test(navigator.platform)) ? 'Explorer' : 'Finder');
 // copyText uses the async clipboard API, falling back to a hidden
 // textarea + execCommand where it isn't allowed (non-secure origins).
 async function copyText(text) {
