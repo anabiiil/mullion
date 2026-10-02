@@ -2,7 +2,14 @@
 
 All notable changes to Mullion. Versions follow [semantic versioning](https://semver.org).
 
-## Unreleased
+## 2.1.0 — 2026-10-02
+
+Mullion Terminal as your terminal, project tabs on the Sites page, and a
+round of Windows fixes: Mullion now recognizes its own servers after
+setup, `mullion restart` no longer breaks MySQL, and the Windows icon
+matches the app icon.
+
+### Added
 
 - **Mullion Terminal.** The panel can use the standalone Mullion Terminal
   app as your terminal. A first-run dialog asks which terminal you want
@@ -15,6 +22,41 @@ All notable changes to Mullion. Versions follow [semantic versioning](https://se
 - **Project tabs live on the Sites page.** Open projects show as tabs
   next to a fixed "All" tab, and the separate "Projects" sidebar entry is
   gone. Clicking "Sites" in the sidebar closes every project tab.
+
+### Changed
+
+- **Windows icon.** The exe, taskbar, tray and panel window use the app
+  icon's look (a midnight tile with the coral mark) instead of the bare
+  coral square. Explorer's Properties now shows the right version.
+- **Faster Ports page on Windows.** Port owners are read straight from
+  Windows instead of one PowerShell call per port (about 7s → 0.3s).
+
+### Fixed
+
+- **Windows: Mullion treated its own servers as foreign.** Setup runs as
+  administrator, so the servers it started did too, and Windows hides
+  their paths from normal programs. `mullion doctor` reported a "FOREIGN
+  caddy" and a foreign MySQL, the panel's Start MySQL refused, and the
+  Ports page listed Mullion's own ports as conflicts. Mullion now
+  recognizes them, and setup hands the servers back to your normal
+  session when it finishes, so restart, the panel and the tray can
+  manage them.
+- **`mullion restart` could leave MySQL stopped** ("ibdata1 must be
+  writable"): it started the new server while the old one was still
+  closing its data files. Stopping MySQL now waits for it to exit.
+- **Choosing Mullion Terminal could be forgotten**, sending the sidebar's
+  Terminal back to the built-in page: two settings saved at once
+  overwrote each other.
+- **`mullion link` after a declined UAC prompt** said "already links"
+  instead of retrying the hosts file update. Linking the same folder
+  again now retries, in the CLI and the panel.
+- **Composer showed as "not installed"** on the PHP page when the panel
+  was started from Git Bash or Windows Terminal (colored version output).
+- Windows paths in the generated Caddyfile no longer have doubled
+  backslashes.
+- Settings showed "—" for free space before the first backup existed,
+  and "Show in Finder" on Windows when opened first. The Sites page says
+  php-cgi (FastCGI) on Windows instead of php-fpm.
 
 ## 2.0.0 — 2026-09-25
 
