@@ -83,9 +83,19 @@
 
 <h2 id="windows">Windows</h2>
 <h3 id="scoop">Scoop</h3>
+<p>Mullion installs through <a href="https://scoop.sh">Scoop</a>, a package manager for Windows. Open <strong>PowerShell</strong> (a normal window, <em>not</em> "Run as administrator") and check whether you already have it:</p>
+<pre><code><span class="p">&gt; </span>scoop --version</code></pre>
+<p><strong>If it says <code>scoop</code> is not recognized</strong>, install Scoop first, then close PowerShell and open a new window:</p>
+<pre><code><span class="p">&gt; </span>Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+<span class="p">&gt; </span>Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
+<span class="p">&gt; </span>scoop install git<span class="c">          # Scoop needs Git to add buckets</span></code></pre>
+<p>Then install Mullion:</p>
 <pre><code><span class="p">&gt; </span>scoop bucket add mullion https://github.com/anabiiil/scoop-bucket
 <span class="p">&gt; </span>scoop install mullion
 <span class="p">&gt; </span>mullion setup</code></pre>
+<p>Update later with <code>scoop update</code> followed by <code>scoop update mullion</code>.</p>
+<h3 id="scoop-problems">Scoop problems and their fixes</h3>
+<div class="table-wrap"><table><thead><tr><th scope="col">You see</th><th scope="col">Do this</th></tr></thead><tbody><tr><td><code>scoop : The term 'scoop' is not recognized</code></td><td>Scoop isn't installed, or this window was open before it was. Install it as above, then open a <strong>new</strong> PowerShell window.</td></tr><tr><td><code>running scripts is disabled on this system</code></td><td><code>Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser</code>, then retry.</td></tr><tr><td><code>Running the installer as administrator is disabled by default</code></td><td>You opened PowerShell as administrator. Open a normal window and run the installer again. (Only if your account must be an administrator: <code>iex "&amp; {$(irm get.scoop.sh)} -RunAsAdmin"</code>.)</td></tr><tr><td><code>Git is required for buckets</code></td><td><code>scoop install git</code>, then run <code>scoop bucket add …</code> again.</td></tr><tr><td><code>bucket 'mullion' already exists</code></td><td>It's already added — go on with <code>scoop install mullion</code>.</td></tr><tr><td><code>Couldn't find manifest for 'mullion'</code></td><td>The bucket is missing or stale: <code>scoop bucket add mullion https://github.com/anabiiil/scoop-bucket</code>, or <code>scoop update</code>, then install again.</td></tr><tr><td><code>mullion : The term 'mullion' is not recognized</code> after installing</td><td>Open a new terminal so it picks up the updated <code>PATH</code>.</td></tr><tr><td>An old version after a release</td><td><code>scoop update</code>, then <code>scoop update mullion</code>.</td></tr></tbody></table></div>
 <h3 id="single-exe">Single .exe</h3>
 <p>Download <code>mullion.exe</code> (or the <code>windows-amd64.zip</code>) from <a href="https://github.com/anabiiil/mullion/releases/latest">Releases</a>. Then either:</p>
 <ul>

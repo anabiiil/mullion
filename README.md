@@ -132,13 +132,51 @@ xattr -c ./mullion   # clear the quarantine flag Gatekeeper puts on downloads
 
 ### Windows (Scoop)
 
+Mullion installs through [Scoop](https://scoop.sh), a package manager for
+Windows. Open **PowerShell** (a normal window, *not* "Run as
+administrator") and check whether you already have it:
+
+```powershell
+scoop --version
+```
+
+**If it says `scoop` is not recognized**, install Scoop first, then close
+PowerShell and open a new window:
+
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
+scoop install git
+```
+
+Scoop needs Git to add buckets, hence the last line. Then install
+Mullion:
+
 ```powershell
 scoop bucket add mullion https://github.com/anabiiil/scoop-bucket
 scoop install mullion
 mullion setup
 ```
 
-Or download `mullion.exe` from Releases, double-click it, and answer
+Update later with `scoop update` followed by `scoop update mullion`.
+
+<details>
+<summary><b>Scoop problems and their fixes</b></summary>
+
+| You see | Do this |
+|---|---|
+| `scoop : The term 'scoop' is not recognized` | Scoop isn't installed, or this window was open before it was. Install it as above, then open a **new** PowerShell window. |
+| `running scripts is disabled on this system` | `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`, then retry. |
+| `Running the installer as administrator is disabled by default` | You opened PowerShell as administrator. Open a normal window and run the installer again. (Only if your account must be an administrator: `iex "& {$(irm get.scoop.sh)} -RunAsAdmin"`.) |
+| `Git is required for buckets` | `scoop install git`, then run `scoop bucket add …` again. |
+| `bucket 'mullion' already exists` | It's already added — go on with `scoop install mullion`. |
+| `Couldn't find manifest for 'mullion'` | The bucket is missing or stale: `scoop bucket add mullion https://github.com/anabiiil/scoop-bucket`, or `scoop update`, then install again. |
+| `mullion : The term 'mullion' is not recognized` after installing | Open a new terminal so it picks up the updated `PATH`. |
+| An old version after a release | `scoop update`, then `scoop update mullion`. |
+
+</details>
+
+Don't want Scoop? Download `mullion.exe` from Releases, double-click it, and answer
 **Run setup now?** with Y. Windows SmartScreen may warn about the
 unsigned exe the first time: click **More info → Run anyway**.
 
