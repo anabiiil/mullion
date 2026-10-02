@@ -9,6 +9,7 @@ func TestParseComposerVersion(t *testing.T) {
 	}{
 		{"Composer version 2.7.6 2024-06-10 22:11:12", "2.7.6"},
 		{"Composer version 2.2.25\n", "2.2.25"},
+		{"\x1b[32mComposer\x1b[39m version \x1b[33m2.10.3\x1b[39m 2026-08-27 13:34:23\r\n", "2.10.3"},
 		{"", ""},
 		{"garbage output", ""},
 	}

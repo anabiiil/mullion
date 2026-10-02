@@ -9,7 +9,7 @@
 //
 //	go run tools/brand/icons.go <ico-png-dir> <repo-root>
 //
-// <ico-png-dir> holds icon-<N>.png frames (written by render.swift). Frames
+// <ico-png-dir> holds icon-<N>.png frames (written by winicon.go). Frames
 // are stored as PNG inside the .ico, which Windows Vista+ reads natively.
 package main
 

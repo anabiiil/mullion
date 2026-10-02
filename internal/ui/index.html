@@ -810,7 +810,7 @@
         <div class="sec" id="sec-backend">
           <div class="sec-head">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17l6-6-6-6"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
-            <div><h2>Backend</h2><div class="sub" id="be-count">PHP sites served through php-fpm</div></div>
+            <div><h2>Backend</h2><div class="sub" id="be-count">PHP sites</div></div>
             <span class="spacer"></span>
             <button class="sm" id="btn-be-add">+ Add project</button>
           </div>
@@ -2444,7 +2444,7 @@ function renderSites(force) {
   $('sec-backend').style.display = siteFilter === 'frontend' ? 'none' : '';
   $('sec-frontend').style.display = siteFilter === 'backend' ? 'none' : '';
   const n = l => l.length + (l.length === 1 ? ' project' : ' projects');
-  $('be-count').textContent = n(be) + ' · PHP sites served through php-fpm';
+  $('be-count').textContent = n(be) + ' · PHP sites served through ' + (state && state.windows ? 'PHP FastCGI (php-cgi)' : 'php-fpm');
   const devUp = fe.filter(x => x.devPort).length;
   $('fe-count').textContent = n(fe) + ' · ' + devUp + ' dev server' + (devUp === 1 ? '' : 's') + ' running';
   fillGrid('be-grid', be, be.filter(match), 'backend');

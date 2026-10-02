@@ -180,8 +180,9 @@ func TestMarker(t *testing.T) {
 // any python3 on PATH — it only needs the stdlib sqlite3 module.
 func TestUpdatePortScript(t *testing.T) {
 	py, err := exec.LookPath("python3")
-	if err != nil {
-		t.Skip("python3 not on PATH")
+	// On Windows python3 can be the Microsoft Store stub, which exits 9009.
+	if err != nil || exec.Command(py, "-c", "import sqlite3").Run() != nil {
+		t.Skip("no working python3 with sqlite3 on PATH")
 	}
 	db := filepath.Join(t.TempDir(), "pgadmin4.db")
 	setup := `import sqlite3, sys

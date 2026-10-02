@@ -1,10 +1,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/brand/mullion-logo-dark.svg">
-    <picture>
-      <source media="(prefers-color-scheme: dark)" srcset="docs/assets/brand/mullion-logo-dark.svg">
-      <img src="docs/assets/brand/mullion-logo.svg" alt="Mullion" width="264">
-    </picture>
+    <img src="docs/assets/brand/mullion-logo.svg" alt="Mullion" width="264">
   </picture>
 </p>
 
@@ -493,9 +490,11 @@ go test ./...
   the panel) as a universal binary and packages it for the Go binary to
   embed. Rebuild `mullion` afterwards so `mullion app` and setup can
   install it.
-- `bash tools/brand/build.sh` regenerates every raster brand asset from
-  the SVGs in `assets/brand`: the panel favicon, the app icon, and the
-  Windows `.ico` and `.syso` resources.
+- `bash tools/brand/build.sh` regenerates every raster brand asset: the
+  panel favicon, the Windows `.ico`, and the `.syso` resources (icons plus
+  the version info from `versioninfo.json`, so bump that file with
+  `internal/version` and rerun the script). It runs on Windows too; only
+  the macOS app icon needs a Mac (Swift), and it is skipped elsewhere.
 - The binary is deliberately not stripped (`-ldflags "-s -w"`), because
   stripped Go executables trip antivirus heuristics more often.
 - The website lives in [`docs/`](docs/): plain HTML, CSS and JavaScript

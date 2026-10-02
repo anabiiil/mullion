@@ -184,7 +184,8 @@ func TestDeleteBackupOnlyDeletesRealBackups(t *testing.T) {
 	nested := mk(filepath.Join(backups, "2026-01-01_000000-mysql", "inner-mysql"))
 	link := filepath.Join(backups, "2026-02-02_000000-postgres")
 	if err := os.Symlink(outside, link); err != nil {
-		t.Fatal(err)
+		// Windows needs Developer Mode or admin rights for symlinks.
+		t.Skipf("cannot create symlinks here: %v", err)
 	}
 	a := &App{Paths: paths, State: mustLoadState(t, paths), skipApply: true}
 

@@ -125,6 +125,15 @@ func DocRoot(projectPath string) string {
 	return projectPath
 }
 
+// quote wraps a path in a Caddyfile string. Caddy's lexer only treats \"
+// as an escape and keeps every other backslash as is, so Windows paths go
+// in unchanged: doubling them gave Caddy C:\\Mullion\\logs, which no
+// longer matched the logs dir ServingOurs looks for. A trailing backslash
+// (a drive root) is doubled so it can't escape the closing quote.
 func quote(s string) string {
-	return `"` + strings.ReplaceAll(s, `\`, `\\`) + `"`
+	s = strings.ReplaceAll(s, `"`, `\"`)
+	if strings.HasSuffix(s, `\`) {
+		s += `\`
+	}
+	return `"` + s + `"`
 }

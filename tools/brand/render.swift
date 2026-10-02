@@ -1,24 +1,20 @@
-// render.swift rasterizes Mullion's brand SVGs (assets/brand) into the PNGs
-// the build embeds. Run it from the repo root via tools/brand/build.sh — it
-// needs nothing beyond the macOS command line tools (NSImage reads SVG on
-// macOS 13+).
+// render.swift rasterizes the macOS app icon from Mullion's brand SVG
+// (assets/brand). Run it via tools/brand/build.sh — it needs nothing beyond
+// the macOS command line tools (NSImage reads SVG on macOS 13+). The Windows
+// icons and the panel favicon come from winicon.go, which runs anywhere.
 //
-//   swift tools/brand/render.swift <repo-root> <ico-png-out-dir>
+//   swift tools/brand/render.swift <repo-root>
 //
 // Writes:
-//   internal/ui/favicon.png            256x256 mark (panel favicon, Windows app-window icon)
 //   assets/brand/app-icon-1024.png     macOS app icon source (midnight tile + coral mark)
-//   <ico-png-out-dir>/icon-<N>.png     16..256 frames for mullion.ico
 import AppKit
 
 let args = CommandLine.arguments
-guard args.count == 3 else {
-    FileHandle.standardError.write("usage: render.swift <repo-root> <ico-png-out-dir>\n".data(using: .utf8)!)
+guard args.count == 2 else {
+    FileHandle.standardError.write("usage: render.swift <repo-root>\n".data(using: .utf8)!)
     exit(2)
 }
 let root = URL(fileURLWithPath: args[1])
-let icoDir = URL(fileURLWithPath: args[2])
-try? FileManager.default.createDirectory(at: icoDir, withIntermediateDirectories: true)
 
 func loadSVG(_ rel: String) -> NSImage {
     guard let img = NSImage(contentsOf: root.appendingPathComponent(rel)) else {
@@ -55,18 +51,6 @@ func color(_ hex: UInt32, _ a: CGFloat = 1) -> CGColor {
 }
 
 let mark = loadSVG("assets/brand/mullion-mark.svg")
-let markSmall = loadSVG("assets/brand/mullion-mark-small.svg")
-
-// Favicon: the bare mark, full bleed.
-write(canvas(256) { _ in mark.draw(in: NSRect(x: 0, y: 0, width: 256, height: 256)) },
-      root.appendingPathComponent("internal/ui/favicon.png"))
-
-// ICO frames: the pixel-aligned small variant up to 32px, the full mark above.
-for px in [16, 24, 32, 48, 64, 128, 256] {
-    let src = px <= 32 ? markSmall : mark
-    write(canvas(px) { _ in src.draw(in: NSRect(x: 0, y: 0, width: px, height: px)) },
-          icoDir.appendingPathComponent("icon-\(px).png"))
-}
 
 // macOS app icon, on Apple's 1024 grid: an 824pt body inset 100pt, a soft
 // drop shadow below it, a midnight gradient tile, and the coral mark centred

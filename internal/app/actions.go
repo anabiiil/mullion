@@ -183,10 +183,15 @@ func (a *App) RestartStack(ctx context.Context) error {
 // --version`'s output ("Composer version 2.7.6 2024-06-10 22:11:12").
 var composerVersionRe = regexp.MustCompile(`Composer version (\S+)`)
 
+// ansiRe matches the color codes Composer prints even into a pipe on
+// Windows whenever TERM=xterm (Git Bash, Windows Terminal); left in, they
+// hid the version and the PHP page reported Composer as not installed.
+var ansiRe = regexp.MustCompile(`\x1b\[[0-9;]*[A-Za-z]`)
+
 // parseComposerVersion pulls the version number out of `composer
 // --version`'s output ("" when the text doesn't match).
 func parseComposerVersion(output string) string {
-	m := composerVersionRe.FindStringSubmatch(output)
+	m := composerVersionRe.FindStringSubmatch(ansiRe.ReplaceAllString(output, ""))
 	if len(m) < 2 {
 		return ""
 	}
@@ -209,7 +214,7 @@ func (a *App) ComposerVersion() string {
 	if _, err := os.Stat(composer.PharPath(a.Paths)); err != nil {
 		return ""
 	}
-	out, err := exec.Command(composerShimPath(a.Paths), "--version").Output()
+	out, err := exec.Command(composerShimPath(a.Paths), "--version", "--no-ansi").Output()
 	if err != nil {
 		return ""
 	}

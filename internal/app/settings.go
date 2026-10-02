@@ -98,8 +98,24 @@ func withinDir(child, base string) bool {
 func (a *App) BackupDirInfo() (dir string, isDefault bool, freeBytes uint64) {
 	dir = a.Paths.BackupsDir()
 	isDefault = a.State.Config.BackupDir == ""
-	freeBytes, _ = diskFreeBytes(dir)
+	freeBytes, _ = diskFreeBytes(existingAncestor(dir))
 	return dir, isDefault, freeBytes
+}
+
+// existingAncestor is dir, or its nearest parent that exists: the backup
+// folder is only created by the first backup, and asking the OS for the
+// free space of a missing folder fails (the panel showed "—").
+func existingAncestor(dir string) string {
+	for {
+		if _, err := os.Stat(dir); err == nil {
+			return dir
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return dir
+		}
+		dir = parent
+	}
 }
 
 // SetSitePinned floats a site to the top of the Sites page (or unfloats

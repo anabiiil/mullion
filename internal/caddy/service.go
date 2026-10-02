@@ -64,9 +64,11 @@ func ServingOurs(paths pmdir.Paths) bool {
 		return false
 	}
 	// Our config always references log files under our logs dir
-	// (JSON-escaped on Windows).
+	// (JSON-escaped on Windows). Caddyfiles written before quote() stopped
+	// doubling backslashes load as C:\\Mullion\\logs, i.e. escaped twice.
 	marker := strings.ReplaceAll(paths.LogsDir(), `\`, `\\`)
-	return strings.Contains(string(body), marker)
+	legacy := strings.ReplaceAll(paths.LogsDir(), `\`, `\\\\`)
+	return strings.Contains(string(body), marker) || strings.Contains(string(body), legacy)
 }
 
 func pidFile(paths pmdir.Paths) string {

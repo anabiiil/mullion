@@ -28,9 +28,13 @@ func TestGenerate(t *testing.T) {
 		!strings.Contains(out, "php_fastcgi 127.0.0.1:9074") {
 		t.Fatalf("per-site fastcgi ports missing:\n%s", out)
 	}
-	// Windows paths must survive quoting with escaped backslashes.
-	if !strings.Contains(out, `"C:\\code\\blog\\public"`) {
-		t.Fatalf("root path not quoted/escaped:\n%s", out)
+	// Windows paths are quoted with their backslashes kept single: Caddy's
+	// lexer only unescapes \", so doubling them would reach Caddy doubled.
+	if !strings.Contains(out, `"C:\code\blog\public"`) {
+		t.Fatalf("root path not quoted:\n%s", out)
+	}
+	if got := quote(`C:\`); got != `"C:\\"` {
+		t.Fatalf("a trailing backslash must not escape the closing quote: %s", got)
 	}
 	// Caddy parses skip_install_trust as a bare flag (its argument is
 	// ignored), so emitting `skip_install_trust false` would disable
@@ -92,8 +96,8 @@ func TestGenerateAliases(t *testing.T) {
 		"\napp.test, *.app.test {\n\ttls internal\n",
 		"\nhttp://plain.test {\n",
 		// One log per site, named after the primary host.
-		// Caddyfile strings escape backslashes (Windows paths).
-		`output file "` + strings.ReplaceAll(filepath.Join("/logs", "shop.test.log"), `\`, `\\`) + `"`,
+		// Caddyfile strings keep backslashes as is (Windows paths).
+		`output file "` + filepath.Join("/logs", "shop.test.log") + `"`,
 	} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("generated Caddyfile misses %q:\n%s", want, out)

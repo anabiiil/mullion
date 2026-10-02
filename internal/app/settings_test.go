@@ -135,19 +135,23 @@ func TestSetBackupDirDoesNotMoveExistingBackups(t *testing.T) {
 func TestBackupDirInfo(t *testing.T) {
 	a := newTestApp(t)
 
-	dir, isDefault, _ := a.BackupDirInfo()
+	dir, isDefault, free := a.BackupDirInfo()
 	if !isDefault {
 		t.Error("BackupDirInfo isDefault = false, want true before SetBackupDir")
 	}
 	if dir != a.Paths.Home+"-Backups" {
 		t.Errorf("BackupDirInfo dir = %q, want the default", dir)
 	}
+	// The default folder doesn't exist until the first backup.
+	if free == 0 {
+		t.Error("BackupDirInfo freeBytes = 0 for a not-yet-created folder, want its volume's free space")
+	}
 
 	custom := filepath.Join(t.TempDir(), "custom-backups")
 	if err := a.SetBackupDir(custom); err != nil {
 		t.Fatal(err)
 	}
-	dir, isDefault, free := a.BackupDirInfo()
+	dir, isDefault, free = a.BackupDirInfo()
 	if isDefault {
 		t.Error("BackupDirInfo isDefault = true, want false after SetBackupDir")
 	}
