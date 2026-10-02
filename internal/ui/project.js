@@ -519,15 +519,20 @@
   }
 
   // Mullion Terminal (the standalone app; index.html's MullionExtTerm).
-  // Its buttons show whenever it's installed, whatever terminal the user
-  // chose; plain "open a terminal" actions go there only when chosen.
-  function mtermInstalled() {
+  // Only the chosen terminal gets a button: with Mullion Terminal chosen
+  // (and installed) the hero shows "Mullion Terminal" instead of
+  // "Terminal here"; otherwise just "Terminal here". The project's own
+  // Terminal tab stays built-in either way.
+  function mtermChosen() {
     const X = window.MullionExtTerm;
-    return !!(X && typeof X.installed === 'function' && X.installed());
+    return !!(X && typeof X.installed === 'function' && X.installed() &&
+      typeof X.preferred === 'function' && X.preferred());
   }
   function syncMterm() {
-    const on = mtermInstalled();
-    root.querySelectorAll('[data-mterm]').forEach(b => { b.hidden = !on; });
+    const ext = mtermChosen();
+    root.querySelectorAll('[data-mterm]').forEach(b => { b.hidden = !ext; });
+    const builtin = root.querySelector('[data-hero="term"]');
+    if (builtin) builtin.hidden = ext;
   }
   function openInMterm() {
     const X = window.MullionExtTerm;

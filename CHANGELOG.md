@@ -2,6 +2,16 @@
 
 All notable changes to Mullion. Versions follow [semantic versioning](https://semver.org).
 
+## 2.1.1 — 2026-10-02
+
+### Fixed
+
+- **The project page shows only your chosen terminal's button**: "Mullion
+  Terminal" when Mullion Terminal is your terminal, "Terminal here" when
+  it's the built-in one, instead of both. The project's Terminal tab stays
+  either way, and pages already open update as soon as you switch in
+  Settings → Terminal.
+
 ## 2.1.0 — 2026-10-02
 
 Mullion Terminal as your terminal, project tabs on the Sites page, and a

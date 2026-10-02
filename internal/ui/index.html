@@ -3078,6 +3078,9 @@ window.MullionExtTerm = (() => {
   }
   return { load, preferred, installed, open, route, get status() { return status; } };
 })();
+// termAppChanged tells open project pages (project.js listens) which
+// terminal button to show after the terminal.app choice changes.
+const termAppChanged = () => window.dispatchEvent(new CustomEvent('mullion:mterm-status', { detail: MullionExtTerm.status }));
 let actToastTimer = 0;
 // actionToast is a toast with one action button (the plain toast can't
 // be clicked).
@@ -3163,6 +3166,8 @@ function renderTermApp() {
 document.querySelectorAll('#term-app button').forEach(b => b.onclick = async () => {
   if (b.dataset.app === 'internal') {
     MullionPrefs.set('terminal.app', 'internal');
+
+    termAppChanged();
     MullionPrefs.set('terminal.appChosen', '1');
     renderTermApp();
     toast('Terminals now open in the built-in terminal');
@@ -3179,6 +3184,8 @@ document.querySelectorAll('#term-app button').forEach(b => b.onclick = async () 
     if (!ok || !(await installMterm())) return;
   }
   MullionPrefs.set('terminal.app', 'external');
+
+  termAppChanged();
   MullionPrefs.set('terminal.appChosen', '1');
   renderTermApp();
   toast('Terminals now open in Mullion Terminal');
@@ -3272,6 +3279,8 @@ function showTerminalChoice(st) {
   card.querySelectorAll('.tcard').forEach(c => c.onclick = () => { if (!busy) { pick = c.dataset.pick; sync(); } });
   const choose = app => {
     MullionPrefs.set('terminal.app', app);
+
+    termAppChanged();
     MullionPrefs.set('terminal.appChosen', '1');
     renderTermApp();
     close();
