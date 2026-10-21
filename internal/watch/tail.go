@@ -40,7 +40,7 @@ func NewTailer(path string) *Tailer { return &Tailer{Path: path} }
 // end, so the next Poll returns only what is appended after.
 func (t *Tailer) Backlog(n int, maxBytes int64) []string {
 	t.started = true
-	fi, err := os.Stat(t.Path)
+	fi, err := statPinned(t.Path)
 	if err != nil {
 		t.off, t.info, t.Floor = 0, nil, 0 // gone since the mark: a new file will be read whole
 		return nil
@@ -105,7 +105,7 @@ func (t *Tailer) Poll() []string {
 	if !t.started {
 		t.started = true
 	}
-	fi, err := os.Stat(t.Path)
+	fi, err := statPinned(t.Path)
 	if err != nil {
 		// Gone (rotated away, not yet recreated): start over when it's back.
 		t.off, t.info, t.partial, t.Floor = 0, nil, t.partial[:0], 0
@@ -168,4 +168,18 @@ func splitLines(b []byte) []string {
 		out = append(out, string(bytes.TrimSuffix(p, []byte{'\r'})))
 	}
 	return out
+}
+
+// statPinned stats path and pins the file's identity now. On Windows an
+// os.Stat result loads its file ID lazily — by path, at the first
+// os.SameFile call — so a FileInfo kept from before a rename would
+// resolve to the NEW file at that path and rotation would go unnoticed.
+// Comparing the result with itself loads (and caches) the ID while the
+// path still names this file; elsewhere it is free.
+func statPinned(path string) (os.FileInfo, error) {
+	fi, err := os.Stat(path)
+	if err == nil {
+		os.SameFile(fi, fi)
+	}
+	return fi, err
 }

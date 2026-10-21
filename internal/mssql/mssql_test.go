@@ -3,12 +3,16 @@ package mssql
 import (
 	"encoding/base64"
 	"errors"
+	"runtime"
 	"strings"
 	"testing"
 	"unicode/utf16"
 )
 
 func TestFindDocker(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the OrbStack/Docker lookup is macOS-only (Unix paths)")
+	}
 	none := func(string) (string, error) { return "", errors.New("not found") }
 	onPath := func(string) (string, error) { return "/somewhere/bin/docker", nil }
 	noFiles := func(string) bool { return false }
@@ -81,6 +85,9 @@ func TestSqlcmdArgs(t *testing.T) {
 }
 
 func TestDockerEnv(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("the OrbStack socket is macOS-only (Unix paths)")
+	}
 	sock := "/h/.orbstack/run/docker.sock"
 	exists := func(p string) bool { return p == sock }
 	env := dockerEnv([]string{"PATH=/bin", "SQLCMDPASSWORD=stale"}, "/h", "Secret_123", exists)

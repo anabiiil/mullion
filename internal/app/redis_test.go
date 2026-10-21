@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -61,7 +62,7 @@ func TestUseRedisInProject(t *testing.T) {
 	if string(old) != "APP_NAME=Shop\nCACHE_STORE=database\nREDIS_HOST=127.0.0.1\n" {
 		t.Errorf("backup content = %q", old)
 	}
-	if st, _ := os.Stat(filepath.Join(dir, ".env")); st.Mode().Perm() != 0o600 {
+	if st, _ := os.Stat(filepath.Join(dir, ".env")); runtime.GOOS != "windows" && st.Mode().Perm() != 0o600 {
 		t.Errorf(".env mode changed to %v", st.Mode().Perm())
 	}
 	vals := redis.ParseEnv(string(must2(os.ReadFile(filepath.Join(dir, ".env")))))
