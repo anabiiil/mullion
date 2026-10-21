@@ -143,6 +143,12 @@ func (a *App) PostgresDatabases() ([]string, error) {
 // CreatePostgresDB creates a database on the configured server,
 // starting it first if needed.
 func (a *App) CreatePostgresDB(name string) error {
+	return a.CreatePostgresDBWith(name, postgres.CreateOptions{})
+}
+
+// CreatePostgresDBWith is CreatePostgresDB with an encoding/locale
+// (empty fields = the cluster's).
+func (a *App) CreatePostgresDBWith(name string, opts postgres.CreateOptions) error {
 	v := a.State.Config.Postgres
 	if v == "" {
 		return fmt.Errorf("PostgreSQL is not installed (run: mullion postgres install)")
@@ -150,7 +156,7 @@ func (a *App) CreatePostgresDB(name string) error {
 	if err := postgres.Start(a.Paths, v); err != nil {
 		return err
 	}
-	return postgres.CreateDatabase(a.Paths, v, name)
+	return postgres.CreateDatabaseWith(a.Paths, v, name, opts)
 }
 
 // DropPostgresDB deletes a database (and all its data) on the

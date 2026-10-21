@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -19,11 +20,14 @@ import (
 	"pm/internal/elevate"
 	"pm/internal/fcgi"
 	"pm/internal/hosts"
+	"pm/internal/mailpit"
 	"pm/internal/mongodb"
+	"pm/internal/mssql"
 	"pm/internal/mysql"
 	"pm/internal/pmdir"
 	"pm/internal/postgres"
 	"pm/internal/proc"
+	"pm/internal/redis"
 	"pm/internal/shortcut"
 )
 
@@ -36,16 +40,17 @@ var (
 
 var uninstallCmd = &cobra.Command{
 	Use:   "uninstall",
-	Short: "Remove Mullion completely (PHP, MySQL, PostgreSQL, MongoDB, phpMyAdmin, Composer, config)",
+	Short: "Remove Mullion completely (PHP, MySQL, PostgreSQL, MongoDB, Redis, Mail, phpMyAdmin, Composer, config)",
 	Long: `Stops every service and removes everything Mullion put on this machine:
-~/.mullion (PHP versions, MySQL/PostgreSQL/MongoDB and their databases,
-phpMyAdmin, Composer), the hosts-file entries, the PATH entries, the
+~/.mullion (PHP versions, MySQL/PostgreSQL/MongoDB/Redis and their databases,
+Mail and its caught messages, phpMyAdmin, Composer), SQL Server (its container and data volume on macOS,
+its MULLION instance on Windows), the hosts-file entries, the PATH entries, the
 trusted root certificate, and the autostart registration.
 
 Your project folders are NOT touched — Mullion only ever links to them.
 
 Before deleting, it offers to export every installed database server's
-data (MySQL, PostgreSQL, MongoDB) to a timestamped backup folder next
+data (MySQL, PostgreSQL, MongoDB, SQL Server, Redis) to a timestamped backup folder next
 to ~/.mullion.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		err := runUninstall()
@@ -72,7 +77,7 @@ func runUninstall() error {
 		if !console.Interactive() {
 			return fmt.Errorf("refusing to uninstall without confirmation; pass --yes")
 		}
-		fmt.Println("This removes Mullion completely: PHP versions, MySQL/PostgreSQL/MongoDB")
+		fmt.Println("This removes Mullion completely: PHP versions, MySQL/PostgreSQL/MongoDB/SQL Server")
 		fmt.Println("AND their databases, phpMyAdmin, Composer, hosts entries, PATH entries,")
 		fmt.Println("and autostart.")
 		fmt.Println("Your project folders are NOT touched.")
@@ -82,7 +87,7 @@ func runUninstall() error {
 		}
 	}
 
-	hasAnyData := engineHasData(a, "mysql") || engineHasData(a, "postgres") || engineHasData(a, "mongo")
+	hasAnyData := engineHasData(a, "mysql") || engineHasData(a, "postgres") || engineHasData(a, "mongo") || engineHasData(a, "mssql")
 
 	wantBackup := uninstallBackup
 	if !uninstallBackup && !uninstallNoBackup {
@@ -121,7 +126,7 @@ func doUninstall(a *app.App, wantBackup bool) error {
 	// 1. Database backups — a failed backup aborts the uninstall rather
 	// than deleting data the user asked to keep.
 	if wantBackup {
-		for _, engine := range []string{"mysql", "postgres", "mongo"} {
+		for _, engine := range []string{"mysql", "postgres", "mongo", "mssql"} {
 			if !engineHasData(a, engine) {
 				continue
 			}
@@ -143,6 +148,17 @@ func doUninstall(a *app.App, wantBackup bool) error {
 			}
 			fmt.Println("Backup saved:", dir)
 		}
+		// Redis: its dump.rdb (cmd/backups.go's engineHasData predates it).
+		if a.State.Config.Redis != "" {
+			if _, err := os.Stat(redis.DumpFile(a.Paths)); err == nil || redis.Owned(a.Paths) {
+				fmt.Println("Backing up Redis...")
+				dir, err := a.BackupEngine(context.Background(), "redis")
+				if err != nil {
+					return fmt.Errorf("Redis backup failed: %w (re-run with --no-backup to skip)", err)
+				}
+				fmt.Println("Backup saved:", dir)
+			}
+		}
 	}
 
 	// 2. Stop everything — but ONLY Mullion's own processes: killing by
@@ -161,6 +177,23 @@ func doUninstall(a *app.App, wantBackup bool) error {
 	}
 	if v := a.State.Config.Mongo; v != "" {
 		_ = mongodb.Stop(a.Paths, v)
+	}
+	if a.State.Config.Mailpit != "" {
+		_ = mailpit.Stop(a.Paths)
+	}
+	if a.State.Config.Redis != "" {
+		_ = redis.Stop(a.Paths)
+	}
+	// SQL Server lives outside ~/.mullion (a Docker container + volume
+	// on macOS, a Windows instance), so deleting the folder won't remove
+	// it. Remove it now, while its helper files under ~/.mullion still
+	// exist. Not fatal: the rest of the uninstall goes on.
+	if a.State.Config.MSSQL != "" {
+		fmt.Println("Removing SQL Server...")
+		if err := uninstallMSSQLAll(context.Background(), a.Paths); err != nil {
+			fmt.Println("note: could not remove SQL Server -", err)
+			fmt.Println("  " + mssqlLeftoverHint())
+		}
 	}
 	for _, pid := range processesUnder(a.Paths.Home, "") {
 		// Never kill ourselves — this very process may run from the
@@ -256,4 +289,18 @@ func init() {
 	uninstallCmd.Flags().BoolVar(&uninstallPause, "pause", false, "wait for Enter before exiting (used by the elevated relaunch)")
 	_ = uninstallCmd.Flags().MarkHidden("pause")
 	rootCmd.AddCommand(uninstallCmd)
+}
+
+// uninstallMSSQLAll removes SQL Server and its data — a seam so tests
+// never run docker or Windows setup.
+var uninstallMSSQLAll = func(ctx context.Context, paths pmdir.Paths) error {
+	return mssql.Uninstall(ctx, paths, true)
+}
+
+// mssqlLeftoverHint says how to finish removing SQL Server by hand.
+func mssqlLeftoverHint() string {
+	if runtime.GOOS == "windows" {
+		return "remove \"SQL Server 2025 (" + mssql.InstanceName + ")\" from Settings > Apps"
+	}
+	return "remove it with: docker rm -f " + mssql.ContainerName + " && docker volume rm " + mssql.VolumeName
 }

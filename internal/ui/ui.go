@@ -74,6 +74,29 @@ func bringServicesUp() {
 	}
 }
 
+// linkResult is /api/sites/link's answer: the site is saved by the time
+// it is sent; Job is the background Apply that finishes setting it up.
+type linkResult struct {
+	URL  string `json:"url"`
+	Name string `json:"name"`
+	Job  string `json:"job"`
+}
+
+// applySite converges the machine after a state change. A variable so
+// tests can stand in for Apply, which edits the real hosts file and
+// talks to the global Caddy.
+var applySite = func(a *app.App) error { return a.Apply() }
+
+// startApplyJob runs applySite(a) as a background job whose status line
+// follows Apply's progress, and returns its id. The job owns a from
+// here on — the request that loaded it must not touch it again.
+func startApplyJob(a *app.App, result any) string {
+	return jobs.start(func(setStatus func(string)) (any, error) {
+		a.Progress = setStatus
+		return result, applySite(a)
+	})
+}
+
 // startPanel brings the stack up in the background and serves the
 // control panel on an ephemeral 127.0.0.1 port. It's shared by Run and
 // RunHost; callers are responsible for shutting srv down.
@@ -220,6 +243,14 @@ func newMux(token string) *http.ServeMux {
 	registerProject(api)
 	registerPrefs(api)
 	registerMterm(api)
+	registerMSSQL(api)
+	registerUpgrade(api)
+	registerMail(api)
+	registerRedis(api)
+	registerOpcache(api)
+	registerRedisMonitor(mux, token)
+	registerWatch(api)
+	registerWatchStream(mux, token)
 
 	api("/api/state", getState)
 	api("/api/start", func(a *app.App, r *http.Request) (any, error) {
@@ -306,6 +337,7 @@ func newMux(token string) *http.ServeMux {
 		if err := phpver.InstallPeclExtension(r.Context(), a.Paths, in.Version, in.Name); err != nil {
 			return nil, err
 		}
+		forgetRedisExt()
 		return nil, a.RestartPhp(in.Version)
 	})
 	api("/api/php/ext/set", func(a *app.App, r *http.Request) (any, error) {
@@ -320,6 +352,8 @@ func newMux(token string) *http.ServeMux {
 		if err := phpver.SetExtension(a.Paths, in.Version, in.Name, in.Enabled); err != nil {
 			return nil, err
 		}
+		forgetSQLServerExt()
+		forgetRedisExt()
 		// Restart the version's php-cgi so running sites see the change.
 		return nil, a.RestartPhp(in.Version)
 	})
@@ -428,19 +462,38 @@ func newMux(token string) *http.ServeMux {
 	api("/api/db/list", func(a *app.App, r *http.Request) (any, error) {
 		v := a.State.Config.MySQL
 		if v == "" || !mysql.Running() {
-			return []string{}, nil
+			return []mysql.DatabaseInfo{}, nil
 		}
-		dbs, err := mysql.UserDatabases(a.Paths, v)
+		// Names plus each database's character set and collation; a
+		// server that can't answer the detail query still gets a list.
+		if dbs, err := mysql.UserDatabaseDetails(a.Paths, v); err == nil {
+			if dbs == nil {
+				dbs = []mysql.DatabaseInfo{}
+			}
+			return dbs, nil
+		}
+		names, err := mysql.UserDatabases(a.Paths, v)
 		if err != nil {
 			return nil, err
 		}
-		if dbs == nil {
-			dbs = []string{}
+		dbs := make([]mysql.DatabaseInfo, 0, len(names))
+		for _, n := range names {
+			dbs = append(dbs, mysql.DatabaseInfo{Name: n})
 		}
 		return dbs, nil
 	})
+	api("/api/db/charsets", func(a *app.App, r *http.Request) (any, error) {
+		v := a.State.Config.MySQL
+		if v == "" {
+			return nil, errors.New("MySQL is not installed")
+		}
+		if err := mysql.Start(a.Paths, v); err != nil {
+			return nil, err
+		}
+		return mysql.Charsets(a.Paths, v)
+	})
 	api("/api/db/create", func(a *app.App, r *http.Request) (any, error) {
-		var in struct{ Name string }
+		var in struct{ Name, Charset, Collation string }
 		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
 			return nil, err
 		}
@@ -451,7 +504,7 @@ func newMux(token string) *http.ServeMux {
 		if err := mysql.Start(a.Paths, v); err != nil {
 			return nil, err
 		}
-		return nil, mysql.CreateDatabase(a.Paths, v, in.Name)
+		return nil, mysql.CreateDatabaseWith(a.Paths, v, in.Name, in.Charset, in.Collation)
 	})
 	api("/api/db/drop", func(a *app.App, r *http.Request) (any, error) {
 		var in struct{ Name string }
@@ -501,14 +554,12 @@ func newMux(token string) *http.ServeMux {
 			}
 			// Linking the same folder again retries the hosts update a
 			// declined UAC prompt skipped (the site was saved already).
-			if err := a.Apply(); err != nil {
-				return nil, err
-			}
 			scheme := "http://"
 			if existing.Secure {
 				scheme = "https://"
 			}
-			return scheme + a.State.Host(*existing), nil
+			url := scheme + a.State.Host(*existing)
+			return linkResult{URL: url, Name: existing.Name, Job: startApplyJob(a, url)}, nil
 		}
 		site := config.Site{Name: name, Path: path, Kind: app.DetectProjectKind(path)}
 		if site.Kind == "node" {
@@ -521,10 +572,17 @@ func newMux(token string) *http.ServeMux {
 			}
 		}
 		a.State.AddSite(site)
-		if err := a.Apply(); err != nil {
+		// Save the site right away and answer, then converge the machine
+		// (dev server, hosts file — possibly behind an administrator
+		// prompt —, Caddy) in a background job the page polls. Running
+		// Apply inside this request used to keep the panel on "Linking…"
+		// for as long as any of those steps took, without end when a
+		// prompt went unseen, although the site was already saved.
+		if err := a.State.Save(); err != nil {
 			return nil, err
 		}
-		return "http://" + name + "." + a.State.Config.TLD, nil
+		url := "http://" + name + "." + a.State.Config.TLD
+		return linkResult{URL: url, Name: name, Job: startApplyJob(a, url)}, nil
 	})
 	api("/api/sites/secure", func(a *app.App, r *http.Request) (any, error) {
 		var in struct {
@@ -801,24 +859,35 @@ func newMux(token string) *http.ServeMux {
 		return nil, a.SetPostgresPassword(in.Password)
 	})
 	api("/api/pg/db/list", func(a *app.App, r *http.Request) (any, error) {
-		if a.State.Config.Postgres == "" || !postgres.Running() {
-			return []string{}, nil
+		v := a.State.Config.Postgres
+		if v == "" || !postgres.Running() {
+			return []postgres.DatabaseInfo{}, nil
 		}
-		dbs, err := a.PostgresDatabases()
+		dbs, err := postgres.UserDatabaseDetails(a.Paths, v)
 		if err != nil {
 			return nil, err
 		}
 		if dbs == nil {
-			dbs = []string{}
+			dbs = []postgres.DatabaseInfo{}
 		}
 		return dbs, nil
 	})
+	api("/api/pg/db/locales", func(a *app.App, r *http.Request) (any, error) {
+		v := a.State.Config.Postgres
+		if v == "" {
+			return nil, errors.New("PostgreSQL is not installed")
+		}
+		if err := postgres.Start(a.Paths, v); err != nil {
+			return nil, err
+		}
+		return postgres.Locales(a.Paths, v)
+	})
 	api("/api/pg/db/create", func(a *app.App, r *http.Request) (any, error) {
-		var in struct{ Name string }
+		var in struct{ Name, Encoding, Locale string }
 		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
 			return nil, err
 		}
-		return nil, a.CreatePostgresDB(in.Name)
+		return nil, a.CreatePostgresDBWith(in.Name, postgres.CreateOptions{Encoding: in.Encoding, Locale: in.Locale})
 	})
 	api("/api/pg/db/drop", func(a *app.App, r *http.Request) (any, error) {
 		var in struct{ Name string }
@@ -1321,6 +1390,9 @@ func getState(a *app.App, r *http.Request) (any, error) {
 		"mysql":         mysqlState,
 		"postgres":      postgresState,
 		"mongo":         mongoState,
+		"mssql":         mssqlState(a),
+		"mail":          mailState(a),
+		"redis":         redisState(a),
 		"sites":         sites,
 		"tld":           a.State.Config.TLD,
 		"heidisql":      heidisql.Installed(a.Paths),
@@ -1416,8 +1488,20 @@ func registerPanelPages(api func(path string, h func(a *app.App, r *http.Request
 		switch in.Action {
 		case "", "get":
 		case "set":
-			if strings.TrimSpace(in.Dir) == "" {
+			dir := strings.TrimSpace(in.Dir)
+			if dir == "" {
 				return nil, errors.New("choose a folder first")
+			}
+			// Pre-check with the same validator `mullion setup` uses for
+			// its backup-location prompt, so an unusable folder is
+			// rejected with the same wording here too. Only for already-
+			// absolute paths (what the panel's folder picker returns) —
+			// SetBackupDir below still owns ~-expansion and the relative/
+			// inside-install-root checks for anything else.
+			if filepath.IsAbs(dir) {
+				if err := app.ValidateBackupDir(dir); err != nil {
+					return nil, err
+				}
 			}
 			if err := a.SetBackupDir(in.Dir); err != nil {
 				return nil, err

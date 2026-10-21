@@ -4,10 +4,12 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"runtime"
 
 	"github.com/spf13/cobra"
 
 	"pm/internal/app"
+	"pm/internal/selfupdate"
 	"pm/internal/term"
 	"pm/internal/version"
 )
@@ -29,6 +31,11 @@ trusted local HTTPS certificates.`,
 
 func Execute() {
 	term.Init()
+	if runtime.GOOS == "windows" {
+		// A direct-download upgrade parks the running exe as
+		// mullion.old.exe; delete it once nothing runs from it.
+		selfupdate.CleanupOld()
+	}
 	maybeExecFresher()
 	if maybeRunExplorerWizard() {
 		return

@@ -14,7 +14,7 @@ import (
 
 var backupsCmd = &cobra.Command{
 	Use:   "backups",
-	Short: "List database backups made with mullion mysql|postgres|mongo backup",
+	Short: "List database backups made with mullion mysql|postgres|mongo|mssql backup",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		a := mustApp()
 		backups, err := a.ListBackups()
@@ -22,7 +22,7 @@ var backupsCmd = &cobra.Command{
 			return err
 		}
 		if len(backups) == 0 {
-			fmt.Println("No backups yet. Create one with: mullion mysql backup / mullion postgres backup / mullion mongo backup")
+			fmt.Println("No backups yet. Create one with: mullion mysql backup / mullion postgres backup / mullion mongo backup / mullion mssql backup")
 			return nil
 		}
 		for _, b := range backups {
@@ -33,7 +33,7 @@ var backupsCmd = &cobra.Command{
 	},
 }
 
-// engineLabel renders an engine key ("mysql"|"postgres"|"mongo") for
+// engineLabel renders an engine key ("mysql"|"postgres"|"mongo"|"mssql") for
 // humans; shared by every backup/restore/uninstall command.
 func engineLabel(engine string) string {
 	switch engine {
@@ -43,6 +43,8 @@ func engineLabel(engine string) string {
 		return "PostgreSQL"
 	case "mongo":
 		return "MongoDB"
+	case "mssql":
+		return "SQL Server"
 	default:
 		return engine
 	}
@@ -59,6 +61,10 @@ func engineHasData(a *app.App, engine string) bool {
 		return a.State.Config.Postgres != "" && postgres.DataInitialized(a.Paths, a.State.Config.Postgres)
 	case "mongo":
 		return a.State.Config.Mongo != "" && mongodb.DataInitialized(a.Paths)
+	case "mssql":
+		// Its data lives in a Docker volume / the Windows instance, not
+		// under ~/.mullion; installed is the best cheap signal.
+		return a.State.Config.MSSQL != ""
 	default:
 		return false
 	}

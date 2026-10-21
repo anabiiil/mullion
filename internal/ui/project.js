@@ -1,6 +1,6 @@
 /* The project page — "Manage" one linked site: an overview strip and
  * tabs that adapt to the project (Commands, Workers, Packages, Git,
- * Terminal, Domains, Settings), backed by /api/project/* (project.go).
+ * Cache, Watch, Terminal, Domains, Settings), backed by /api/project/* (project.go).
  *
  * Usage from the panel page:
  *
@@ -22,6 +22,8 @@
  * Events on window (so the shell can follow along):
  *   mullion:project-renamed  {detail: {from, to}}   (the instance follows)
  *   mullion:project-unlinked {detail: {name, kind}} (the instance unmounts)
+ *   mullion:watch-exception  {detail: {site, count}} (new exceptions, unseen)
+ *   mullion:watch-seen       {detail: {site}}        (the user looked)
  */
 (function () {
   'use strict';
@@ -216,10 +218,12 @@
     undo: I('<path d="M3 7v6h6"/><path d="M3.5 13A9 9 0 1 0 6 6.3L3 9"/>'),
     dots: I('<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>', ' stroke-width="2.4"'),
     rebase: I('<circle cx="6" cy="18" r="2.2"/><circle cx="18" cy="6" r="2.2"/><path d="M6 15.8V9a3 3 0 0 1 3-3h6.8"/><path d="M13 3l3 3-3 3"/>'),
+    cache: I('<path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/>'),
     stash: I('<rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9"/><path d="M10 13h4"/>'),
     cloud: I('<path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>'),
     commit: I('<circle cx="12" cy="12" r="3.5"/><path d="M2 12h6.5M15.5 12H22"/>'),
     file: I('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>'),
+    eye: I('<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'),
     tag: I('<path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1.2"/>'),
   };
 
@@ -259,7 +263,7 @@
   let wasVisible = false;
   let pendingTab = null; // showTab() before the page loaded
   // per-site caches
-  let cmdState = null, wkState = null, pkgState = null, gitState = null;
+  let cmdState = null, wkState = null, pkgState = null, gitState = null, cacheState = null, watchState = null;
 
   const live = g => g === gen && !destroyed;
   // visible: the container is laid out (not display:none, e.g. a hidden
@@ -287,6 +291,7 @@
     if (tab === 'workers') loadWorkers(true);
     if (tab === 'git') loadGitStatus(true);
     if (tab === 'terminal') fitTerminal();
+    if (tab === 'watch' && watchState) { wPaintSubs(); wPaintBody(); if (watchState.sub === 'exceptions') wSeen(); }
   }
   function checkVisible() {
     const v = visible();
@@ -317,6 +322,10 @@
     cmdState = { cmds: null, error: '', q: '', sel: null, job: null, loading: false };
     wkState = { list: null, templates: null };
     pkgState = { data: null, source: null, q: '', results: null, searching: false, job: null, filter: '' };
+    stopMonitor();
+    cacheState = cacheFresh();
+    stopWatchStream();
+    watchState = watchFresh();
     closeBranchPop();
     gitState = gitFresh();
     root.innerHTML = `<div class="mp"><section class="card"><div class="mp-loading"><div class="spin"></div>Loading ${esc(cur)}…</div></section></div>`;
@@ -340,6 +349,9 @@
     closeLogModal();
     closeBranchPop();
     destroyTerminal();
+    stopMonitor();
+    stopWatchStream();
+    if (watchState && watchState.unseen) window.dispatchEvent(new CustomEvent('mullion:watch-seen', { detail: { site: cur } }));
     document.removeEventListener('visibilitychange', onVisibility);
     window.removeEventListener('mullion:mterm-status', syncMterm);
     if (io) io.disconnect();
@@ -373,6 +385,8 @@
     if (hasProject) t.push(['commands', 'Commands', ICON.cmd]);
     if (info.detect.language === 'PHP' || info.hasPackage || info.workers > 0) t.push(['workers', 'Workers', ICON.workers]);
     if (info.hasComposer || info.hasPackage) t.push(['packages', 'Packages', ICON.pkg]);
+    if (isPHP() || isLaravel()) t.push(['cache', 'Cache', ICON.cache]);
+    if (isPHP()) t.push(['watch', 'Watch', ICON.eye]);
     t.push(['git', 'Git', ICON.branch]);
     t.push(['terminal', 'Terminal', ICON.term]);
     t.push(['domains', 'Domains', ICON.globe]);
@@ -385,7 +399,7 @@
     root.innerHTML = `<div class="mp">
       <section class="card mp-hero" data-id="mp-hero"></section>
       <div class="mp-tabs" role="tablist">${tabs.map(([k, label, ic]) =>
-        `<button role="tab" data-mptab="${k}">${ic}${label}${k === 'workers' ? '<span class="n" data-id="mp-wk-n" hidden></span>' : ''}${k === 'git' ? '<span class="n" data-id="mp-git-n" hidden></span>' : ''}</button>`).join('')}</div>
+        `<button role="tab" data-mptab="${k}">${ic}${label}${k === 'workers' ? '<span class="n" data-id="mp-wk-n" hidden></span>' : ''}${k === 'git' ? '<span class="n" data-id="mp-git-n" hidden></span>' : ''}${k === 'watch' ? '<span class="n" data-id="mp-watch-n" hidden></span>' : ''}</button>`).join('')}</div>
       <div class="mp-panel" data-id="mp-panel"></div>
       <div class="mp-panel" data-id="mp-term-panel"></div>
     </div>`;
@@ -397,11 +411,13 @@
       const t = pendingTab;
       pendingTab = null;
       renderHero();
+      if (watchOn()) startWatchStream();
       showTab(t);
       updateWorkerCount(info.workers);
       return;
     }
     renderHero();
+    if (watchOn()) startWatchStream();
     const saved = prefGet('project.tab', 'commands');
     showTab(tabs.some(t => t[0] === saved) ? saved : tabs[0][0]);
     updateWorkerCount(info.workers);
@@ -581,12 +597,15 @@
     // The embedded terminal stays alive while other tabs show.
     if (termBox) termBox.hidden = name !== 'terminal';
     els.panel.hidden = name === 'terminal';
+    if (name !== 'cache') stopMonitor();
     if (name === 'terminal') { showTerminal(); return; }
     if (name === 'commands') renderCommands();
     else if (name === 'workers') renderWorkers();
     else if (name === 'packages') renderPackages();
     else if (name === 'git') renderGit();
     else if (name === 'domains') renderDomains();
+    else if (name === 'cache') renderCache();
+    else if (name === 'watch') renderWatch();
     else renderSettings();
   }
 
@@ -2694,6 +2713,1138 @@
   }
 
   /* ════════════════════════════════════════════════════════════════
+     CACHE — this project's keys in Mullion's Redis: only those under
+     its prefix (from its .env, see redis.ProjectSettings), a bounded
+     preview, delete, flush-by-prefix, a live MONITOR, and the "Use
+     Redis in this project" .env edit.
+     ════════════════════════════════════════════════════════════════ */
+  function cacheFresh() {
+    return { info: null, err: '', db: null, q: '', keys: [], cursor: '0', loading: false, sel: null, preview: null,
+      mon: null, monLines: [], monPaused: false, monDropped: 0, monUntil: 0, monMinutes: 5, stats: null };
+  }
+  const fmtTTL = ms => {
+    if (ms == null || ms < 0) return '—';
+    const s = Math.round(ms / 1000);
+    if (s < 60) return s + 's';
+    if (s < 3600) return Math.floor(s / 60) + 'm ' + (s % 60) + 's';
+    if (s < 86400) return Math.floor(s / 3600) + 'h ' + Math.floor((s % 3600) / 60) + 'm';
+    return Math.floor(s / 86400) + 'd ' + Math.floor((s % 86400) / 3600) + 'h';
+  };
+  const fmtBytes = n => {
+    if (!n) return '—';
+    if (n < 1024) return n + ' B';
+    if (n < 1048576) return (n / 1024).toFixed(1) + ' KB';
+    return (n / 1048576).toFixed(1) + ' MB';
+  };
+
+  async function renderCache() {
+    const g = gen;
+    const cs = cacheState;
+    els.panel.innerHTML = `<section class="card"><div class="mp-loading"><div class="spin"></div>Reading this project's Redis settings…</div></section>`;
+    try {
+      cs.info = await call('/api/project/cache/info', { site: cur });
+      cs.err = '';
+    } catch (e) {
+      cs.info = null;
+      cs.err = e.message;
+    }
+    if (!live(g) || tab !== 'cache') return;
+    if (cs.db === null && cs.info) cs.db = cs.info.settings.cacheDb;
+    paintCache();
+    if (cs.info && cs.info.running) {
+      loadCacheKeys(true);
+      loadCacheStats();
+    }
+  }
+
+  function paintCache() {
+    const cs = cacheState, inf = cs.info;
+    if (!inf) {
+      els.panel.innerHTML = `<section class="card"><div class="card-body"><div class="mp-empty"><b>Couldn't read the cache settings</b>${esc(cs.err)}</div></div></section>`;
+      return;
+    }
+    const st = inf.settings;
+    const drivers = [['Cache', st.cacheStore], ['Sessions', st.sessionDriver], ['Queue', st.queueConnection]]
+      .map(([k, v]) => `<span class="mp-chip" style="padding:3px 9px">${k}: <b class="mono">${esc(v || 'default')}</b></span>`).join(' ');
+    let warn = '';
+    if (!inf.installed) warn = `<div class="mp-warn">Mullion's Redis isn't installed — <a data-go-db>install it on the Databases page</a> (Redis tab).</div>`;
+    else if (!inf.running) warn = `<div class="mp-warn">Redis isn't running — <a data-go-db>start it on the Databases page</a>.</div>`;
+    else if (!st.pointsHere && st.hasEnv && (st.usesRedis || st.host !== '127.0.0.1' || st.port !== inf.port))
+      warn = `<div class="mp-warn">This project's <span class="mono">.env</span> points at <span class="mono">${esc(st.host)}:${st.port}</span>, not Mullion's Redis on <span class="mono">127.0.0.1:${inf.port}</span>.</div>`;
+    const plan = inf.plan || [];
+    const keysNote = inf.running ? `${fmtNum(inf.keys)}${inf.more ? '+' : ''} key${inf.keys === 1 ? '' : 's'} in db${st.db}` +
+      (st.cacheDb !== st.db ? ` · ${fmtNum(inf.cacheKeys)}${inf.more ? '+' : ''} in db${st.cacheDb} (cache)` : '') : '';
+    let html = `
+      <section class="card">
+        <div class="card-head">${ICON.cache}<h2>Redis</h2><span class="hint">${esc(keysNote)}</span><span class="spacer"></span>
+          ${plan.length ? `<button class="sm primary" data-id="mp-c-use">Use Redis in this project…</button>` : (st.usesRedis ? '<span class="mp-state running">using Redis</span>' : '')}
+          ${inf.running ? `<button class="sm mp-btn-ic" data-id="mp-c-admin">${ICON.open}phpRedisAdmin</button>` : ''}
+          ${inf.running ? `<button class="sm danger" data-id="mp-c-flush">Flush this project's cache…</button>` : ''}
+        </div>
+        <div class="card-body">
+          ${warn}
+          <div class="mp-kv">
+            <div class="k">Connection<small>REDIS_HOST / PORT / CLIENT</small></div>
+            <div class="mono">${esc(st.host)}:${st.port} <span class="mp-sub">${esc(st.client)}</span></div>
+            <div class="k">Key prefix<small>REDIS_PREFIX — every key</small></div>
+            <div class="mono">${st.prefix ? esc(st.prefix) : '<span class="mp-sub">none</span>'}</div>
+            <div class="k">Cache prefix<small>CACHE_PREFIX — after the key prefix</small></div>
+            <div class="mono">${st.cachePrefix ? esc(st.cachePrefix) : '<span class="mp-sub">none</span>'}</div>
+            <div class="k">Databases<small>REDIS_DB / REDIS_CACHE_DB</small></div>
+            <div class="mono">db${st.db} (sessions, queues) · db${st.cacheDb} (cache)</div>
+            <div class="k">Drivers<small>from .env</small></div>
+            <div>${drivers}</div>
+          </div>
+          <div class="redis-stats mp-c-stats" data-id="mp-c-stats" style="margin-top:14px"></div>
+        </div>
+      </section>`;
+    if (inf.running) {
+      const dbs = [st.db];
+      if (st.cacheDb !== st.db) dbs.push(st.cacheDb);
+      html += `
+      <section class="card">
+        <div class="card-head">${ICON.search}<h2>Keys</h2><span class="hint">only keys starting with <span class="mono">${esc(st.prefix || '(any)')}</span></span><span class="spacer"></span>
+          <div class="mp-seg" role="tablist">${dbs.map(d => `<button data-cdb="${d}" class="${cs.db === d ? 'active' : ''}">db${d}${d === st.cacheDb ? ' · cache' : ''}${d === st.db ? (d === st.cacheDb ? '' : ' · default') : ''}</button>`).join('')}</div>
+        </div>
+        <div class="card-body">
+          <div class="row" style="gap:8px; margin-bottom:12px">
+            <div class="mp-search">${ICON.search}<input type="text" data-id="mp-c-q" placeholder="Filter keys containing…" value="${esc(cs.q)}" spellcheck="false"></div>
+            <button class="sm mp-btn-ic" data-id="mp-c-refresh">${ICON.fetch}Refresh</button>
+          </div>
+          <div data-id="mp-c-keys"></div>
+          <div data-id="mp-c-preview"></div>
+        </div>
+      </section>
+      <section class="card">
+        <div class="card-head">${ICON.bolt}<h2>Live monitor</h2><span class="hint" data-id="mp-c-mon-hint">every command touching this project's keys, as it happens</span><span class="spacer"></span>
+          <select data-id="mp-c-mon-min" class="sm" title="stops by itself after">${[1, 5, 15, 30].map(m => `<option value="${m}"${cs.monMinutes === m ? ' selected' : ''}>${m} min</option>`).join('')}</select>
+          <button class="sm primary mp-btn-ic" data-id="mp-c-mon-start">${ICON.play}Start</button>
+          <button class="sm" data-id="mp-c-mon-pause" hidden>Pause</button>
+          <button class="sm" data-id="mp-c-mon-clear">Clear</button>
+          <button class="sm danger" data-id="mp-c-mon-stop" hidden>Stop</button>
+        </div>
+        <div class="card-body">
+          <div class="mp-sub" style="margin-bottom:8px">Uses Redis's MONITOR, which slows the server a little while it runs — so it stops by itself after the time you pick. Mullion's own lookups are left out.</div>
+          <pre class="mp-term short" data-id="mp-c-mon-out"></pre>
+        </div>
+      </section>`;
+    }
+    els.panel.innerHTML = html;
+    const p = els.panel;
+    p.querySelectorAll('[data-go-db]').forEach(a => a.onclick = () => { location.hash = 'database'; });
+    const q = sel => p.querySelector(`[data-id="${sel}"]`);
+    if (q('mp-c-use')) q('mp-c-use').onclick = useRedisInProject;
+    if (q('mp-c-admin')) q('mp-c-admin').onclick = () => openAdminDb(cs.db);
+    if (q('mp-c-flush')) q('mp-c-flush').onclick = flushProjectCache;
+    if (!inf.running) return;
+    p.querySelectorAll('[data-cdb]').forEach(b => b.onclick = () => {
+      cs.db = +b.dataset.cdb; cs.sel = null; cs.preview = null;
+      p.querySelectorAll('[data-cdb]').forEach(x => x.classList.toggle('active', +x.dataset.cdb === cs.db));
+      loadCacheKeys(true);
+    });
+    let qt = 0;
+    q('mp-c-q').oninput = e => {
+      clearTimeout(qt);
+      qt = setTimeout(() => { cs.q = e.target.value.trim(); loadCacheKeys(true); }, 300);
+    };
+    q('mp-c-refresh').onclick = () => { loadCacheKeys(true); loadCacheStats(); };
+    q('mp-c-mon-min').onchange = e => { cs.monMinutes = +e.target.value; };
+    q('mp-c-mon-start').onclick = startMonitor;
+    q('mp-c-mon-stop').onclick = () => { stopMonitor(); paintMonitor('stopped'); };
+    q('mp-c-mon-pause').onclick = () => { cs.monPaused = !cs.monPaused; paintMonitor(); };
+    q('mp-c-mon-clear').onclick = () => { cs.monLines = []; cs.monDropped = 0; paintMonitor(); };
+    paintMonitor();
+    paintCacheStats();
+  }
+
+  async function loadCacheStats() {
+    const g = gen;
+    try {
+      const st = await call('/api/project/cache/stats', {});
+      if (!live(g)) return;
+      cacheState.stats = st;
+      paintCacheStats();
+    } catch {}
+  }
+  function paintCacheStats() {
+    const box = els.panel && els.panel.querySelector('[data-id="mp-c-stats"]');
+    const st = cacheState.stats;
+    if (!box || !st) return;
+    const tiles = [
+      [st.memoryHuman || '0B', 'Redis memory (all projects)'],
+      [st.hitRate < 0 ? '–' : st.hitRate.toFixed(1) + '%', 'hit rate (all projects)'],
+      [String(st.opsPerSec), 'ops / second'],
+      [String(st.clients), 'connected clients'],
+    ];
+    box.innerHTML = tiles.map(([v, l]) => `<div class="st"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join('');
+  }
+
+  async function loadCacheKeys(reset) {
+    const g = gen, cs = cacheState;
+    if (cs.loading) return;
+    if (reset) { cs.keys = []; cs.cursor = '0'; }
+    cs.loading = true;
+    paintKeys();
+    try {
+      const page = await call('/api/project/cache/keys', { site: cur, db: cs.db, q: cs.q, cursor: reset ? '' : cs.cursor, count: 100 });
+      if (!live(g)) return;
+      const seen = new Set(cs.keys.map(k => k.key));
+      page.keys.forEach(k => { if (!seen.has(k.key)) cs.keys.push(k); });
+      cs.cursor = page.cursor;
+      cs.err = '';
+    } catch (e) {
+      cs.err = e.message;
+    } finally {
+      cs.loading = false;
+    }
+    if (live(g) && tab === 'cache') paintKeys();
+  }
+
+  function paintKeys() {
+    const cs = cacheState;
+    const box = els.panel && els.panel.querySelector('[data-id="mp-c-keys"]');
+    if (!box) return;
+    if (cs.err && !cs.keys.length) { box.innerHTML = `<div class="mp-warn">${esc(cs.err)}</div>`; return; }
+    if (!cs.keys.length) {
+      box.innerHTML = cs.loading ? `<div class="mp-loading"><div class="spin"></div>Scanning…</div>`
+        : `<div class="mp-empty"><b>No keys${cs.q ? ' matching that' : ''}</b>${cs.q ? 'Try another filter.' : 'Nothing under this project\'s prefix in db' + cs.db + ' yet.'}</div>`;
+      return;
+    }
+    const pfx = (cs.info && cs.info.settings.prefix) || '';
+    const rows = cs.keys.map((k, i) => `<tr data-ki="${i}" class="${cs.sel === k.key ? 'sel' : ''}" style="cursor:pointer">
+        <td class="mono" style="word-break:break-all"><span class="mp-sub">${esc(pfx)}</span>${esc(k.key.slice(pfx.length))}</td>
+        <td><span class="mp-chip" style="padding:1px 7px">${esc(k.type)}</span></td>
+        <td class="mono">${fmtTTL(k.ttl)}</td>
+        <td class="mono">${fmtBytes(k.memory)}</td>
+        <td style="text-align:right"><button class="sm danger mp-btn-ic" data-kdel="${i}" title="delete this key">${ICON.trash}</button></td>
+      </tr>`).join('');
+    const more = cs.cursor && cs.cursor !== '0';
+    box.innerHTML = `<table class="mp-table"><thead><tr><th>Key</th><th>Type</th><th>TTL</th><th>Size</th><th></th></tr></thead><tbody>${rows}</tbody></table>
+      <div class="row" style="margin-top:10px; gap:10px"><span class="mp-sub">${cs.keys.length} key${cs.keys.length === 1 ? '' : 's'} shown${more ? ' — more to scan' : ''}</span><span class="spacer"></span>
+      ${more ? `<button class="sm" data-id="mp-c-more"${cs.loading ? ' disabled' : ''}>${cs.loading ? 'Scanning…' : 'Load more'}</button>` : ''}</div>`;
+    box.querySelectorAll('[data-ki]').forEach(tr => tr.onclick = e => {
+      if (e.target.closest('[data-kdel]')) return;
+      showKey(cs.keys[+tr.dataset.ki].key);
+    });
+    box.querySelectorAll('[data-kdel]').forEach(b => b.onclick = () => deleteKey(cs.keys[+b.dataset.kdel].key));
+    const m = box.querySelector('[data-id="mp-c-more"]');
+    if (m) m.onclick = () => loadCacheKeys(false);
+  }
+
+  async function showKey(key) {
+    const g = gen, cs = cacheState;
+    cs.sel = key;
+    paintKeys();
+    const box = els.panel.querySelector('[data-id="mp-c-preview"]');
+    box.innerHTML = `<div class="mp-loading"><div class="spin"></div>Reading ${esc(key)}…</div>`;
+    let pv;
+    try {
+      pv = await call('/api/project/cache/key', { site: cur, db: cs.db, key });
+    } catch (e) {
+      if (live(g)) box.innerHTML = `<div class="mp-warn">${esc(e.message)}</div>`;
+      return;
+    }
+    if (!live(g) || cs.sel !== key) return;
+    let body = '';
+    if (pv.type === 'string') body = esc(prettyMaybe(pv.value));
+    else if (pv.fields) body = pv.fields.map(f => `<span class="a-36">${esc(f.name)}</span>  ${esc(f.value)}`).join('\n');
+    else if (pv.items) body = pv.items.map((x, i) => `<span class="dim">${i}</span>  ${esc(x)}`).join('\n');
+    const size = pv.type === 'string' ? fmtBytes(pv.size) : pv.size + ' element' + (pv.size === 1 ? '' : 's');
+    box.innerHTML = `<div style="margin-top:14px">
+      <div class="row" style="gap:8px; margin-bottom:8px"><b class="mono" style="word-break:break-all">${esc(key)}</b>
+        <span class="mp-chip" style="padding:1px 7px">${esc(pv.type)}</span><span class="mp-sub">${esc(size)} · TTL ${fmtTTL(pv.ttl)} · ${fmtBytes(pv.memory)} in memory${pv.truncated ? ' · preview truncated' : ''}</span>
+        <span class="spacer"></span><button class="sm mp-btn-ic" data-id="mp-c-copy">${ICON.copy}Copy</button><button class="sm mp-btn-ic" data-id="mp-c-close" title="close">${ICON.x}</button></div>
+      <pre class="mp-term short">${body || '<span class="dim">(empty)</span>'}</pre></div>`;
+    box.querySelector('[data-id="mp-c-close"]').onclick = () => { cs.sel = null; box.innerHTML = ''; paintKeys(); };
+    box.querySelector('[data-id="mp-c-copy"]').onclick = async () => {
+      const text = pv.type === 'string' ? pv.value
+        : pv.fields ? pv.fields.map(f => f.name + '\t' + f.value).join('\n') : (pv.items || []).join('\n');
+      say((await copyText(text)) ? 'Copied' : 'Copy failed');
+    };
+  }
+  // prettyMaybe indents JSON values; PHP-serialized and other values show as they are.
+  function prettyMaybe(v) {
+    const t = (v || '').trim();
+    if (t.length > 1 && (t[0] === '{' || t[0] === '[')) { try { return JSON.stringify(JSON.parse(t), null, 2); } catch {} }
+    return v || '';
+  }
+
+  async function deleteKey(key) {
+    const ok = await confirmBox({ title: 'Delete this key?', message: `Delete <span class="mono">${esc(key)}</span> from db${cacheState.db}?`, confirmText: 'Delete', danger: true });
+    if (!ok) return;
+    try {
+      await call('/api/project/cache/delete', { site: cur, db: cacheState.db, key });
+      cacheState.keys = cacheState.keys.filter(k => k.key !== key);
+      if (cacheState.sel === key) { cacheState.sel = null; const b = els.panel.querySelector('[data-id="mp-c-preview"]'); if (b) b.innerHTML = ''; }
+      paintKeys();
+      say('Deleted');
+    } catch (e) { say('Error: ' + e.message); }
+  }
+
+  async function flushProjectCache() {
+    const st = cacheState.info.settings;
+    const ok = await confirmBox({
+      title: "Flush this project's cache?",
+      message: `Delete every key starting with <span class="mono">${esc(st.prefix + st.cachePrefix)}</span> in <span class="mono">db${st.cacheDb}</span>?`,
+      detail: 'Only this project\'s cache entries go — sessions, queued jobs and other projects are left alone. Keys are found with SCAN and removed with UNLINK, so Redis isn\'t blocked.',
+      confirmText: 'Flush cache', danger: true,
+    });
+    if (!ok) return;
+    try {
+      const r = await busy('Flushing…', () => call('/api/project/cache/flush', { site: cur }));
+      say(`Deleted ${r.deleted} key${r.deleted === 1 ? '' : 's'}`);
+    } catch (e) { say('Error: ' + e.message); }
+    renderCache();
+  }
+
+  async function useRedisInProject() {
+    const plan = (cacheState.info && cacheState.info.plan) || [];
+    if (!plan.length) return;
+    const diff = plan.map(c => (c.exists ? `<span style="color:var(--bad)">- ${esc(c.key)}=${esc(c.old)}</span>\n` : '') +
+      `<span style="color:var(--ok)">+ ${esc(c.key)}=${esc(c.new)}</span>`).join('\n');
+    const r = await modalBox({
+      title: 'Use Redis in this project?',
+      message: `Update <span class="mono">.env</span> so this project uses Mullion's Redis (127.0.0.1:${cacheState.info.port}). The current file is saved as <span class="mono">.env.mullion-backup</span> first.`,
+      detail: `<pre class="mono" style="white-space:pre-wrap; margin:0; font-size:12px">${diff}</pre>`,
+      checkboxes: plan.map(c => ({ id: c.key, label: `<span class="mono">${esc(c.key)}=${esc(c.new)}</span>`, hint: c.exists ? 'was ' + esc(c.old || '(empty)') : 'new', checked: true })),
+      confirmText: 'Update .env',
+    });
+    if (!r) return;
+    const keys = plan.map(c => c.key).filter(k => r.checks && r.checks[k]);
+    if (!keys.length) return say('Nothing selected');
+    try {
+      const res = await busy('Updating .env…', () => call('/api/project/cache/use-redis', { site: cur, keys }));
+      say('.env updated' + (res.backup ? ' — backup in .env.mullion-backup' : '') + '. Restart queue workers to pick it up.');
+    } catch (e) { say('Error: ' + e.message); }
+    renderCache();
+  }
+
+  function openAdminDb(db) {
+    const known = window.__adminTools && window.__adminTools.phpredisadmin;
+    (known ? Promise.resolve({ adminTools: [known] }) : call('/api/state', {})).then(s => {
+      const t = (s.adminTools || []).find(x => x.name === 'phpredisadmin');
+      if (t && t.installed && t.url) return void window.open(t.url.replace(/\/?$/, '/?s=0&d=' + db), '_blank');
+      say('Opening phpRedisAdmin — set it up from Databases → Redis first');
+      location.hash = 'database';
+    }).catch(e => say('Error: ' + e.message));
+  }
+
+  /* ── live monitor (SSE) ── */
+  function startMonitor() {
+    const cs = cacheState;
+    stopMonitor();
+    const url = '/api/redis/monitor?t=' + encodeURIComponent(TOKEN) + '&site=' + encodeURIComponent(cur) + '&minutes=' + cs.monMinutes;
+    const es = new EventSource(url);
+    cs.mon = es;
+    cs.monPaused = false;
+    es.addEventListener('start', ev => { const d = JSON.parse(ev.data); cs.monUntil = d.until * 1000; paintMonitor('live'); });
+    cs.monTick = setInterval(paintMonitorHint, 1000);
+    es.addEventListener('cmds', ev => {
+      if (cs.mon !== es) return;
+      const d = JSON.parse(ev.data);
+      cs.monDropped += d.dropped || 0;
+      if (!cs.monPaused) {
+        d.events.forEach(e => cs.monLines.push(e));
+        if (cs.monLines.length > 500) cs.monLines.splice(0, cs.monLines.length - 500);
+      }
+      paintMonitor();
+    });
+    es.addEventListener('end', ev => { const d = JSON.parse(ev.data); stopMonitor(); paintMonitor(d.reason); });
+    es.onerror = () => {
+      if (cs.mon !== es) return;
+      stopMonitor();
+      paintMonitor('disconnected (Redis stopped, or too many monitors open)');
+    };
+    paintMonitor('connecting…');
+  }
+  function stopMonitor() {
+    if (!cacheState) return;
+    clearInterval(cacheState.monTick);
+    cacheState.monTick = 0;
+    if (cacheState.mon) {
+      try { cacheState.mon.close(); } catch {}
+      cacheState.mon = null;
+    }
+  }
+  function paintMonitorHint() {
+    const cs = cacheState, h = els.panel && els.panel.querySelector('[data-id="mp-c-mon-hint"]');
+    if (!h) return;
+    const left = cs.mon && cs.monUntil ? ' · stops in ' + fmtTTL(Math.max(0, cs.monUntil - Date.now())) : '';
+    h.textContent = (cs.monStatus || 'every command touching this project\'s keys, as it happens') + (cs.monPaused ? ' · paused' : '') + left +
+      (cs.monDropped ? ` · ${cs.monDropped} skipped (too fast to show)` : '');
+  }
+  function paintMonitor(status) {
+    const cs = cacheState, p = els.panel;
+    const out = p && p.querySelector('[data-id="mp-c-mon-out"]');
+    if (!out) return;
+    const on = !!cs.mon;
+    const q = sel => p.querySelector(`[data-id="${sel}"]`);
+    q('mp-c-mon-start').hidden = on;
+    q('mp-c-mon-stop').hidden = !on;
+    q('mp-c-mon-pause').hidden = !on;
+    q('mp-c-mon-pause').textContent = cs.monPaused ? 'Resume' : 'Pause';
+    q('mp-c-mon-min').disabled = on;
+    if (status) cs.monStatus = status;
+    paintMonitorHint();
+    const atBottom = out.scrollHeight - out.scrollTop - out.clientHeight < 30;
+    out.innerHTML = cs.monLines.length ? cs.monLines.map(e => {
+      const t = new Date(e.time * 1000);
+      const ts = t.toLocaleTimeString([], { hour12: false }) + '.' + String(t.getMilliseconds()).padStart(3, '0');
+      return `<span class="dim">${ts} db${e.db}</span> <span class="a-36">${esc(e.cmd)}</span>${esc(e.text.slice(e.cmd.length))}`;
+    }).join('\n') : `<span class="dim">${on ? 'Waiting for commands — use the site to see its cache traffic…' : 'Press Start to watch this project\'s Redis traffic live.'}</span>`;
+    if (atBottom) out.scrollTop = out.scrollHeight;
+  }
+
+  /* ════════════════════════════════════════════════════════════════
+     WATCH — what the site does while it's used, live (internal/watch):
+     requests from Caddy's access log, Laravel's log files, and — with
+     Mullion's PHP prepend loaded for this site — dumps, queries, jobs,
+     cache, events, views, HTTP calls and a per-request timeline. The
+     stream (/api/watch/stream, SSE) runs while this project is mounted
+     and its watcher is on, so exceptions can flag the tab strip.
+     ════════════════════════════════════════════════════════════════ */
+  const W_CAP = { query: 3000, request: 1500, log: 1500, def: 1000 };
+  const W_SUBS = [
+    ['requests', 'Requests', 'l1'], ['timeline', 'Timeline', 'deep'], ['queries', 'Queries', 'deep'],
+    ['jobs', 'Jobs', 'deep'], ['cache', 'Cache', 'deep'], ['events', 'Events', 'deep'], ['views', 'Views', 'deep'],
+    ['http', 'HTTP', 'deep'], ['logs', 'Logs', 'l1'], ['exceptions', 'Exceptions', 'l1'], ['dumps', 'Dumps', 'dumps'], ['mail', 'Mail', 'l1'],
+  ];
+  function watchFresh() {
+    return {
+      info: null, err: '', es: null, status: '', paused: false, held: [], sub: prefGet('watch.sub', 'requests'),
+      reqs: [], phpReqs: new Map(), byRid: new Map(), lists: {}, analysis: new Map(),
+      fileExc: [], phpExc: [], logs: [], unseen: 0, open: new Set(), paintT: 0, mail: null, mailT: 0,
+      f: { status: '', method: '', q: '', noStatic: prefGet('watch.noStatic', true), issuesOnly: false, level: '' },
+      showSettings: false, mailAll: false,
+    };
+  }
+  const watchOn = () => !!(info && info.watch && info.watch.enabled);
+  function wList(k) { return watchState.lists[k] || (watchState.lists[k] = []); }
+  function wPush(arr, it, cap) {
+    arr.push(it);
+    if (arr.length > cap * 1.2) arr.splice(0, arr.length - cap);
+  }
+
+  function startWatchStream() {
+    const ws = watchState;
+    stopWatchStream();
+    if (!watchOn() || destroyed) return;
+    const es = new EventSource('/api/watch/stream?t=' + encodeURIComponent(TOKEN) + '&site=' + encodeURIComponent(cur));
+    ws.es = es;
+    ws.status = 'connecting…';
+    es.addEventListener('start', ev => {
+      if (ws.es !== es) return;
+      // A reconnect replays the backlog: start from a clean slate.
+      const keep = { info: ws.info, sub: ws.sub, f: ws.f, paused: ws.paused, showSettings: ws.showSettings, mail: ws.mail, mailAll: ws.mailAll, open: ws.open };
+      Object.assign(ws, watchFresh(), keep, { es });
+      ws.status = 'live';
+      // Only the Watch tab owns the panel (and only once its settings loaded).
+      if (tab === 'watch' && ws.info) wPaint();
+    });
+    es.addEventListener('backlog', ev => { if (ws.es === es) wIngest(JSON.parse(ev.data), true); });
+    es.addEventListener('items', ev => {
+      if (ws.es !== es) return;
+      const items = JSON.parse(ev.data);
+      if (ws.paused) { ws.held.push(...items); if (ws.held.length > 5000) ws.held.splice(0, ws.held.length - 5000); wPaintHead(); return; }
+      wIngest(items, false);
+    });
+    // Another tab (or `mullion watch clear`) cleared: everything, or some views.
+    es.addEventListener('cleared', ev => {
+      if (ws.es !== es) return;
+      let d = {};
+      try { d = JSON.parse(ev.data) || {}; } catch {}
+      const before = (ws.info && ws.info.cleared) || {};
+      const after = Object.assign({}, d.types || {});
+      if (d.at) after[''] = d.at;
+      if (ws.info) ws.info.cleared = after;
+      if (d.all) { wClearLocal(); return; }
+      const types = Object.keys(after).filter(k => k && after[k] > (before[k] || 0));
+      if (types.length) wDropTypes(types);
+    });
+    es.onerror = () => {
+      if (ws.es !== es) return;
+      ws.status = es.readyState === 2 ? 'disconnected' : 'reconnecting…';
+      wPaintHead();
+    };
+  }
+  function stopWatchStream() {
+    if (!watchState) return;
+    if (watchState.es) { try { watchState.es.close(); } catch {} }
+    watchState.es = null;
+    clearTimeout(watchState.paintT);
+    clearInterval(watchState.mailT);
+    watchState.mailT = 0;
+  }
+
+  // wIngest files items into their lists; live exceptions flag the tab.
+  function wIngest(items, isBacklog) {
+    const ws = watchState;
+    let exc = 0;
+    for (const it of items) {
+      const t = it.type;
+      if (it.rid && t !== 'analysis' && !(t === 'request' && it.src === 'caddy')) {
+        let a = ws.byRid.get(it.rid);
+        if (!a) { a = []; ws.byRid.set(it.rid, a); if (ws.byRid.size > 1500) ws.byRid.delete(ws.byRid.keys().next().value); }
+        if (a.length < 3000) a.push(it);
+      }
+      if (t === 'request') {
+        if (it.src === 'caddy') wPush(ws.reqs, it, W_CAP.request);
+        else { ws.phpReqs.set(it.rid, it); wPush(wList('units'), it, W_CAP.def); }
+      } else if (t === 'command') wPush(wList('units'), it, W_CAP.def);
+      else if (t === 'analysis') { ws.analysis.set(it.rid, it); if (ws.analysis.size > 1500) ws.analysis.delete(ws.analysis.keys().next().value); }
+      else if (t === 'exception') {
+        if (it.src === 'file') { wPush(ws.fileExc, it, W_CAP.def); wPush(ws.logs, it, W_CAP.log); } else wPush(ws.phpExc, it, W_CAP.def);
+        exc++;
+      } else if (t === 'log') { if (it.src === 'file') wPush(ws.logs, it, W_CAP.log); }
+      else if (t === 'job') {
+        wPush(wList('jobs'), it, W_CAP.def);
+        if (it.op === 'processed' || it.op === 'failed') wPush(wList('units'), it, W_CAP.def);
+      } else if (t === 'query') wPush(wList('queries'), it, W_CAP.query);
+      else if (t === 'cache') wPush(wList('cache'), it, W_CAP.def);
+      else if (t === 'event') wPush(wList('events'), it, W_CAP.def);
+      else if (t === 'view') wPush(wList('views'), it, W_CAP.def);
+      else if (t === 'http') wPush(wList('http'), it, W_CAP.def);
+      else if (t === 'dump') wPush(wList('dumps'), it, W_CAP.def);
+      else if (t === 'mail') wPush(wList('mails'), it, W_CAP.def);
+    }
+    if (exc && !isBacklog) {
+      const looking = tab === 'watch' && ws.sub === 'exceptions' && visible();
+      if (!looking) {
+        ws.unseen += exc;
+        window.dispatchEvent(new CustomEvent('mullion:watch-exception', { detail: { site: cur, count: ws.unseen } }));
+      }
+    }
+    wUpdateTabBadge();
+    wSchedule();
+  }
+  function wUpdateTabBadge() {
+    const el = root && root.querySelector('[data-id="mp-watch-n"]');
+    if (!el || !watchState) return;
+    el.hidden = !watchState.unseen;
+    el.textContent = watchState.unseen;
+    el.classList.toggle('bad', !!watchState.unseen);
+  }
+  function wSeen() {
+    if (!watchState || !watchState.unseen) return;
+    watchState.unseen = 0;
+    wUpdateTabBadge();
+    window.dispatchEvent(new CustomEvent('mullion:watch-seen', { detail: { site: cur } }));
+  }
+  function wSchedule() {
+    const ws = watchState;
+    if (tab !== 'watch' || ws.paintT) return;
+    ws.paintT = setTimeout(() => {
+      ws.paintT = 0;
+      if (tab !== 'watch' || destroyed) return;
+      // Don't swap the rows out from under a press or a text selection:
+      // the click would land on a row that no longer exists and the
+      // selection would vanish. Try again a little later.
+      if ((wPressing && Date.now() - wPressing < 5000) || wSelecting()) { wSchedule(); return; }
+      wPaintSubs();
+      wPaintBody(false, true);
+    }, 250);
+  }
+  let wPressing = 0; // when a press inside the list started (0: none)
+  let wHover = false; // the pointer is over the list: new rows mustn't push what's under it
+  function wSelecting() {
+    const sel = window.getSelection && window.getSelection();
+    const body = els.panel && els.panel.querySelector('[data-id="mp-w-body"]');
+    return !!(sel && !sel.isCollapsed && body && sel.anchorNode && body.contains(sel.anchorNode));
+  }
+  function wClearLocal() {
+    const ws = watchState;
+    const keep = { info: ws.info, sub: ws.sub, f: ws.f, paused: ws.paused, es: ws.es, status: ws.status, showSettings: ws.showSettings, mail: ws.mail, mailAll: ws.mailAll };
+    Object.assign(ws, watchFresh(), keep);
+    wSeen();
+    if (tab === 'watch' && ws.info) wPaint();
+  }
+  // W_CLEAR is what "Clear this view" clears: item types, or type/src.
+  const W_CLEAR = {
+    requests: ['request'], timeline: ['request/php', 'command', 'job'], queries: ['query', 'analysis'], jobs: ['job'],
+    cache: ['cache'], events: ['event'], views: ['view'], http: ['http'], logs: ['log', 'exception/file'],
+    exceptions: ['exception'], dumps: ['dump'], mail: ['mail'],
+  };
+  // wDropTypes forgets the items of some kinds (the panel's copy; the
+  // server hides them from the next backlog).
+  function wDropTypes(types) {
+    const ws = watchState;
+    const hit = it => types.includes(it.type) || types.includes(it.type + '/' + (it.src || ''));
+    const keep = arr => arr.filter(it => !hit(it));
+    for (const k of Object.keys(ws.lists)) ws.lists[k] = keep(ws.lists[k]);
+    ws.reqs = keep(ws.reqs);
+    for (const [k, v] of ws.phpReqs) if (hit(v)) ws.phpReqs.delete(k);
+    if (types.includes('analysis')) ws.analysis.clear();
+    ws.fileExc = keep(ws.fileExc);
+    ws.phpExc = keep(ws.phpExc);
+    ws.logs = keep(ws.logs);
+    ws.held = keep(ws.held);
+    for (const [k, v] of ws.byRid) { const n = keep(v); if (n.length) ws.byRid.set(k, n); else ws.byRid.delete(k); }
+    if (types.includes('exception') || types.includes('exception/file')) wSeen();
+    if (tab === 'watch' && ws.info) { wPaintSubs(); wPaintBody(); }
+  }
+  // wClearMenu: Clear this view / Clear everything / …and laravel.log.
+  function wClearMenu(anchor) {
+    const ws = watchState;
+    const sub = (W_SUBS.find(s => s[0] === ws.sub) || [, 'this view'])[1];
+    const items = [
+      { icon: ICON.x, label: `Clear this view (${sub})`, run: () => wClear({ types: W_CLEAR[ws.sub] || [] }) },
+      { icon: ICON.trash, label: 'Clear everything', right: fmtBytes(ws.info.dataBytes || 0), run: () => wClear({}) },
+    ];
+    if (ws.info.laravel || ws.info.php) {
+      items.push('-', { icon: ICON.file, label: 'Clear everything + empty storage/logs…', danger: true, run: async () => {
+        const ok = await confirmBox({
+          title: 'Empty the project\'s log files?',
+          message: `This edits files in the project: every <span class="mono">storage/logs/*.log</span> in <span class="mono">${esc(info.path)}</span> (laravel.log included) is emptied — their contents are gone for good. The watcher's history is cleared too.`,
+          confirmText: 'Empty logs', danger: true,
+        });
+        if (ok) wClear({ logs: true });
+      } });
+    }
+    if (G('openMenu')) { G('openMenu')(anchor, items); return; }
+    // No shared menu (shouldn't happen): fall back to clearing everything.
+    wClear({});
+  }
+  async function wClear(opts) {
+    const ws = watchState;
+    let r;
+    try { r = await busy('Clearing…', () => call('/api/project/watch/clear', Object.assign({ site: cur }, opts))); }
+    catch (e) { say('Error: ' + e.message); return; }
+    if (r && r.info) { ws.info = r.info; info.watch = r.info.settings; }
+    if (opts.types && opts.types.length) { wDropTypes(opts.types); wPaintHeadSize(); say('Cleared'); return; }
+    wClearLocal();
+    say(opts.logs ? `Cleared — emptied ${r && r.emptied ? r.emptied.length : 0} log file${r && r.emptied && r.emptied.length === 1 ? '' : 's'}` : 'Cleared');
+  }
+  function wPaintHeadSize() {
+    const el = els.panel && els.panel.querySelector('[data-id="mp-w-size"]');
+    if (el && watchState.info) el.textContent = fmtBytes(watchState.info.dataBytes || 0);
+  }
+
+  /* ── tab rendering ── */
+  async function renderWatch() {
+    const g = gen, ws = watchState;
+    if (!ws.info) els.panel.innerHTML = `<section class="card"><div class="mp-loading"><div class="spin"></div>Reading the watcher's settings…</div></section>`;
+    try { ws.info = await call('/api/project/watch/info', { site: cur }); ws.err = ''; } catch (e) { ws.err = e.message; }
+    if (!live(g) || tab !== 'watch') return;
+    if (ws.info) info.watch = ws.info.settings;
+    if (watchOn() && !ws.es) startWatchStream();
+    wPaint();
+    if (ws.sub === 'exceptions') wSeen();
+  }
+
+  function wSubsFor() {
+    const st = (watchState.info && watchState.info.settings) || {};
+    return W_SUBS.filter(([, , lvl]) => lvl === 'l1' || (lvl === 'deep' && st.deep) || (lvl === 'dumps' && st.dumps));
+  }
+  function wCount(k) {
+    const ws = watchState;
+    switch (k) {
+      case 'requests': return ws.reqs.length || ws.phpReqs.size;
+      case 'timeline': return wList('units').length;
+      case 'logs': return ws.logs.length;
+      case 'exceptions': return wExceptionGroups().length;
+      case 'mail': return ws.mail ? wMailShown().length : 0;
+      default: return wList(k).length;
+    }
+  }
+
+  function wPaint() {
+    const ws = watchState, inf = ws.info;
+    const keepY = window.scrollY; // before the panel is swapped (and the page maybe shortened)
+    if (!inf) {
+      els.panel.innerHTML = `<section class="card"><div class="card-body"><div class="mp-empty"><b>Couldn't read the watcher's settings</b>${esc(ws.err)}</div></div></section>`;
+      return;
+    }
+    const st = inf.settings;
+    const lvl = (id, label, on, dis, hint) => `<label class="mp-w-lvl${on ? ' on' : ''}${dis ? ' dis' : ''}" title="${esc(hint)}"><input type="checkbox" data-wlvl="${id}" ${on ? 'checked' : ''} ${dis ? 'disabled' : ''}>${label}</label>`;
+    let notes = '';
+    if (inf.note) notes += `<div class="mp-warn">${esc(inf.note)}</div>`;
+    if (st.enabled && st.deep && !inf.laravel) notes += `<div class="mp-note">The deep watcher hooks into Laravel; this doesn't look like a Laravel app, so only requests, logs and dumps show.</div>`;
+    if (st.enabled && inf.prepend && inf.workers) notes += `<div class="mp-sub" style="margin-bottom:10px">Queue workers started by Mullion load the watcher too (they were restarted when you turned it on). Artisan commands from the Commands tab do as well; the Terminal tab doesn't.</div>`;
+    els.panel.innerHTML = `
+      <section class="card mp-w">
+        <div class="card-head">${ICON.eye}<h2>Watch</h2><span class="hint" data-id="mp-w-status"></span><span class="spacer"></span>
+          <label class="toggle" title="watch this site live — data stays on this computer"><span class="switch"><input type="checkbox" data-id="mp-w-on" ${st.enabled ? 'checked' : ''}><i></i></span>${st.enabled ? 'On' : 'Off'}</label>
+        </div>
+        <div class="card-body">
+          <div class="row mp-w-levels">
+            ${lvl('l1', 'Requests &amp; logs', st.enabled, true, 'Caddy\'s access log and storage/logs — nothing changes in the project')}
+            ${lvl('dumps', 'Dumps', st.dumps, !st.enabled || !inf.php, 'dump() and dd() show here — Mullion loads a small PHP file before this site\'s code (auto_prepend_file, this site only)')}
+            ${lvl('deep', 'Deep <span class="mp-sub">queries, jobs, cache…</span>', st.deep, !st.enabled || !inf.php, 'Laravel queries, N+1, jobs, cache, events, views, HTTP calls and a per-request timeline — through the same prepend, no Composer package')}
+            <span class="spacer"></span>
+            ${st.enabled ? `<button class="sm" data-id="mp-w-pause">${ws.paused ? 'Resume' : 'Pause'}</button>
+              <span class="mp-w-clear"><span class="mp-w-disk mono" data-id="mp-w-size" title="what the watcher keeps on disk for this site (${esc(inf.dir || '')})">${fmtBytes(inf.dataBytes || 0)}</span>
+              <button class="sm mp-btn-ic" data-id="mp-w-clear" aria-haspopup="menu" title="clear this view, everything, or the project's log files">${ICON.trash}Clear${ICON.chev}</button></span>` : ''}
+            <button class="sm mp-btn-ic${ws.showSettings ? ' active' : ''}" data-id="mp-w-set">${ICON.gear}Settings</button>
+          </div>
+          <div data-id="mp-w-settings"></div>
+          ${notes}
+        </div>
+      </section>
+      ${st.enabled ? `<div class="mp-w-subs" role="tablist" data-id="mp-w-subs"></div><section class="card"><div class="card-body" data-id="mp-w-body"></div></section>`
+        : `<section class="card"><div class="card-body"><div class="mp-empty"><b>The watcher is off</b>Turn it on to see this site's requests, logs and exceptions as you use it${inf.php ? ' — add Dumps and Deep for dump(), queries, jobs, cache and a per-request timeline' : ''}. Everything stays on this computer.</div></div></section>`}`;
+    const q = s => els.panel.querySelector(`[data-id="${s}"]`);
+    q('mp-w-on').onchange = e => wSave({ enabled: e.target.checked });
+    els.panel.querySelectorAll('[data-wlvl]').forEach(c => c.onchange = () => wSave({ [c.dataset.wlvl]: c.checked }));
+    q('mp-w-set').onclick = () => { ws.showSettings = !ws.showSettings; wPaint(); };
+    if (q('mp-w-pause')) q('mp-w-pause').onclick = () => {
+      ws.paused = !ws.paused;
+      if (!ws.paused && ws.held.length) { const h = ws.held; ws.held = []; wIngest(h, false); }
+      wPaint();
+    };
+    if (q('mp-w-clear')) q('mp-w-clear').onclick = e => wClearMenu(e.currentTarget);
+    const wb = q('mp-w-body');
+    if (wb) {
+      wHover = false;
+      wb.addEventListener('pointerenter', () => { wHover = true; });
+      wb.addEventListener('pointerleave', () => { wHover = false; });
+      wb.addEventListener('pointerdown', () => {
+        wPressing = Date.now();
+        const up = () => { wPressing = 0; window.removeEventListener('pointerup', up, true); window.removeEventListener('pointercancel', up, true); };
+        window.addEventListener('pointerup', up, true);
+        window.addEventListener('pointercancel', up, true);
+      });
+    }
+    if (ws.showSettings) wPaintSettings();
+    wPaintHead();
+    if (st.enabled) { wPaintSubs(); wPaintBody(false, false, keepY); }
+  }
+
+  function wPaintHead() {
+    const ws = watchState, h = tab === 'watch' && els.panel && els.panel.querySelector('[data-id="mp-w-status"]');
+    if (!h || !ws.info) return;
+    const st = ws.info.settings;
+    if (!st.enabled) { h.textContent = 'live requests, logs, dumps and queries — off by default'; return; }
+    h.innerHTML = `<span class="mp-dot ${ws.es && ws.status === 'live' ? 'on' : ws.status === 'disconnected' ? 'bad' : 'sleep'}" style="display:inline-block;vertical-align:-1px;margin-right:6px"></span>${esc(ws.paused ? 'paused' + (ws.held.length ? ` · ${ws.held.length} waiting` : '') : ws.status || 'idle')}`;
+  }
+
+  function wPaintSettings() {
+    const ws = watchState, st = ws.info.settings, box = els.panel.querySelector('[data-id="mp-w-settings"]');
+    if (!box) return;
+    const eds = ws.info.editors || [];
+    const edName = { vscode: 'VS Code', cursor: 'Cursor', phpstorm: 'PhpStorm', zed: 'Zed', sublime: 'Sublime Text' };
+    box.innerHTML = `<div class="mp-w-settings">
+      <label>Slow request <span class="mp-sub">ms</span><input type="number" min="1" max="600000" data-ws="slowRequestMs" value="${st.slowRequestMs}"></label>
+      <label>Slow query <span class="mp-sub">ms</span><input type="number" min="1" max="600000" data-ws="slowQueryMs" value="${st.slowQueryMs}"></label>
+      <label>N+1 after <span class="mp-sub">repeats</span><input type="number" min="2" max="1000" data-ws="nPlusOne" value="${st.nPlusOne}"></label>
+      <label>Open files in<select data-ws="editor"><option value="">Auto${eds.length ? ' (' + esc(edName[eds[0]] || eds[0]) + ')' : ''}</option>${['vscode', 'cursor', 'phpstorm', 'zed', 'sublime'].map(e => `<option value="${e}" ${st.editor === e ? 'selected' : ''}>${edName[e]}${eds.includes(e) ? '' : ' (not found)'}</option>`).join('')}</select></label>
+      <label class="toggle" title="dump() also prints in the page, as without Mullion"><span class="switch"><input type="checkbox" data-ws="dumpsInPage" ${st.dumpsInPage ? 'checked' : ''}><i></i></span>Show dumps in the page too</label>
+      <button class="sm primary" data-id="mp-w-save">Save</button>
+    </div>`;
+    box.querySelector('[data-id="mp-w-save"]').onclick = () => {
+      const v = {};
+      box.querySelectorAll('[data-ws]').forEach(i => { v[i.dataset.ws] = i.type === 'checkbox' ? i.checked : i.type === 'number' ? (parseInt(i.value, 10) || 0) : i.value; });
+      wSave(v, 'Saved');
+    };
+  }
+
+  async function wSave(change, done) {
+    const ws = watchState, st = ws.info.settings;
+    const next = Object.assign({}, st, change);
+    if (!next.enabled) { next.dumps = next.dumps && false; next.deep = next.deep && false; }
+    if (change.enabled && !st.enabled && ws.info.php) { next.dumps = true; next.deep = ws.info.laravel; }
+    const needsReload = (st.enabled && (st.dumps || st.deep)) !== (next.enabled && (next.dumps || next.deep));
+    try {
+      ws.info = await busy(needsReload ? 'Updating the site\'s PHP settings…' : 'Saving…', () => call('/api/project/watch/set', {
+        site: cur, watch: {
+          enabled: next.enabled, dumps: next.dumps, dumpsInPage: next.dumpsInPage, deep: next.deep, editor: next.editor || '',
+          slowRequestMs: next.slowRequestMs, slowQueryMs: next.slowQueryMs, nPlusOne: next.nPlusOne,
+        },
+      }));
+    } catch (e) { say('Error: ' + e.message); wPaint(); return; }
+    info.watch = ws.info.settings;
+    if (done) say(done);
+    if (watchOn()) { if (!ws.es || needsReload) startWatchStream(); } else { stopWatchStream(); wClearLocal(); }
+    wPaint();
+  }
+
+  function wPaintSubs() {
+    const ws = watchState, box = els.panel.querySelector('[data-id="mp-w-subs"]');
+    if (!box) return;
+    const subs = wSubsFor();
+    if (!subs.some(s => s[0] === ws.sub)) ws.sub = 'requests';
+    const hadFocus = document.activeElement && box.contains(document.activeElement) ? document.activeElement.dataset.wsub : null;
+    box.innerHTML = subs.map(([k, label]) => {
+      const n = wCount(k);
+      const bad = k === 'exceptions' && n;
+      return `<button data-wsub="${k}" class="${ws.sub === k ? 'active' : ''}">${label}${n ? `<span class="n${bad ? ' bad' : ''}">${fmtNum(n)}</span>` : ''}</button>`;
+    }).join('');
+    box.querySelectorAll('[data-wsub]').forEach(b => b.onclick = () => {
+      ws.sub = b.dataset.wsub;
+      prefSet('watch.sub', ws.sub);
+      if (ws.sub === 'exceptions') wSeen();
+      if (ws.sub === 'mail') wLoadMail();
+      wPaintSubs();
+      wPaintBody(true);
+    });
+    if (hadFocus) { const b = box.querySelector(`[data-wsub="${hadFocus}"]`); if (b) b.focus({ preventScroll: true }); }
+  }
+
+  // wPaintBody redraws the active sub-tab, keeping the list's scroll
+  // position, the page's scroll position and any open search box's focus.
+  // reset starts the list at the top (another sub-tab or filter); stream
+  // marks a repaint for new events, which are added above what the user
+  // is looking at — a scrolled list is shifted by what was added so the
+  // rows in view stay put. keepY is the page scroll to hold (wPaint reads
+  // it before swapping the whole panel).
+  function wPaintBody(reset, stream, keepY) {
+    const ws = watchState, body = els.panel.querySelector('[data-id="mp-w-body"]');
+    if (!body) return;
+    const wy = keepY != null ? keepY : window.scrollY;
+    const focused = document.activeElement && body.contains(document.activeElement) ? document.activeElement.dataset.wf : null;
+    const caret = focused && document.activeElement.selectionStart;
+    const list = body.querySelector('.mp-w-list');
+    const scroll = !reset && list ? list.scrollTop : 0;
+    const oldH = list ? list.scrollHeight : 0;
+    // The row at the top of the list's view (and how far into it), to
+    // keep it there when new rows arrive above it.
+    const keepRows = stream && list && (scroll > 2 || wHover);
+    let anchor = null;
+    if (keepRows) {
+      const lt = list.getBoundingClientRect().top;
+      for (const r of list.querySelectorAll('[data-wopen]')) {
+        const top = r.getBoundingClientRect().top - lt;
+        if (top + r.offsetHeight > 0) { anchor = { key: r.dataset.wopen, top }; break; }
+      }
+    }
+    const fn = { requests: wRequests, timeline: wTimeline, queries: wQueries, jobs: wJobs, cache: wCache, events: wEvents, views: wViews, http: wHttp, logs: wLogs, exceptions: wExceptions, dumps: wDumps, mail: wMail }[ws.sub] || wRequests;
+    body.style.minHeight = '';
+    body.innerHTML = fn();
+    const nl = body.querySelector('.mp-w-list');
+    if (nl) {
+      nl.scrollTop = keepRows ? scroll + Math.max(0, nl.scrollHeight - oldH) : scroll;
+      // Rows with keys: line the same row up exactly (old rows may also
+      // have dropped off the bottom, which the height difference misses).
+      const ar = anchor && [...nl.querySelectorAll('[data-wopen]')].find(r => r.dataset.wopen === anchor.key);
+      if (ar) nl.scrollTop += ar.getBoundingClientRect().top - nl.getBoundingClientRect().top - anchor.top;
+    }
+    // A shorter body would pull the page up (the browser clamps the
+    // scroll to the new height) — hold the old height instead.
+    if (window.scrollY < wy - 1) {
+      body.style.minHeight = (body.offsetHeight + wy - window.scrollY) + 'px';
+      window.scrollTo(window.scrollX, wy);
+    }
+    // preventScroll: refocusing the search box must never scroll the
+    // page back up to it.
+    if (focused) { const el = body.querySelector(`[data-wf="${focused}"]`); if (el) { el.focus({ preventScroll: true }); try { el.setSelectionRange(caret, caret); } catch {} } }
+    wBindBody(body);
+  }
+
+  /* ── helpers ── */
+  const wTime = t => { const d = new Date(t * 1000); return d.toLocaleTimeString([], { hour12: false }) + '.' + String(d.getMilliseconds()).padStart(3, '0'); };
+  const wMs = ms => ms == null ? '—' : ms >= 1000 ? (ms / 1000).toFixed(2) + ' s' : (ms >= 10 ? Math.round(ms) : (+ms).toFixed(ms >= 1 ? 1 : 2)) + ' ms';
+  const wStatus = s => `<span class="mp-w-st s${String(s || 0)[0]}">${esc(s || '—')}</span>`;
+  const wLoc = (file, line) => file ? `<a class="mp-w-loc" data-open="${esc(file)}" data-line="${line || 0}" title="open in your editor">${esc(shortPath(file))}${line ? ':' + line : ''}</a>` : '';
+  function shortPath(f) {
+    const base = (info.path || '').replace(/\\/g, '/').replace(/\/$/, '') + '/';
+    const n = String(f).replace(/\\/g, '/');
+    return n.startsWith(base) ? n.slice(base.length) : n;
+  }
+  const newestFirst = (arr, max) => arr.slice(-(max || 300)).reverse();
+  const wEmpty = (title, text) => `<div class="mp-empty"><b>${title}</b>${text}</div>`;
+  function wSearch(placeholder, extra) {
+    return `<div class="row" style="gap:8px; margin-bottom:12px">
+      <div class="mp-search">${ICON.search}<input type="text" data-wf="q" placeholder="${placeholder}" value="${esc(watchState.f.q)}" spellcheck="false"></div>${extra || ''}</div>`;
+  }
+  const wMatch = (s) => !watchState.f.q || String(s).toLowerCase().includes(watchState.f.q.toLowerCase());
+
+  const SQL_KW = /\b(select|from|where|and|or|not|insert|into|values|update|set|delete|join|left|right|inner|outer|on|group|by|order|having|limit|offset|as|in|is|null|distinct|count|exists|union|all|case|when|then|else|end|asc|desc|like|between|returning|with|create|table|alter|drop|index)\b/gi;
+  function highlightSQL(sql) {
+    // Tokenise first so keywords inside strings/identifiers stay plain.
+    const parts = String(sql).split(/('(?:[^'\\]|\\.|'')*'|"[^"]*"|`[^`]*`)/);
+    return parts.map((p, i) => {
+      if (i % 2) return p[0] === "'" ? `<span class="sql-s">${esc(p)}</span>` : `<span class="sql-i">${esc(p)}</span>`;
+      return esc(p).replace(SQL_KW, m => `<span class="sql-k">${m}</span>`).replace(/\b(\d+(?:\.\d+)?)\b/g, '<span class="sql-n">$1</span>').replace(/\?/g, '<span class="sql-p">?</span>');
+    }).join('');
+  }
+  function wBindings(b) {
+    if (!b || !b.length) return '';
+    return `<div class="mp-w-bind">${b.map((v, i) => `<span><span class="mp-sub">${i + 1}</span> ${esc(v === null ? 'null' : typeof v === 'string' ? JSON.stringify(v) : String(v))}</span>`).join('')}</div>`;
+  }
+  function wQueryFlags(q) {
+    const a = watchState.analysis.get(q.rid);
+    const st = watchState.info.settings, flags = [];
+    if (q.ms >= st.slowQueryMs) flags.push('<span class="mp-w-badge slow">slow</span>');
+    if (a && a.issues) {
+      for (const is of a.issues) {
+        if (is.kind === 'n+1' && is.sql === q.norm && is.file === (q.file || '') && is.line === (q.line || 0)) flags.push(`<span class="mp-w-badge n1" title="the same query ran ${is.count}× from here in one request">N+1 ×${is.count}</span>`);
+        else if (is.kind === 'duplicate' && is.sql === q.sql && is.count > 1 && !flags.some(f => f.includes('dup'))) flags.push(`<span class="mp-w-badge dup" title="identical query and bindings ran ${is.count}× in one request">dup ×${is.count}</span>`);
+      }
+    }
+    return flags.join('');
+  }
+
+  /* ── Requests ── */
+  function wReqRows() {
+    const ws = watchState, f = ws.f;
+    // Caddy rows, plus PHP-recorded requests Caddy's log doesn't have.
+    const rows = ws.reqs.slice();
+    if (!rows.length) for (const r of ws.phpReqs.values()) rows.push(Object.assign({ path: String(r.uri || '').split('?')[0] }, r));
+    return rows.filter(r => {
+      if (f.noStatic && r.static) return false;
+      if (f.status && String(r.status)[0] !== f.status) return false;
+      if (f.method && r.method !== f.method) return false;
+      return wMatch(r.uri || r.path);
+    });
+  }
+  function wPhpReqFor(r) {
+    const ws = watchState;
+    if (r.rid && ws.phpReqs.has(r.rid)) return ws.phpReqs.get(r.rid);
+    if (r.src === 'php') return r;
+    return null;
+  }
+  function wRequests() {
+    const ws = watchState, f = ws.f, st = ws.info.settings;
+    const rows = newestFirst(wReqRows());
+    const methods = ['', 'GET', 'POST', 'PUT', 'PATCH', 'DELETE'];
+    const filters = `<div class="mp-seg">${[['', 'All'], ['2', '2xx'], ['3', '3xx'], ['4', '4xx'], ['5', '5xx']].map(([v, l]) => `<button data-wfs="${v}" class="${f.status === v ? 'active' : ''}">${l}</button>`).join('')}</div>
+      <select data-wf="method" class="sm">${methods.map(m => `<option value="${m}" ${f.method === m ? 'selected' : ''}>${m || 'Any method'}</option>`).join('')}</select>
+      <label class="toggle" title="hide CSS, JS, images, fonts…"><span class="switch"><input type="checkbox" data-wf="noStatic" ${f.noStatic ? 'checked' : ''}><i></i></span>No assets</label>`;
+    if (!rows.length) return wSearch('Filter by path…', filters) + wEmpty('No requests yet', 'Open the site — requests appear here as they happen.');
+    return wSearch('Filter by path…', filters) + `<div class="mp-w-list">` + rows.map(r => {
+      const key = 'r:' + (r.rid || r.t + r.uri);
+      const php = wPhpReqFor(r), a = r.rid && ws.analysis.get(r.rid);
+      const open = ws.open.has(key);
+      const slow = r.ms >= st.slowRequestMs;
+      const marks = [];
+      if (a) marks.push(`<span class="mp-w-badge q" title="${a.queries} queries, ${wMs(a.ms)}">${a.queries} q</span>`);
+      if (a && a.issues.some(i => i.kind === 'n+1')) marks.push('<span class="mp-w-badge n1">N+1</span>');
+      if (r.rid && (ws.byRid.get(r.rid) || []).some(e => e.type === 'exception')) marks.push('<span class="mp-w-badge exc">exception</span>');
+      return `<div class="mp-w-row${slow ? ' slow' : ''}${open ? ' open' : ''}" data-wopen="${esc(key)}">
+        <span class="mp-w-time">${wTime(r.t)}</span><span class="mp-w-m">${esc(r.method)}</span>${wStatus(r.status)}
+        <span class="mp-w-main mono" title="${esc(r.uri)}">${esc(r.uri || r.path)}</span>${marks.join('')}
+        <span class="mp-w-ms${slow ? ' slow' : ''}">${wMs(r.ms)}</span><span class="mp-w-size">${r.size != null ? fmtBytes(r.size) : ''}</span></div>
+        ${open ? wRequestDetail(r, php, a) : ''}`;
+    }).join('') + `</div>`;
+  }
+  function wKV(obj) {
+    const keys = Object.keys(obj || {}).sort();
+    if (!keys.length) return '<span class="mp-sub">none</span>';
+    return `<div class="mp-w-kv">${keys.map(k => `<div class="k mono">${esc(k)}</div><div class="mono">${esc([].concat(obj[k]).join(', '))}</div>`).join('')}</div>`;
+  }
+  function wRequestDetail(r, php, a) {
+    let html = '<div class="mp-w-detail">';
+    if (php && php.route) html += `<div class="mp-sub" style="margin-bottom:8px">Route <span class="mono">${esc(php.route.uri || '')}</span>${php.route.name ? ' · <span class="mono">' + esc(php.route.name) + '</span>' : ''} · <span class="mono">${esc(php.route.action || '')}</span>${php.memory ? ' · ' + fmtBytes(php.memory) + ' peak' : ''}</div>`;
+    if (php && php.fatal) html += `<div class="mp-warn">${esc(php.fatal)}</div>`;
+    if (a && a.issues.length) html += `<div class="mp-w-issues">${a.issues.map(i => `<div><span class="mp-w-badge ${i.kind === 'n+1' ? 'n1' : 'dup'}">${i.kind === 'n+1' ? 'N+1' : 'duplicate'} ×${i.count}</span> <code class="sql">${highlightSQL(i.sql)}</code> ${wLoc(i.file, i.line)}</div>`).join('')}</div>`;
+    if (r.rid && watchState.byRid.has(r.rid)) html += `<h4>Timeline</h4>` + wTimelineOf(r.rid, php || r);
+    if (r.query) html += `<h4>Query</h4>${wKV(r.query)}`;
+    if (r.headers) html += `<h4>Request headers</h4>${wKV(r.headers)}`;
+    if (r.respHeaders) html += `<h4>Response headers</h4>${wKV(r.respHeaders)}`;
+    if (!r.rid && watchState.info.settings.deep && r.src === 'caddy' && !r.static) html += `<div class="mp-sub" style="margin-top:8px">${watchState.info.requestId ? 'PHP recorded nothing for this request.' : 'Mullion\'s Caddy is older than 2.8, so request rows can\'t be linked to their timeline — see the Timeline tab.'}</div>`;
+    return html + '</div>';
+  }
+
+  /* ── Timeline ── */
+  function wUnitLabel(u) {
+    if (u.type === 'request') return `<span class="mp-w-m">${esc(u.method)}</span>${wStatus(u.status)}<span class="mp-w-main mono">${esc(u.uri)}</span>`;
+    if (u.type === 'job') return `<span class="mp-w-badge ${u.op === 'failed' ? 'exc' : 'q'}">job ${esc(u.op)}</span><span class="mp-w-main mono">${esc(u.name)}</span>`;
+    return `<span class="mp-w-badge q">artisan</span><span class="mp-w-main mono">${esc(u.command)}</span>`;
+  }
+  function wTimeline() {
+    const ws = watchState;
+    const units = newestFirst(wList('units').filter(u => wMatch(u.uri || u.name || u.command)));
+    if (!units.length) return wSearch('Filter…') + wEmpty('Nothing recorded yet', 'Each request, queued job and artisan command gets a timeline of its queries, cache, events, views, logs and HTTP calls.');
+    return wSearch('Filter by path, job or command…') + `<div class="mp-w-list">` + units.map(u => {
+      const key = 'u:' + u.rid + u.t;
+      const a = ws.analysis.get(u.rid), open = ws.open.has(key);
+      const n = (ws.byRid.get(u.rid) || []).length;
+      return `<div class="mp-w-row${open ? ' open' : ''}" data-wopen="${esc(key)}"><span class="mp-w-time">${wTime(u.t)}</span>${wUnitLabel(u)}
+        ${a ? `<span class="mp-w-badge q">${a.queries} q · ${wMs(a.ms)}</span>` : ''}${a && a.issues.some(i => i.kind === 'n+1') ? '<span class="mp-w-badge n1">N+1</span>' : ''}
+        <span class="mp-sub">${n} events</span><span class="mp-w-ms">${wMs(u.ms)}</span></div>${open ? `<div class="mp-w-detail">${wTimelineOf(u.rid, u)}</div>` : ''}`;
+    }).join('') + '</div>';
+  }
+  function wTimelineOf(rid, unit) {
+    const evs = (watchState.byRid.get(rid) || []).filter(e => e.type !== 'request' && e.type !== 'command');
+    if (!evs.length) return '<div class="mp-sub">No events recorded for this one.</div>';
+    const start = unit && unit.ms ? unit.t - unit.ms / 1000 : evs[0].t;
+    const total = Math.max(1, unit && unit.ms ? unit.ms : (evs[evs.length - 1].t - start) * 1000);
+    return `<div class="mp-w-tl">${evs.slice(0, 600).map(e => {
+      const off = Math.max(0, (e.t - start) * 1000);
+      const pct = Math.min(100, off / total * 100);
+      return `<div class="mp-w-tle t-${esc(e.type)}"><span class="mp-w-off">+${wMs(off)}</span><span class="mp-w-bar"><i style="left:${pct.toFixed(1)}%"></i></span><span class="mp-w-kind">${esc(e.type === 'job' ? 'job ' + e.op : e.type)}</span><span class="mp-w-what">${wEventText(e)}</span></div>`;
+    }).join('')}${evs.length > 600 ? `<div class="mp-sub">…and ${evs.length - 600} more</div>` : ''}</div>`;
+  }
+  function wEventText(e) {
+    switch (e.type) {
+      case 'query': return `<code class="sql">${highlightSQL(e.sql)}</code> <span class="mp-sub">${wMs(e.ms)}</span> ${wQueryFlags(e)} ${wLoc(e.file, e.line)}`;
+      case 'cache': return `<span class="mp-w-badge c-${esc(e.op)}">${esc(e.op)}</span> <span class="mono">${esc(e.key)}</span>`;
+      case 'view': return `<span class="mono">${esc(e.name)}</span> ${wLoc(e.file, 0)}`;
+      case 'event': return `<span class="mono">${esc(e.name)}</span>`;
+      case 'http': return `<span class="mp-w-m">${esc(e.method)}</span> ${wStatus(e.status)} <span class="mono">${esc(e.url)}</span> <span class="mp-sub">${wMs(e.ms)}</span>${e.error ? ` <span class="mp-w-err">${esc(e.error)}</span>` : ''}`;
+      case 'log': return `<span class="mp-w-lv lv-${esc(e.level)}">${esc(e.level)}</span> ${esc(e.message)}`;
+      case 'exception': return `<span class="mp-w-err">${esc(e.class)}</span> ${esc(e.message)} ${wLoc(e.file, e.line)}`;
+      case 'dump': return `<span class="mono">${esc(String(e.text).split('\n')[0])}${String(e.text).includes('\n') ? ' …' : ''}</span> ${wLoc(e.file, e.line)}`;
+      case 'job': return `<span class="mono">${esc(e.name)}</span>${e.ms != null ? ` <span class="mp-sub">${wMs(e.ms)}</span>` : ''}${e.error ? ` <span class="mp-w-err">${esc(e.error)}</span>` : ''}`;
+      case 'mail': return `<span class="mono">${esc(e.subject || '')}</span> <span class="mp-sub">to ${esc((e.to || []).join(', '))}</span>`;
+      case 'dropped': return `<span class="mp-sub">${e.count} more events weren't recorded (limit per request)</span>`;
+    }
+    return '';
+  }
+
+  /* ── Queries ── */
+  function wQueries() {
+    const ws = watchState, f = ws.f;
+    let qs = wList('queries').filter(q => wMatch(q.sql));
+    if (f.issuesOnly) qs = qs.filter(q => wQueryFlags(q) !== '');
+    qs = newestFirst(qs, 400);
+    const extra = `<label class="toggle"><span class="switch"><input type="checkbox" data-wf="issuesOnly" ${f.issuesOnly ? 'checked' : ''}><i></i></span>Only slow / N+1 / duplicates</label>`;
+    if (!qs.length) return wSearch('Filter SQL…', extra) + wEmpty('No queries' + (f.q || f.issuesOnly ? ' match' : ' yet'), 'Database queries show here with their time, the line that ran them, and N+1 / duplicate / slow flags.');
+    return wSearch('Filter SQL…', extra) + `<div class="mp-w-list">` + qs.map(q => `<div class="mp-w-q">
+      <div class="mp-w-qh"><span class="mp-w-time">${wTime(q.t)}</span><span class="mp-w-ms${q.ms >= ws.info.settings.slowQueryMs ? ' slow' : ''}">${wMs(q.ms)}</span>${wQueryFlags(q)}<span class="spacer"></span><span class="mp-sub">${esc(q.conn || '')}</span>${wLoc(q.file, q.line)}</div>
+      <code class="sql">${highlightSQL(q.sql)}</code>${wBindings(q.bindings)}</div>`).join('') + '</div>';
+  }
+
+  /* ── simple lists ── */
+  function wSimple(key, ph, emptyTitle, emptyText, row, text) {
+    const items = newestFirst(wList(key).filter(e => wMatch(text(e))));
+    if (!items.length) return wSearch(ph) + wEmpty(emptyTitle, emptyText);
+    return wSearch(ph) + `<div class="mp-w-list">` + items.map(e => `<div class="mp-w-row"><span class="mp-w-time">${wTime(e.t)}</span>${row(e)}</div>`).join('') + '</div>';
+  }
+  const wJobs = () => wSimple('jobs', 'Filter jobs…', 'No jobs yet', 'Jobs dispatched by the site, and processed by queue workers Mullion runs (Workers tab), show here.',
+    e => `<span class="mp-w-badge ${e.op === 'failed' ? 'exc' : e.op === 'processed' ? 'ok' : 'q'}">${esc(e.op)}</span><span class="mp-w-main mono">${esc(e.name)}</span><span class="mp-sub">${esc(e.conn || '')}${e.queue ? ' · ' + esc(e.queue) : ''}${e.attempts ? ' · try ' + e.attempts : ''}</span>${e.error ? `<span class="mp-w-err">${esc(e.error)}</span>` : ''}<span class="mp-w-ms">${e.ms != null ? wMs(e.ms) : ''}</span>`,
+    e => e.name);
+  const wCache = () => wSimple('cache', 'Filter keys…', 'No cache activity yet', 'Cache hits, misses, writes and forgets show here.',
+    e => `<span class="mp-w-badge c-${esc(e.op)}">${esc(e.op)}</span><span class="mp-w-main mono">${esc(e.key)}</span><span class="mp-sub">${esc(e.store || '')}${e.ttl ? ' · ttl ' + e.ttl + 's' : ''}</span>`, e => e.key);
+  const wEvents = () => wSimple('events', 'Filter events…', 'No app events yet', 'Events your app dispatches show here (the framework\'s own are left out).',
+    e => `<span class="mp-w-main mono">${esc(e.name)}</span>`, e => e.name);
+  const wViews = () => wSimple('views', 'Filter views…', 'No views rendered yet', 'Every Blade view the site renders, with its file.',
+    e => `<span class="mp-w-main mono">${esc(e.name)}</span>${wLoc(e.file, 0)}`, e => e.name);
+  const wHttp = () => wSimple('http', 'Filter URLs…', 'No outgoing HTTP calls yet', 'Calls made with Laravel\'s Http client show here.',
+    e => `<span class="mp-w-m">${esc(e.method)}</span>${wStatus(e.status)}<span class="mp-w-main mono">${esc(e.url)}</span>${e.error ? `<span class="mp-w-err">${esc(e.error)}</span>` : ''}<span class="mp-w-ms">${wMs(e.ms)}</span>`, e => e.url);
+
+  /* ── Logs & Exceptions ── */
+  function wLogs() {
+    const ws = watchState, f = ws.f;
+    const levels = ['', 'debug', 'info', 'notice', 'warning', 'error', 'critical', 'alert', 'emergency'];
+    const extra = `<select data-wf="level" class="sm">${levels.map(l => `<option value="${l}" ${f.level === l ? 'selected' : ''}>${l || 'Any level'}</option>`).join('')}</select>`;
+    const rank = l => Math.max(0, levels.indexOf(l));
+    const items = newestFirst(ws.logs.filter(e => (!f.level || rank(e.level) >= rank(f.level)) && wMatch(e.message + ' ' + (e.class || ''))), 400);
+    if (!items.length) return wSearch('Filter messages…', extra) + wEmpty('No log entries' + (f.q || f.level ? ' match' : ' yet'), 'New lines in <span class="mono">storage/logs/*.log</span> show here as they are written.');
+    return wSearch('Filter messages…', extra) + `<div class="mp-w-list">` + items.map(e => {
+      // Keyed by the entry itself, not its position: new lines arrive on
+      // top, and an index would hand the open state to another row.
+      const key = 'l:' + e.t + (e.logFile || '') + (e.level || '') + String(e.message || '').slice(0, 60);
+      const open = ws.open.has(key);
+      return `<div class="mp-w-row log${open ? ' open' : ''}" data-wopen="${esc(key)}"><span class="mp-w-time">${wTime(e.t)}</span><span class="mp-w-lv lv-${esc(e.level)}">${esc(e.level)}</span>
+        <span class="mp-w-main">${e.class ? `<span class="mp-w-err">${esc(e.class)}</span> ` : ''}${esc(String(e.message).split('\n')[0])}</span><span class="mp-sub">${esc(e.logFile || '')}</span></div>
+        ${open ? `<div class="mp-w-detail">${e.class ? wTrace(e) : `<pre class="mp-term short">${esc(e.message)}</pre>`}</div>` : ''}`;
+    }).join('') + '</div>';
+  }
+  function wTrace(e) {
+    const frames = (e.trace || []).map(fr => `<div class="mp-w-frame${/[\\/]vendor[\\/]/.test(fr.file || '') ? ' vendor' : ''}">${fr.file ? wLoc(fr.file, fr.line) : '<span class="mp-sub">[internal]</span>'} <span class="mono mp-sub">${esc(fr.call)}</span></div>`).join('');
+    return `<div class="mp-w-exc"><b class="mp-w-err">${esc(e.class)}</b> ${esc(e.message)}<div style="margin:6px 0 8px">${wLoc(e.file, e.line)}</div>
+      ${frames ? `<label class="toggle" style="margin-bottom:6px"><span class="switch"><input type="checkbox" data-wvendor ${watchState.f.vendor ? 'checked' : ''}><i></i></span>Show vendor frames</label><div class="mp-w-frames${watchState.f.vendor ? ' all' : ''}">${frames}</div>` : ''}</div>`;
+  }
+  function wExceptionGroups() {
+    const ws = watchState;
+    const src = ws.fileExc.length ? ws.fileExc : ws.phpExc;
+    const groups = new Map();
+    for (const e of src) {
+      const k = e.class + '@' + shortPath(e.file || '') + ':' + e.line;
+      const g = groups.get(k);
+      if (g) { g.count++; g.last = e; } else groups.set(k, { key: k, count: 1, first: e, last: e });
+    }
+    return [...groups.values()].sort((a, b) => b.last.t - a.last.t);
+  }
+  function wExceptions() {
+    const ws = watchState;
+    const gs = wExceptionGroups().filter(g => wMatch(g.last.class + ' ' + g.last.message));
+    if (!gs.length) return wSearch('Filter exceptions…') + wEmpty('No exceptions', 'Exceptions your app reports show here, grouped — identical ones counted together.');
+    return wSearch('Filter exceptions…') + `<div class="mp-w-list">` + gs.map(g => {
+      const key = 'x:' + g.key, open = ws.open.has(key), e = g.last;
+      return `<div class="mp-w-row${open ? ' open' : ''}" data-wopen="${esc(key)}"><span class="mp-w-time">${wTime(e.t)}</span>${g.count > 1 ? `<span class="mp-w-badge exc">×${g.count}</span>` : ''}
+        <span class="mp-w-main"><span class="mp-w-err">${esc(e.class)}</span> ${esc(String(e.message).split('\n')[0])}</span>${wLoc(e.file, e.line)}</div>
+        ${open ? `<div class="mp-w-detail">${wTrace(e)}</div>` : ''}`;
+    }).join('') + '</div>';
+  }
+
+  /* ── Dumps ── */
+  function wDumps() {
+    const items = newestFirst(wList('dumps').filter(e => wMatch(e.text)), 200);
+    if (!items.length) return wSearch('Filter dumps…') + wEmpty('No dumps yet', `Call <span class="mono">dump($x)</span> or <span class="mono">dd($x)</span> anywhere in the app — it shows here${watchState.info.settings.dumpsInPage ? ' and in the page' : ' instead of in the page'}.`);
+    return wSearch('Filter dumps…') + `<div class="mp-w-list">` + items.map(e => `<div class="mp-w-dump"><div class="mp-w-qh"><span class="mp-w-time">${wTime(e.t)}</span>${e.label ? `<b class="mono">${esc(e.label)}</b>` : ''}<span class="spacer"></span>${wLoc(e.file, e.line)}</div><pre class="mp-term short">${esc(e.text)}</pre></div>`).join('') + '</div>';
+  }
+
+  /* ── Mail ── */
+  async function wLoadMail() {
+    const ws = watchState, g = gen;
+    if (!ws.mailT) ws.mailT = setInterval(() => { if (tab === 'watch' && ws.sub === 'mail' && visible()) wLoadMail(); }, 5000);
+    try {
+      const m = await call('/api/project/watch/mail', { site: cur });
+      if (!live(g)) return;
+      ws.mail = m;
+    } catch (e) { ws.mail = { error: e.message, messages: [] }; }
+    if (tab === 'watch' && ws.sub === 'mail') { wPaintSubs(); wPaintBody(); }
+  }
+  function wMailShown() {
+    const ws = watchState, m = ws.mail;
+    if (!m) return [];
+    const sent = wList('mails');
+    const subjects = new Set(sent.map(x => (x.subject || '') + '|' + (x.to || []).join(',').toLowerCase()));
+    const cl = (ws.info && ws.info.cleared) || {};
+    const since = Math.max(cl[''] || 0, cl.mail || 0);
+    return (m.messages || []).filter(x => {
+      if (since && Date.parse(x.Created) / 1000 < since) return false;
+      const viaEvent = subjects.has((x.Subject || '') + '|' + (x.To || []).map(a => a.Address).join(',').toLowerCase());
+      x._match = x.match || (viaEvent ? 'event' : '');
+      return ws.mailAll || x._match;
+    });
+  }
+  function wMail() {
+    const ws = watchState, m = ws.mail;
+    if (!m) { wLoadMail(); return `<div class="mp-loading"><div class="spin"></div>Reading Mail…</div>`; }
+    if (!m.installed) return wEmpty('Mail isn\'t set up', 'Install Mail (Mailpit) on the Mail page to catch the emails this site sends.');
+    if (m.error) return wEmpty('Mail isn\'t running', esc(m.error));
+    const shown = wMailShown().filter(x => wMatch(x.Subject + ' ' + (x.From ? x.From.Address : '')));
+    const extra = `<label class="toggle" title="all recent messages, not only this project's"><span class="switch"><input type="checkbox" data-wf="mailAll" ${ws.mailAll ? 'checked' : ''}><i></i></span>All recent</label><button class="sm mp-btn-ic" data-id="mp-w-mailpage">${ICON.open}Mail page</button>`;
+    const how = m.from ? `sent from <span class="mono">${esc(m.from)}</span> (MAIL_FROM_ADDRESS)` : 'matching the mails the deep watcher saw this site send';
+    if (!shown.length) return wSearch('Filter by subject or sender…', extra) + wEmpty('No emails' + (ws.mailAll ? '' : ' from this project'), `Messages Mailpit caught ${how} show here.`);
+    return wSearch('Filter by subject or sender…', extra) + `<div class="mp-sub" style="margin-bottom:8px">Messages ${how}.</div><div class="mp-w-list">` + shown.map(x => `<div class="mp-w-row" data-wmail="${esc(x.ID)}" title="open on the Mail page">
+      <span class="mp-w-time">${esc(new Date(x.Created).toLocaleTimeString([], { hour12: false }))}</span>${x.Read ? '' : '<span class="mp-w-badge q">new</span>'}
+      <span class="mp-w-main"><b>${esc(x.Subject || '(no subject)')}</b> <span class="mp-sub">${esc((x.To || []).map(a => a.Address).join(', '))}</span></span>
+      <span class="mp-sub">${esc(x.From ? x.From.Address : '')}</span></div>`).join('') + '</div>';
+  }
+
+  function wBindBody(body) {
+    const ws = watchState;
+    const q = body.querySelector('[data-wf="q"]');
+    let qt = 0;
+    if (q) q.oninput = e => { clearTimeout(qt); qt = setTimeout(() => { ws.f.q = e.target.value; wPaintBody(); }, 200); };
+    body.querySelectorAll('[data-wfs]').forEach(b => b.onclick = () => { ws.f.status = b.dataset.wfs; wPaintBody(true); });
+    const m = body.querySelector('[data-wf="method"]');
+    if (m) m.onchange = () => { ws.f.method = m.value; wPaintBody(true); };
+    const lv = body.querySelector('[data-wf="level"]');
+    if (lv) lv.onchange = () => { ws.f.level = lv.value; wPaintBody(true); };
+    const ns = body.querySelector('[data-wf="noStatic"]');
+    if (ns) ns.onchange = () => { ws.f.noStatic = ns.checked; prefSet('watch.noStatic', ns.checked); wPaintBody(true); };
+    const io = body.querySelector('[data-wf="issuesOnly"]');
+    if (io) io.onchange = () => { ws.f.issuesOnly = io.checked; wPaintBody(true); };
+    const ma = body.querySelector('[data-wf="mailAll"]');
+    if (ma) ma.onchange = () => { ws.mailAll = ma.checked; wPaintSubs(); wPaintBody(true); };
+    const mp = body.querySelector('[data-id="mp-w-mailpage"]');
+    if (mp) mp.onclick = () => { location.hash = 'mail'; };
+    body.querySelectorAll('[data-wmail]').forEach(r => r.onclick = () => {
+      const id = r.dataset.wmail;
+      location.hash = 'mail';
+      setTimeout(() => { if (typeof window.openMailMessage === 'function') window.openMailMessage(id); }, 150);
+    });
+    body.querySelectorAll('[data-wvendor]').forEach(c => c.onchange = () => { ws.f.vendor = c.checked; wPaintBody(); });
+    body.querySelectorAll('[data-wopen]').forEach(r => r.onclick = e => {
+      if (e.target.closest('a, button, input, label, select')) return;
+      const k = r.dataset.wopen;
+      if (ws.open.has(k)) ws.open.delete(k); else ws.open.add(k);
+      wPaintBody();
+    });
+    body.querySelectorAll('[data-open]').forEach(a => a.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      call('/api/project/watch/open', { site: cur, file: a.dataset.open, line: +a.dataset.line || 0 })
+        .then(r => say('Opened in ' + ({ vscode: 'VS Code', cursor: 'Cursor', phpstorm: 'PhpStorm', zed: 'Zed', sublime: 'Sublime Text', default: 'the default app' }[r.editor] || r.editor)))
+        .catch(err => say('Error: ' + err.message));
+    });
+  }
+
+  /* ════════════════════════════════════════════════════════════════
      SETTINGS
      ════════════════════════════════════════════════════════════════ */
   function renderSettings() {
@@ -2717,6 +3868,20 @@
           <div>${info.devRunning ? `<span class="mp-status"><span class="mp-dot on"></span>running on <span class="mono">:${info.devRunning}</span></span>
             <button class="sm" data-dev="restart">Restart</button><button class="sm" data-dev="stop">Stop</button>`
             : `<span class="mp-status"><span class="mp-dot ${info.devPaused ? '' : 'sleep'}"></span>${info.devPaused ? 'stopped' : 'sleeping — wakes when you open the site'}</span><button class="sm primary" data-dev="start">Start</button>`}</div>`);
+        const idle = info.idle || { mode: 'global', noTabMin: 2, withTabMin: 10, globalNoTabMin: 2, globalWithTabMin: 10 };
+        const globalText = idle.globalNever ? 'never sleep' : `${idle.globalNoTabMin} / ${idle.globalWithTabMin} min`;
+        rows.push(`<div class="k">Sleep when idle<small>no tab open / tab open</small></div>
+          <div><select data-id="mp-set-idle">
+              <option value="global" ${idle.mode === 'global' ? 'selected' : ''}>Use global (${esc(globalText)})</option>
+              <option value="custom" ${idle.mode === 'custom' ? 'selected' : ''}>Custom</option>
+              <option value="never" ${idle.mode === 'never' ? 'selected' : ''}>Never sleep</option>
+            </select>
+            <span data-id="mp-idle-custom" style="display:${idle.mode === 'custom' ? 'inline-flex' : 'none'}; gap:8px; align-items:center">
+              <input type="number" data-id="mp-idle-notab" class="mono" min="1" max="1440" value="${idle.noTabMin}" style="width:80px" title="minutes idle with no tab open">
+              <input type="number" data-id="mp-idle-withtab" class="mono" min="1" max="1440" value="${idle.withTabMin}" style="width:80px" title="minutes idle with a tab open">
+              <span class="mp-sub">min</span>
+              <button class="sm" data-id="mp-idle-save">Save</button>
+            </span></div>`);
       }
     }
     rows.push(`<div class="k">HTTPS<small>local certificate</small></div>
@@ -2754,6 +3919,23 @@
       action({ start: 'Starting the dev server… (first start can take a minute)', stop: 'Stopping the dev server…', restart: 'Restarting the dev server…' }[v],
         '/api/dev/' + v, { name: cur }, { start: 'Started', stop: 'Stopped', restart: 'Restarted' }[v]);
     });
+    const idleSel = p.querySelector('[data-id="mp-set-idle"]');
+    if (idleSel) {
+      const custom = p.querySelector('[data-id="mp-idle-custom"]');
+      const saveIdle = () => {
+        const mode = idleSel.value;
+        const noTabMin = parseInt(p.querySelector('[data-id="mp-idle-notab"]').value, 10) || 0;
+        const withTabMin = parseInt(p.querySelector('[data-id="mp-idle-withtab"]').value, 10) || 0;
+        if (mode === 'custom' && !([noTabMin, withTabMin].every(v => v >= 1 && v <= 1440))) { say('Use 1 to 1440 minutes'); return; }
+        action('Saving…', '/api/sites/idle', { name: cur, mode, noTabMin, withTabMin },
+          mode === 'never' ? 'This dev server never sleeps now' : mode === 'custom' ? 'Idle limits saved' : 'Follows the global setting');
+      };
+      idleSel.onchange = () => {
+        custom.style.display = idleSel.value === 'custom' ? 'inline-flex' : 'none';
+        if (idleSel.value !== 'custom') saveIdle();
+      };
+      p.querySelector('[data-id="mp-idle-save"]').onclick = saveIdle;
+    }
     p.querySelector('[data-id="mp-set-secure"]').onchange = e => setSecure(e.target.checked);
     p.querySelector('[data-id="mp-set-reveal"]').onclick = () => call('/api/open-path', { path: info.path }).catch(e => say('Error: ' + e.message));
     p.querySelector('[data-id="mp-set-rename"]').onclick = rename;
@@ -2805,7 +3987,7 @@
     // reload() re-reads the site (after a change made elsewhere).
     reload: () => { if (!destroyed) reloadInfo(); },
     // showTab(name) switches tabs (queued until the page has loaded).
-    // Names: commands, workers, packages, git, terminal, domains, settings.
+    // Names: commands, workers, packages, git, cache, watch, terminal, domains, settings.
     showTab: name => { if (info) showTab(name); else pendingTab = name; },
     get tab() { return tab; },
     // fit() refits the embedded terminal (call after showing the container).

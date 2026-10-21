@@ -168,7 +168,9 @@ var postgresDbCreateCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		a := mustApp()
-		if err := a.CreatePostgresDB(args[0]); err != nil {
+		encoding, _ := cmd.Flags().GetString("encoding")
+		locale, _ := cmd.Flags().GetString("locale")
+		if err := a.CreatePostgresDBWith(args[0], postgres.CreateOptions{Encoding: encoding, Locale: locale}); err != nil {
 			return err
 		}
 		fmt.Printf("Database %s is ready.\n", args[0])
@@ -301,6 +303,8 @@ func init() {
 	postgresUninstallCmd.Flags().BoolVar(&postgresUninstallYes, "yes", false, "do not ask for confirmation")
 	postgresUninstallCmd.Flags().BoolVar(&postgresUninstallKeepData, "keep-data", false, "keep the data directory (binaries only)")
 	postgresUninstallCmd.Flags().BoolVar(&postgresUninstallNoBackup, "no-backup", false, "skip the database backup")
+	postgresDbCreateCmd.Flags().String("encoding", "", "server encoding, e.g. UTF8, LATIN1, WIN1256 (default UTF8)")
+	postgresDbCreateCmd.Flags().String("locale", "", "LC_COLLATE and LC_CTYPE, e.g. C or en_US.UTF-8 (default C); must match the encoding")
 	postgresDbCmd.AddCommand(postgresDbListCmd, postgresDbCreateCmd, postgresDbDropCmd)
 	postgresCmd.AddCommand(postgresInstallCmd, postgresBackupCmd, postgresRestoreCmd, postgresStartCmd, postgresStopCmd,
 		postgresStatusCmd, postgresPasswordCmd, postgresDbCmd, postgresUninstallCmd)

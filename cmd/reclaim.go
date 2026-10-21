@@ -58,8 +58,13 @@ func reclaimMysqlPort(a *app.App, explicitConsent bool) bool {
 	return true
 }
 
-// pendingRestore is a dump taken from a replaced foreign MySQL, waiting
-// to be imported once Mullion's own server is up.
+// pendingRestore is an export taken from a replaced foreign MySQL,
+// waiting to be imported once Mullion's own server is up. It normally
+// holds the export FOLDER exportForeignDatabases wrote (one
+// self-contained <name>.sql per database); restorePendingDump also
+// accepts a path straight to a single .sql file, for backward
+// compatibility with an older Mullion build that saved a combined
+// all-databases.sql path here instead.
 var pendingRestore string
 
 // restorePendingDump imports the foreign server's exported databases
@@ -71,17 +76,30 @@ func restorePendingDump(a *app.App) {
 	dump := pendingRestore
 	pendingRestore = ""
 	fmt.Println("Importing the databases from the replaced server...")
-	if err := mysql.RestoreFile(a.Paths, a.State.Config.MySQL, dump); err != nil {
-		fmt.Println("warning:", err)
-		fmt.Println("Import them later with: mullion mysql restore \"" + dump + "\"")
+	if info, err := os.Stat(dump); err == nil && !info.IsDir() {
+		// Backward compatibility: an older Mullion saved a single
+		// combined dump file here instead of a folder.
+		if err := mysql.RestoreFile(a.Paths, a.State.Config.MySQL, dump); err != nil {
+			fmt.Println("warning:", err)
+			fmt.Println("Import them later with: mullion mysql restore \"" + dump + "\"")
+			return
+		}
+		fmt.Println("Databases imported. The backup stays at", dump)
 		return
 	}
-	fmt.Println("Databases imported. The backup stays at", dump)
+	restoreImportedDatabases(a, a.State.Config.MySQL, dump)
 }
 
 // exportForeignDatabases dumps the user databases of whatever answers
-// on the MySQL port, prompting for its root password when the empty one
-// is rejected. Returns the combined dump path ("" when nothing to save).
+// on the MySQL port as one self-contained <name>.sql file per database
+// (mysql.BackupDatabases — no combined all-databases.sql, which would
+// double the disk and time a multi-GB export needs), prompting for its
+// root password when the empty one is rejected. It uses the same
+// backup-location choice/validation setup's import uses
+// (chooseBackupBase, which honors --backup-dir when the current
+// command defines it) and the same datadir free-space check
+// (ensureDatadirSpace). Returns the export folder to restore from (""
+// when nothing was saved).
 func exportForeignDatabases(a *app.App) string {
 	if a.State.Config.MySQL == "" {
 		return ""
@@ -89,11 +107,12 @@ func exportForeignDatabases(a *app.App) string {
 	if !askYesNo("Export its databases first so nothing is lost?", true) {
 		return ""
 	}
+	version := a.State.Config.MySQL
 	savedPassword := mysql.RootPassword
 	defer func() { mysql.RootPassword = savedPassword }()
 
 	mysql.RootPassword = ""
-	dbs, err := mysql.UserDatabases(a.Paths, a.State.Config.MySQL)
+	dbs, err := mysql.UserDatabases(a.Paths, version)
 	for attempt := 0; err != nil && attempt < 3; attempt++ {
 		fmt.Println("That server rejected the passwordless root login.")
 		console.FlushInput()
@@ -105,7 +124,7 @@ func exportForeignDatabases(a *app.App) string {
 			return ""
 		}
 		mysql.RootPassword = pw
-		dbs, err = mysql.UserDatabases(a.Paths, a.State.Config.MySQL)
+		dbs, err = mysql.UserDatabases(a.Paths, version)
 	}
 	if err != nil {
 		fmt.Println("warning: could not read that server's databases —", err)
@@ -116,11 +135,20 @@ func exportForeignDatabases(a *app.App) string {
 		fmt.Println("It has no user databases — nothing to export.")
 		return ""
 	}
-	dir := filepath.Join(a.Paths.BackupsDir(), time.Now().Format("2006-01-02_150405")+"-replaced-server")
+
+	base, estimate, skip := chooseBackupBase(a, version, dbs)
+	if skip {
+		fmt.Println("Skipping the backup — the old data files stay untouched on disk.")
+		return ""
+	}
+	if !ensureDatadirSpace(a, estimate, base) {
+		return ""
+	}
+	dir := filepath.Join(base, time.Now().Format("2006-01-02_150405")+"-replaced-server")
 	fmt.Printf("Exporting %d database(s) to %s: %s\n", len(dbs), dir, strings.Join(dbs, ", "))
-	if err := mysql.BackupTo(a.Paths, a.State.Config.MySQL, dbs, dir); err != nil {
+	if err := mysql.BackupDatabases(a.Paths, version, dbs, dir); err != nil {
 		fmt.Println("warning: export failed -", err)
 		return ""
 	}
-	return filepath.Join(dir, "all-databases.sql")
+	return dir
 }

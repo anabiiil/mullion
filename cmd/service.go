@@ -11,10 +11,14 @@ import (
 	"pm/internal/caddy"
 	"pm/internal/devserver"
 	"pm/internal/fcgi"
+	"pm/internal/mailpit"
 	"pm/internal/mongodb"
+	"pm/internal/mssql"
 	"pm/internal/mysql"
 	"pm/internal/phpver"
+	"pm/internal/pmdir"
 	"pm/internal/postgres"
+	"pm/internal/redis"
 	"pm/internal/term"
 )
 
@@ -109,6 +113,22 @@ var stopCmd = &cobra.Command{
 		if v := a.State.Config.Mongo; v != "" {
 			if err := mongodb.Stop(a.Paths, v); err != nil {
 				return err
+			}
+		}
+		if a.State.Config.MSSQL != "" {
+			// Bounded: a slow container runtime must not hang `stop`.
+			if err := mssql.StopFast(a.Paths); err != nil {
+				fmt.Println("note: SQL Server did not stop cleanly -", err)
+			}
+		}
+		if a.State.Config.Mailpit != "" {
+			if err := mailpit.Stop(a.Paths); err != nil {
+				fmt.Println("note: Mail did not stop cleanly -", err)
+			}
+		}
+		if a.State.Config.Redis != "" {
+			if err := redis.Stop(a.Paths); err != nil {
+				fmt.Println("note: Redis did not stop cleanly -", err)
 			}
 		}
 		fmt.Println("Stopped.")
@@ -211,6 +231,19 @@ var statusCmd = &cobra.Command{
 			fmt.Printf("db:       %-14s port %d  %s\n", v, mongodb.Port, state)
 		}
 
+		if v := a.State.Config.MSSQL; v != "" {
+			running := mssql.Running()
+			fmt.Println("db:       " + mssqlStatusLine(v, mssql.Port, running, a.State.Config.MSSQLStopped, runtime.GOOS, mssqlRuntime(a.Paths, running)))
+		}
+
+		if v := a.State.Config.Mailpit; v != "" {
+			fmt.Println("mail:     " + mailStatusLine(v, mailpit.Owned(a.Paths) && mailpit.Running(), a.State.Config.MailStopped, a.MailURL()))
+		}
+
+		if v := a.State.Config.Redis; v != "" {
+			fmt.Println("cache:    " + redisStatusLine(v, redis.Owned(a.Paths) && redis.Running(), a.State.Config.RedisStopped))
+		}
+
 		fmt.Printf("sites:    %d linked (.%s)\n", len(a.State.Sites), a.State.Config.TLD)
 		return nil
 	},
@@ -218,4 +251,49 @@ var statusCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(startCmd, stopCmd, restartCmd, statusCmd)
+}
+
+// mssqlRuntime is the runtime check `mullion status` shows when SQL
+// Server isn't answering (cheap: no docker commands).
+func mssqlRuntime(paths pmdir.Paths, running bool) mssql.RuntimeStatus {
+	if running {
+		return mssql.RuntimeStatus{Daemon: true, Service: true}
+	}
+	return mssql.QuickStatus(paths)
+}
+
+// mssqlStatusLine renders SQL Server's `mullion status` line: state and
+// port, plus on macOS whether OrbStack (its container runtime) is up.
+func mssqlStatusLine(series string, port int, running, stoppedByUser bool, goos string, rt mssql.RuntimeStatus) string {
+	label := "mssql " + series
+	if running {
+		return fmt.Sprintf("%-14s port %d  %s", label, port, term.Green("running"))
+	}
+	state := term.Red("stopped") + " (run `mullion mssql start`)"
+	if stoppedByUser {
+		state = term.Red("stopped") + " by you (run `mullion mssql start`)"
+	}
+	if goos == "darwin" {
+		switch {
+		case !rt.OrbStack && !rt.Docker:
+			state += "  — OrbStack is not installed (`mullion mssql orbstack install`)"
+		case !rt.Daemon:
+			state += "  — OrbStack is not running"
+		default:
+			state += "  — OrbStack is up"
+		}
+	}
+	return fmt.Sprintf("%-14s port %d  %s", label, port, state)
+}
+
+// mailStatusLine renders Mail's `mullion status` line.
+func mailStatusLine(version string, running, stoppedByUser bool, url string) string {
+	state := term.Red("stopped") + " (run `mullion mail start`)"
+	switch {
+	case running:
+		state = term.Green("running") + "  " + url
+	case stoppedByUser:
+		state = term.Red("stopped") + " by you (run `mullion mail start`)"
+	}
+	return fmt.Sprintf("%-14s smtp %d  inbox %d  %s", "mailpit "+version, mailpit.SMTPPort, mailpit.UIPort, state)
 }

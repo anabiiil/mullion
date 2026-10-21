@@ -2,6 +2,144 @@
 
 All notable changes to Mullion. Versions follow [semantic versioning](https://semver.org).
 
+## 2.2.0 — 2026-10-21
+
+### Added
+
+- **Redis.** A new Redis tab on the Database page (and `mullion redis`).
+  On macOS it builds the latest stable Redis from the official,
+  checksum-verified source with the Xcode Command Line Tools; on Windows
+  it downloads the portable redis-windows build. It runs on
+  `127.0.0.1:6379` (changeable on the Ports page) with RDB snapshots,
+  a 512 MB cap and dev-friendly defaults, starts with the stack, and the
+  tab shows memory, keys per database, ops/sec and hit rate, with flush,
+  backup/restore of `dump.rdb`, and the Laravel `.env` block. `mullion
+  status`, `doctor` and `uninstall` know about it.
+- **phpRedisAdmin** at `https://redis.test`, opened from the Redis tab
+  (or `mullion redis open`), on any database.
+- **A Cache tab on the project page**: the project's own Redis keys
+  (from its `.env` prefixes), value previews, delete, flush the project's
+  cache by prefix, a live command monitor, and "Use Redis in this
+  project", which edits `.env` after showing the diff (the old file is
+  kept as `.env.mullion-backup`).
+- **OPcache controls.** The PHP page has an OPcache card per version:
+  on/off for sites and the CLI, JIT mode and buffer, memory, max files
+  and timestamp validation, a Reset button, and the live hit rate,
+  memory and cached scripts from that version's php-fpm/php-cgi.
+  `mullion php opcache` does the same from the command line. New PHP
+  installs get `revalidate_freq=0` so edits show immediately.
+
+- **Microsoft SQL Server.** A new SQL Server tab on the Database page
+  (and `mullion mssql`) installs SQL Server 2025 Developer edition. On
+  macOS it runs as Microsoft's official container under OrbStack. If
+  OrbStack is missing, the tab offers to install it. On Windows it is a
+  native `MULLION` instance. It listens on `127.0.0.1:1433` (changeable
+  on the Ports page) with the `sa` login and a generated password. The
+  tab can start and stop the server, create and drop databases, and back
+  up and restore `.bak` files. It also shows a Laravel `.env` block, and
+  can enable PHP's SQL Server extension when it's missing. `mullion
+  doctor` checks OrbStack or the Windows service.
+- **Adminer**, SQL Server's admin tool, served at `https://adminer.test`
+  and opened on the SQL Server login (`mullion adminer`).
+- **Upgrade Mullion from the panel or `mullion upgrade`.** Settings has a
+  new About & updates section: your version, how Mullion was installed
+  (Homebrew, Scoop or direct download), the latest release with a
+  "What's new" link, and an Upgrade button that shows the upgrade's
+  output live. The panel checks for a new release at most every 6 hours
+  and marks Settings with a dot when there is one. Homebrew installs run
+  `brew upgrade anabiiil/tap/mullion`, Scoop installs `scoop update
+  mullion`, and downloaded binaries fetch the release, verify its SHA-256
+  and swap the executable. The agent, the Windows tray and the panel
+  (Mullion.app included) then restart on the new version.
+  `mullion upgrade --check` exits with 10 when an update is available.
+- **Pick the charset and collation when creating a database.** The
+  Database page's create forms now offer MySQL/MariaDB character set and
+  collation, PostgreSQL encoding and locale, and SQL Server collation,
+  listed from the server itself (common ones first). "Set as default"
+  remembers your choice per engine, and "Reset" goes back to the
+  default. The database lists show each database's charset and
+  collation. On the command line: `mullion db create --charset
+  --collation`, `mullion postgres db create --encoding --locale` and
+  `mullion mssql db create --collation`. MongoDB has nothing to pick, it
+  always stores UTF-8.
+- **Show a database in its admin tool.** Every database row has a Show
+  button, and clicking a database's name does the same. MySQL opens
+  phpMyAdmin on that database, MongoDB opens mongo-express on it, and SQL
+  Server opens Adminer on it. If the tool isn't installed yet, it's set
+  up first. PostgreSQL offers pgAdmin, which has no way to open a given
+  database, or Adminer on that database when your PHP has the `pgsql`
+  extension.
+- **Mail: a local mail server for testing.** A new Mail page (and
+  `mullion mail`) installs [Mailpit](https://mailpit.axllent.org/), which
+  catches every email your apps send on `127.0.0.1:1025` and shows it in
+  an inbox — on the page (newest 50 messages, auto-refreshing, with an
+  unread count on the sidebar) and at `https://mail.test`. The page has
+  copy-ready Laravel `.env`, nodemailer and SMTP settings; a "Send test
+  email" form with HTML, text and attachments (`mullion mail send`);
+  message previews with headers, source, and Mailpit's HTML and link
+  checks; "Delete all"; and an Upgrade button when Mailpit has a new
+  release. "Catch PHP mail()" points every PHP version's php.ini at
+  Mailpit (`sendmail_path`, or `SMTP`/`smtp_port` on Windows) and
+  restores the old values when turned off. An optional relay lets you
+  release a chosen message to a real inbox; nothing goes out otherwise.
+  Its ports (1025/8025) are on the Ports page, and Mail starts with the
+  stack and shows in `mullion status` and `mullion doctor`.
+- **Choose when idle dev servers sleep.** Settings → Frontend dev
+  servers sets how long a dev server may sit idle with no tab open
+  (default 2 minutes) and with a tab open (default 10 minutes), or
+  turns sleeping off. A site can override it on its Settings tab. On the
+  command line: `mullion dev idle --no-tab 5m --with-tab 30m`, `--never`,
+  `--site <name>`. Changes apply without restarting anything.
+- **A Watch tab on the project page** (and `mullion watch <site>`): what
+  a PHP site does while you use it, live, with nothing added to the
+  project. Off by default; data stays on this computer.
+  - *Requests & logs*: every request from Caddy's access log (status,
+    time, size; slow ones highlighted; filters; headers and query on
+    click), `storage/logs/*.log` as it's written (multi-line entries,
+    colored by level), and exceptions grouped with their stack trace —
+    any `path:line` opens in VS Code, Cursor, PhpStorm, Zed or Sublime.
+  - *Dumps*: `dump()` and `dd()` show in Mullion instead of (or as well
+    as) the page.
+  - *Deep* (Laravel 10–12): queries with N+1, duplicate and slow flags
+    and the line that ran them, jobs (including those run by Mullion's
+    queue workers), cache hits and misses, app events, views, HTTP client
+    calls, and a timeline per request.
+  Dumps and Deep load a small PHP file before the site's code through a
+  per-site `PHP_VALUE` from Caddy — no Composer package, no php.ini
+  change. Secrets in headers, query strings and SQL bindings are
+  redacted. A dot on the project's tab flags new exceptions.
+
+- **Clear the Watch tab.** A Clear menu (with the data size beside it)
+  clears one view, everything (old lines don't come back after a reload),
+  or everything plus the project's `storage/logs` files.
+  `mullion watch <site> clear [--logs]`.
+- **Choose where setup exports an existing MySQL server's databases.**
+  When `mullion setup` imports from another MySQL (Laragon, XAMPP…), it
+  asks where to save the export (or takes `--backup-dir`), checks the
+  folder is writable and has room, and also checks there's room for the
+  imported data. Large imports (10 GB+) now export each database once
+  instead of twice, restore database by database (a failed one doesn't
+  stop the rest, and the retry command is printed), and run faster.
+  The panel's backup-location setting uses the same checks.
+
+### Changed
+
+- **The top bar's admin-tool button follows the Database page's engine
+  tab**: phpMyAdmin (and HeidiSQL) for MySQL, pgAdmin for PostgreSQL,
+  mongo-express for MongoDB and Adminer for SQL Server. It shows only on
+  the Database page.
+
+### Fixed
+
+- **Adding a project no longer hangs on "Linking…".** The site is saved
+  and the panel answers at once; the slow setup (dev servers, the hosts
+  file's admin prompt, Caddy reload) continues in the background with
+  live status, and the page always leaves the busy state.
+- **Caddy reloads are bounded**: a reload gives up after 30 seconds, and
+  open connections get a 10-second grace period instead of holding it.
+- **The Watch tab no longer jumps to the top** of the page when you click
+  in it or a new exception arrives.
+
 ## 2.1.1 — 2026-10-02
 
 ### Fixed

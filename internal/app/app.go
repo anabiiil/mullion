@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"pm/internal/agent"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
@@ -21,6 +22,7 @@ import (
 	"pm/internal/hosts"
 	"pm/internal/junction"
 	"pm/internal/mongodb"
+	"pm/internal/mssql"
 	"pm/internal/mysql"
 	"pm/internal/nodever"
 	"pm/internal/phpver"
@@ -40,6 +42,19 @@ type App struct {
 	// Apply() directly, or it would edit the developer's actual
 	// /etc/hosts and running Caddy instance.
 	skipApply bool
+
+	// Progress, when set, receives a short human-readable line before
+	// each slow step of Apply (dev servers, the hosts file, Caddy...),
+	// so a caller like the control panel can show what it is waiting
+	// on — e.g. an administrator prompt that opened behind its window.
+	Progress func(string)
+}
+
+// progress reports a step to Progress, when someone is listening.
+func (a *App) progress(msg string) {
+	if a.Progress != nil {
+		a.Progress(msg)
+	}
 }
 
 func New() (*App, error) {
@@ -57,6 +72,7 @@ func New() (*App, error) {
 	ApplyPortConfig(state.Config)
 	mysql.RootPassword = state.Config.MySQLPassword
 	postgres.Password = state.Config.PostgresPassword
+	mssql.Password = state.Config.MSSQLPassword
 	paths.Backups = state.Config.BackupDir
 	return &App{Paths: paths, State: state}, nil
 }
@@ -98,6 +114,9 @@ func (a *App) Hostnames() []string {
 		out = append(out, host)
 		out = append(out, explicitAliasHosts(s, host)...)
 	}
+	if a.mailSiteActive() {
+		out = append(out, MailHost(a.State.Config.TLD))
+	}
 	return out
 }
 
@@ -137,8 +156,21 @@ func (a *App) WriteCaddyfile(devPorts map[string]int) error {
 			}
 			conf.Root = caddy.DocRoot(s.Path)
 			conf.FcgiPort = port
+			conf.Watch = a.watchCaddyConf(s)
 		}
 		confs = append(confs, conf)
+	}
+	if a.mailSiteActive() {
+		confs = append(confs, a.mailSiteConf())
+	}
+	// Windows' php-cgi loads the watcher through a scan dir while any
+	// site watches (fcgi.SetWebWatch); Apply restarts workers to match.
+	webWatch := false
+	for _, c := range confs {
+		webWatch = webWatch || c.Watch != nil
+	}
+	if err := fcgi.SetWebWatch(a.Paths, webWatch); err != nil {
+		return err
 	}
 	content := caddy.Generate(confs, a.Paths.LogsDir())
 	return writeFile(a.Paths.Caddyfile(), content)
@@ -197,6 +229,9 @@ func (a *App) EnsureDevServers() map[string]int {
 	for _, s := range a.State.Sites {
 		if s.Kind != "node" || s.Mode == "build" || s.DevPaused {
 			continue
+		}
+		if devserver.Running(a.Paths, s.Name) == 0 {
+			a.progress("Starting " + s.Name + "'s dev server (a first start installs its dependencies)…")
 		}
 		nodeDir, err := a.ensureNodeFor(s)
 		if err != nil {
@@ -274,9 +309,16 @@ func (a *App) Apply() error {
 	// The agent wakes node sites' dev servers and hosts the wildcard
 	// DNS server.
 	if a.needsAgent() {
+		a.progress("Starting the Mullion agent…")
 		keep(agent.Ensure(a.Paths))
 	}
+	a.progress(hostsProgressLine())
 	keep(hosts.Sync(a.Hostnames()))
+	a.progress("Starting PHP and the databases…")
+	// "Catch PHP mail()" covers versions installed since it was turned
+	// on; a worker whose php.ini changed is restarted by Ensure below.
+	a.stopFcgiForIni()
+	fcgi.RestartForWatch(a.Paths, a.NeededVersions())
 	for _, v := range a.NeededVersions() {
 		keep(fcgi.Ensure(a.Paths, v))
 	}
@@ -305,7 +347,16 @@ func (a *App) Apply() error {
 			keep(mongodb.Start(a.Paths, v))
 		}
 	}
-	if len(a.State.Sites) > 0 {
+	// SQL Server is started but not waited for: its container (or
+	// Windows service) takes a while to accept logins, and nothing in
+	// Apply needs it to.
+	if shouldSelfHeal(a.State.Config.MSSQL, a.State.Config.MSSQLStopped) && !mssql.Running() {
+		keep(mssql.Ensure(a.Paths))
+	}
+	a.healMail()
+	a.healRedis()
+	a.progress("Reloading Caddy…")
+	if len(a.State.Sites) > 0 || a.mailSiteActive() {
 		if err := caddy.EnsureInstalled(context.Background(), a.Paths); err != nil {
 			keep(err)
 		} else {
@@ -315,6 +366,18 @@ func (a *App) Apply() error {
 		keep(caddy.Reload(a.Paths))
 	}
 	return firstErr
+}
+
+// hostsProgressLine is Apply's status line for the hosts-file step: when
+// a site was added or removed the write needs administrator rights, and
+// the prompt for them can open where the user doesn't look — Windows
+// shows a UAC request from a background process as a flashing taskbar
+// button, and the macOS dialog can land behind the panel window.
+func hostsProgressLine() string {
+	if runtime.GOOS == "windows" {
+		return "Updating the hosts file — if a UAC prompt is flashing in the taskbar, accept it…"
+	}
+	return "Updating the hosts file — if an administrator prompt opened (maybe behind this window), approve it…"
 }
 
 // SwitchDatabase installs (if needed) and activates a database version —

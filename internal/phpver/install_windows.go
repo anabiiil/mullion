@@ -43,6 +43,15 @@ func Install(ctx context.Context, paths pmdir.Paths, rel Release) (string, error
 	if err := writeIni(destDir); err != nil {
 		return "", fmt.Errorf("writing php.ini: %w", err)
 	}
+
+	// SQL Server (Microsoft's sqlsrv/pdo_sqlsrv) is a bonus, not a
+	// requirement: a failure — no msphpsql build for this PHP yet, a
+	// network hiccup, no admin rights for the ODBC driver — never fails
+	// the PHP install. No UAC prompt here; `mullion php ext get sqlsrv`
+	// asks for one if the ODBC driver is still missing.
+	if err := ensureSQLServer(ctx, paths, rel.Version, false); err != nil {
+		fmt.Printf("note: SQL Server support is incomplete: %v\n", err)
+	}
 	return destDir, nil
 }
 
@@ -78,7 +87,8 @@ func writeIni(phpDir string) error {
 	if hasDLL("opcache") {
 		b.WriteString("zend_extension=opcache\n")
 	}
-	b.WriteString("opcache.enable=1\n")
+	// OPcache with dev-friendly settings (see DevOpcacheIni).
+	b.WriteString(DevOpcacheIni())
 	b.WriteString("cgi.fix_pathinfo=1\n")
 	b.WriteString("cgi.force_redirect=0\n")
 	b.WriteString("memory_limit=512M\n")

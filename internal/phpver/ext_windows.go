@@ -109,33 +109,3 @@ func enabledExtensions(iniPath string) (map[string]bool, error) {
 	}
 	return set, nil
 }
-
-// parseExtLine recognizes `extension=` / `zend_extension=` lines,
-// commented or not, and normalizes the extension name.
-func parseExtLine(line string) (name string, active, zend bool) {
-	l := strings.TrimSpace(line)
-	active = true
-	if strings.HasPrefix(l, ";") {
-		active = false
-		l = strings.TrimSpace(strings.TrimPrefix(l, ";"))
-	}
-	eq := strings.Index(l, "=")
-	if eq < 0 {
-		return "", false, false
-	}
-	key := strings.ToLower(strings.TrimSpace(l[:eq]))
-	if key != "extension" && key != "zend_extension" {
-		return "", false, false
-	}
-	val := strings.TrimSpace(l[eq+1:])
-	if i := strings.Index(val, ";"); i >= 0 {
-		val = strings.TrimSpace(val[:i])
-	}
-	val = strings.Trim(val, `"'`)
-	val = filepath.Base(strings.ReplaceAll(val, `\`, "/"))
-	val = normalizeExtName(val)
-	if val == "" {
-		return "", false, false
-	}
-	return val, active, key == "zend_extension"
-}

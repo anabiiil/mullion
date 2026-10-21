@@ -86,7 +86,7 @@ func TestEnsureLdapEndToEnd(t *testing.T) {
 		t.Fatalf("expected %s to exist after EnsureLdap: %v", soPath, err)
 	}
 
-	out, err := exec.Command(php, "-m").Output()
+	out, err := exec.Command(php, iniArgs(php, "-m")...).Output()
 	if err != nil {
 		t.Fatalf("php -m: %v", err)
 	}

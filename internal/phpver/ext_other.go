@@ -49,7 +49,7 @@ func canonicalExtName(name string) string {
 // reflects the ini setting rather than always being true.
 func ListExtensions(paths pmdir.Paths, version string) ([]Ext, error) {
 	php := filepath.Join(paths.PhpVersionDir(version), PhpExeName)
-	out, err := exec.Command(php, "-m").Output()
+	out, err := exec.Command(php, iniArgs(php, "-m")...).Output()
 	if err != nil {
 		return nil, fmt.Errorf("running php -m for PHP %s: %w", version, err)
 	}
@@ -85,7 +85,28 @@ func ListExtensions(paths pmdir.Paths, version string) ([]Ext, error) {
 		exts = append(exts, e)
 		seen[name] = len(exts) - 1
 	}
+	// Shared modules mullion built itself (ext/ldap.so, ext/pdo_dblib.so)
+	// are loaded by an extension= line, so they can be switched off and
+	// back on — including ones currently off, which php -m doesn't list.
+	for _, name := range sharedModules(paths, version) {
+		if i, ok := seen[name]; ok {
+			exts[i].Toggleable = true
+			continue
+		}
+		exts = append(exts, Ext{Name: name, Enabled: false, Toggleable: true})
+	}
 	return exts, nil
+}
+
+// sharedModules lists the names of the .so modules in the version's ext
+// directory (none for a stock static build).
+func sharedModules(paths pmdir.Paths, version string) []string {
+	matches, _ := filepath.Glob(filepath.Join(paths.PhpVersionDir(version), "ext", "*.so"))
+	var out []string
+	for _, m := range matches {
+		out = append(out, normalizeExtName(filepath.Base(m)))
+	}
+	return out
 }
 
 // readIniToggles runs the php binary once to read every ini-toggleable
@@ -96,7 +117,7 @@ func readIniToggles(php string) (map[string]bool, error) {
 	for _, name := range iniToggleOrder {
 		fmt.Fprintf(&code, `echo ini_get(%q), "\n";`, iniToggleKey[name])
 	}
-	out, err := exec.Command(php, "-r", code.String()).Output()
+	out, err := exec.Command(php, iniArgs(php, "-r", code.String())...).Output()
 	if err != nil {
 		return nil, fmt.Errorf("reading ini settings from php: %w", err)
 	}
@@ -129,15 +150,22 @@ func iniBoolOn(v string) bool {
 // no on/off switch at all.
 func SetExtension(paths pmdir.Paths, version, name string, enable bool) error {
 	canon := canonicalExtName(name)
+	verDir := paths.PhpVersionDir(version)
+	if so := filepath.Join(verDir, "ext", canon+".so"); fileExists(so) {
+		return setSharedExtLine(filepath.Join(verDir, "php.ini"), so, "", enable)
+	}
 	key, ok := iniToggleKey[canon]
 	if !ok {
+		if enable && IsSQLServerExtension(canon) {
+			return fmt.Errorf("PHP %s has no SQL Server extension yet (add it with: mullion php ext get sqlsrv %s)", version, version)
+		}
 		return fmt.Errorf("cannot toggle %q: %s", name, staticBuildNote)
 	}
 	value := "0"
 	if enable {
 		value = "1"
 	}
-	iniPath := filepath.Join(paths.PhpVersionDir(version), "php.ini")
+	iniPath := filepath.Join(verDir, "php.ini")
 	if err := setIniDirective(iniPath, key, value); err != nil {
 		return fmt.Errorf("setting %s in %s: %w", key, iniPath, err)
 	}
@@ -146,12 +174,16 @@ func SetExtension(paths pmdir.Paths, version, name string, enable bool) error {
 
 // InstallPeclExtension is not applicable to static builds for most PECL
 // favorites (redis, imagick, apcu, swoole, ...) — they're already
-// compiled in. ldap is the one exception: the static builds ship
-// without it, so it's built from php.net sources instead (macOS only;
-// see EnsureLdap in ldap_darwin.go / ldap_other.go).
+// compiled in. ldap and SQL Server are the exceptions: the static builds
+// ship without them, so they're built from php.net sources instead
+// (macOS only; see EnsureLdap in ldap_darwin.go and EnsureSQLServer in
+// sqlsrv_darwin.go — "sqlsrv", "pdo_sqlsrv", "mssql" all mean pdo_dblib).
 func InstallPeclExtension(ctx context.Context, paths pmdir.Paths, version, name string) error {
 	if normalizeExtName(name) == "ldap" {
 		return EnsureLdap(ctx, paths, version)
+	}
+	if IsSQLServerExtension(name) {
+		return EnsureSQLServer(ctx, paths, version)
 	}
 	exts, err := ListExtensions(paths, version)
 	if err == nil {

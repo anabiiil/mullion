@@ -22,6 +22,7 @@ import (
 	"pm/internal/dnsd"
 	"pm/internal/fcgi"
 	"pm/internal/mongodb"
+	"pm/internal/mssql"
 	"pm/internal/mysql"
 	"pm/internal/nodever"
 	"pm/internal/phpver"
@@ -167,6 +168,17 @@ func (a *App) RestartStack(ctx context.Context) error {
 		if err := mongodb.Stop(a.Paths, v); err != nil {
 			return err
 		}
+	}
+	if a.State.Config.MSSQL != "" {
+		if err := mssql.Stop(a.Paths); err != nil {
+			return err
+		}
+	}
+	if err := a.stopMailForStack(); err != nil {
+		return err
+	}
+	if err := a.stopRedisForStack(); err != nil {
+		return err
 	}
 	fmt.Println("Stopped.")
 
@@ -384,6 +396,9 @@ func (a *App) Doctor(ctx context.Context) []DoctorCheck {
 			checks = append(checks, DoctorCheck{Name: "mysql " + v, Status: DoctorFail, Detail: "not running"})
 		}
 	}
+	checks = append(checks, a.mssqlDoctorChecks()...)
+	checks = append(checks, a.mailDoctorChecks()...)
+	checks = append(checks, a.redisDoctorChecks()...)
 	if v := a.State.Config.GlobalNode; v != "" {
 		checks = append(checks, DoctorCheck{Name: "node default: " + v})
 	}

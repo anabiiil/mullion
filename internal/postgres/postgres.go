@@ -524,11 +524,27 @@ func quoteLiteral(s string) string { return "'" + strings.ReplaceAll(s, "'", "''
 // CreateDatabase creates a database (UTF-8, like the cluster); an
 // existing one is left alone.
 func CreateDatabase(paths pmdir.Paths, version, name string) error {
+	return CreateDatabaseWith(paths, version, name, CreateOptions{})
+}
+
+// CreateDatabaseWith creates a database with the given encoding and
+// locale (empty = the cluster's: UTF8 / C), checked against what the
+// server offers; an existing one is left alone.
+func CreateDatabaseWith(paths pmdir.Paths, version, name string, opts CreateOptions) error {
 	if err := checkName(name); err != nil {
 		return err
 	}
 	if systemDBs[strings.ToLower(name)] {
 		return fmt.Errorf("%s is a system database", name)
+	}
+	if opts.Encoding != "" || opts.Locale != "" {
+		info, err := Locales(paths, version)
+		if err != nil {
+			return err
+		}
+		if opts, err = info.Resolve(opts); err != nil {
+			return err
+		}
 	}
 	out, err := psql(paths, version, Password,
 		"SELECT 1 FROM pg_database WHERE datname = "+quoteLiteral(name)+";")
@@ -538,8 +554,11 @@ func CreateDatabase(paths pmdir.Paths, version, name string) error {
 	if strings.TrimSpace(out) == "1" {
 		return nil
 	}
-	_, err = psql(paths, version, Password,
-		"CREATE DATABASE "+quoteIdent(name)+" ENCODING 'UTF8';")
+	stmt, err := createDatabaseSQL(name, opts)
+	if err != nil {
+		return err
+	}
+	_, err = psql(paths, version, Password, stmt)
 	return err
 }
 

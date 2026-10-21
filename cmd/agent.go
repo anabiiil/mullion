@@ -28,10 +28,9 @@ import (
 // Idle limits: with no tab open (no live connection) a dev server
 // sleeps fast; with a tab open it gets a longer grace, and any action —
 // a request through the domain OR a source-file edit — resets the clock.
-const (
-	idleNoTab   = 2 * time.Minute
-	idleWithTab = 10 * time.Minute
-)
+// The limits (2 and 10 minutes by default, or "never") come from
+// Settings / the site's own setting — config.Config.DevIdle — re-read on
+// every check, so a change applies without restarting the agent.
 
 // agentCmd is the hidden background helper behind wake-on-demand:
 // Caddy proxies a down site's requests here; each page load shows a
@@ -118,6 +117,10 @@ var agentCmd = &cobra.Command{
 				for i := range a.State.Sites {
 					site := &a.State.Sites[i]
 					if site.Kind != "node" || site.Mode == "build" || site.DevPaused {
+						continue
+					}
+					idleNoTab, idleWithTab, never := a.State.Config.DevIdle(*site)
+					if never {
 						continue
 					}
 					port := devserver.Running(a.Paths, site.Name)

@@ -309,6 +309,10 @@
   .eng-dot.on { background: var(--ok); border-color: var(--ok);
                 box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 22%, transparent); }
   .eng-dot.off { background: var(--muted); border-color: var(--muted); }
+  .redis-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+  .redis-stats .st { background: var(--inset); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; min-width: 0; }
+  .redis-stats .st b { display: block; font-size: 16px; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .redis-stats .st span { font-size: 11.5px; color: var(--muted); }
   .eng-panel { display: none; flex-direction: column; gap: 20px; }
   .eng-panel.active { display: flex; }
 
@@ -502,6 +506,13 @@
   .menu button.danger:hover { background: var(--bad-bg); }
   .menu hr { border: none; border-top: 1px solid var(--row); margin: 5px 4px; }
 
+  /* ── database lists: clickable name, charset/collation, create options ── */
+  .db-name { border: none; background: transparent; box-shadow: none; padding: 0; min-height: 0;
+             font: inherit; font-weight: 600; color: var(--text); cursor: pointer; }
+  .db-name:hover { color: var(--accent-text); background: transparent; border: none; text-decoration: underline; }
+  .db-meta { font-size: 11.5px; margin-left: 8px; font-weight: 400; }
+  .db-opts select { max-width: 260px; }
+
   /* ── project shell ───────────────────────────────────────── */
   .proj-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 20px 24px; }
   .proj-head .t { flex: 1; min-width: 220px; display: flex; flex-direction: column; gap: 6px; }
@@ -531,6 +542,8 @@
   .ptab:hover .x, .ptab.active .x { opacity: .85; }
   .ptab .x:hover { opacity: 1; background: rgba(127, 127, 127, .22); }
   .ptab.dragging { opacity: .45; }
+  .ptab .wdot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--bad);
+                box-shadow: 0 0 0 3px color-mix(in srgb, var(--bad) 22%, transparent); }
   .ptab.drop-before { box-shadow: inset 2px 0 0 var(--accent); }
   /* the fixed first tab: every site (not closable, not draggable) */
   .ptab.all { padding: 4px 12px 4px 6px; }
@@ -570,6 +583,13 @@
   /* ── Mullion Terminal: settings, first-run choice, action toast ── */
   .dimmed { opacity: .45; pointer-events: none; filter: saturate(.6); transition: opacity .15s; }
   .mterm-status { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; }
+  /* About & updates: the coral dot on Settings when a release is out, and the upgrade log. */
+  .nav a .upd-dot { margin-left: auto; width: 8px; height: 8px; border-radius: 50%; flex: none;
+                    background: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+  .nav a .upd-dot[hidden] { display: none; }
+  #upgrade-log { white-space: pre-wrap; word-break: break-word; background: var(--inset); border: 1px solid var(--border);
+                 border-radius: 8px; padding: 8px 10px; margin: 12px 0 0; font-size: 11.5px; max-height: 260px; overflow: auto; }
+  #upgrade-error { margin-top: 12px; }
   .mterm-status .badge { font-size: 10.5px; }
   .modal-card.tchoice { max-width: 640px; padding: 0; overflow: hidden; position: relative; }
   .tchoice-head { padding: 26px 28px 6px; }
@@ -667,6 +687,57 @@
     .topbar { padding-left: 24px; padding-right: 24px; }
     main { padding-left: 24px; padding-right: 24px; }
   }
+
+  /* ── Mail page (Mailpit) ─────────────────────────────────── */
+  .nav a .count.mail-unread { background: var(--accent); color: var(--accent-ink); }
+  .nav a .count[hidden] { display: none; }
+  .mail-hero { display: flex; gap: 22px; align-items: flex-start; flex-wrap: wrap; }
+  .mail-hero > div { flex: 1 1 320px; }
+  .mail-hero ul { margin: 10px 0 0; padding-left: 18px; color: var(--muted); font-size: 12.5px; line-height: 1.8; }
+  .mail-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .mail-fact { background: var(--inset); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; min-width: 0; }
+  .mail-fact .k { display: block; font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .7px; color: var(--muted); }
+  .mail-fact .v { display: block; margin-top: 4px; font-family: var(--mono); font-size: 13px; font-weight: 650;
+                  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mail-update { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  #mail-inbox-table tr.mail-row { cursor: pointer; }
+  #mail-inbox-table td { padding-top: 10px; padding-bottom: 10px; }
+  #mail-inbox-table .mail-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: transparent; }
+  #mail-inbox-table tr.unread .mail-dot { background: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+  #mail-inbox-table tr.unread .mail-subj { font-weight: 700; }
+  #mail-inbox-table .mail-subj { display: block; max-width: 460px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #mail-inbox-table .mail-snip { display: block; max-width: 460px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+                                 color: var(--muted); font-size: 12px; }
+  #mail-inbox-table .mail-who { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #mail-inbox-table .mail-time { white-space: nowrap; color: var(--muted); font-size: 12px; text-align: right; }
+  .mail-snippet { white-space: pre-wrap; word-break: break-word; background: var(--inset); border: 1px solid var(--border);
+                  border-radius: 10px; padding: 10px 12px; margin: 0; font-size: 12px; max-height: 340px; overflow: auto; }
+  .modal-card.mail-view { max-width: 920px; padding: 0; display: flex; flex-direction: column; height: calc(100vh - 40px); overflow: hidden; }
+  .modal-card.mail-compose { max-width: 640px; }
+  .mail-view-head { padding: 22px 26px 14px; border-bottom: 1px solid var(--row); }
+  .mail-view-head .modal-title { margin-bottom: 6px; padding-right: 40px; word-break: break-word; }
+  .mail-view-meta { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 12.5px; }
+  .mail-view-meta .k { color: var(--muted); font-weight: 600; }
+  .mail-view-meta .v { min-width: 0; word-break: break-word; }
+  .mail-view-tabs { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 26px; border-bottom: 1px solid var(--row); }
+  .mail-view-body { flex: 1; min-height: 0; overflow: auto; padding: 16px 26px; background: var(--inset); }
+  .mail-view-body iframe { width: 100%; height: 100%; min-height: 360px; border: 1px solid var(--border); border-radius: 12px; background: #fff; }
+  .mail-view-body pre { white-space: pre-wrap; word-break: break-word; margin: 0; font-size: 12px; }
+  .mail-view-foot { display: flex; gap: 10px; flex-wrap: wrap; padding: 14px 26px; border-top: 1px solid var(--row); }
+  .mail-view-x { position: absolute; top: 16px; right: 16px; }
+  .mail-atts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .mail-check { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; }
+  .mail-check + .mail-check { margin-top: 12px; }
+  .mail-check h4 { margin: 0 0 6px; font-size: 13px; }
+  .mail-form { display: grid; grid-template-columns: 110px 1fr; gap: 10px 12px; align-items: center; margin-top: 16px; }
+  .mail-form > label { font-size: 12px; font-weight: 650; color: var(--muted); }
+  .mail-form input[type=text], .mail-form input[type=password], .mail-form input[type=number], .mail-form select, .mail-form textarea { width: 100%; }
+  .mail-form .full { grid-column: 1 / -1; }
+  textarea { border: 1px solid var(--border); background: var(--input); color: var(--text); border-radius: 10px;
+             padding: 8px 12px; font: inherit; font-size: 12.5px; outline: none; resize: vertical; line-height: 1.45; }
+  textarea:focus { border-color: var(--accent); background-color: var(--card); box-shadow: 0 0 0 3px var(--accent-ring); }
+  textarea.mono { font-family: var(--mono); }
+  @media (max-width: 640px) { .mail-form { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -712,6 +783,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
         Database
       </a>
+      <a href="#mail" data-page="mail" title="Mail">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2.5"/><path d="M22 7l-10 6L2 7"/></svg>
+        Mail <span class="count mail-unread" id="nav-mail" title="Unread messages" hidden>0</span>
+      </a>
       <div class="nav-label">General</div>
       <a href="#ports" data-page="ports" title="Ports &amp; SSL">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="10.5" width="16" height="10.5" rx="2.5"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/><line x1="12" y1="14.5" x2="12" y2="17"/></svg>
@@ -719,7 +794,7 @@
       </a>
       <a href="#settings" data-page="settings" title="Settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        Settings
+        Settings <span class="upd-dot" id="nav-update-dot" title="A Mullion update is available" hidden></span>
       </a>
     </nav>
 
@@ -742,6 +817,8 @@
       <button id="btn-pma" style="display:none">phpMyAdmin</button>
       <button id="btn-pgadmin-top" style="display:none">pgAdmin</button>
       <button id="btn-mongoexpress-top" style="display:none">mongo-express</button>
+      <button id="btn-adminer-top" style="display:none">Adminer</button>
+      <button id="btn-redisadmin-top" style="display:none">phpRedisAdmin</button>
       <button id="btn-restart-stack" style="display:none">Restart</button>
       <button id="btn-toggle" class="primary">Start</button>
     </header>
@@ -958,6 +1035,21 @@
             <div id="ini-grid" class="ini-grid"></div>
           </div>
         </section>
+        <section class="card" id="opcache-card">
+          <div class="card-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            <h2>OPcache</h2>
+            <span class="hint" id="opc-hint"></span>
+            <span class="spacer"></span>
+            <button id="btn-opc-refresh" class="sm">Refresh</button>
+            <button id="btn-opc-reset" class="sm">Reset OPcache</button>
+          </div>
+          <div class="card-body">
+            <div class="redis-stats" id="opc-status"></div>
+            <p class="muted" id="opc-note" style="font-size:12px; margin:10px 0 0"></p>
+            <div id="opc-grid" class="ini-grid"></div>
+          </div>
+        </section>
       </div>
 
       <!-- ═══ NODE ═══ -->
@@ -1009,6 +1101,8 @@
           <button data-engtab="mysql"><span class="eng-dot" id="dot-mysql"></span>MySQL</button>
           <button data-engtab="postgres"><span class="eng-dot" id="dot-postgres"></span>PostgreSQL</button>
           <button data-engtab="mongo"><span class="eng-dot" id="dot-mongo"></span>MongoDB</button>
+          <button data-engtab="mssql"><span class="eng-dot" id="dot-mssql"></span>SQL Server</button>
+          <button data-engtab="redis"><span class="eng-dot" id="dot-redis"></span>Redis</button>
         </div>
 
         <!-- MySQL -->
@@ -1062,6 +1156,15 @@
               <div class="row" style="margin-top:16px">
                 <input type="text" id="db-new" placeholder="new_database" size="22" class="mono">
                 <button id="btn-db-create" class="primary">Create database</button>
+              </div>
+              <div class="row db-opts" id="db-opts" style="display:none">
+                <span class="label">Charset</span>
+                <select id="db-charset" class="mono"></select>
+                <span class="label">Collation</span>
+                <select id="db-collation" class="mono"></select>
+                <button id="btn-db-default" class="sm">Set as default</button>
+                <button id="btn-db-default-reset" class="sm" style="display:none">Reset</button>
+                <span class="muted" id="db-default-note"></span>
               </div>
             </div>
           </section>
@@ -1122,6 +1225,15 @@
                 <input type="text" id="pg-db-new" placeholder="new_database" size="22" class="mono">
                 <button id="btn-pg-db-create" class="primary">Create database</button>
               </div>
+              <div class="row db-opts" id="pg-db-opts" style="display:none">
+                <span class="label">Encoding</span>
+                <select id="pg-db-encoding" class="mono"></select>
+                <span class="label">Locale</span>
+                <select id="pg-db-locale" class="mono" title="LC_COLLATE and LC_CTYPE"></select>
+                <button id="btn-pg-db-default" class="sm">Set as default</button>
+                <button id="btn-pg-db-default-reset" class="sm" style="display:none">Reset</button>
+                <span class="muted" id="pg-db-default-note"></span>
+              </div>
             </div>
           </section>
           <section class="card" id="pg-backups-card" style="display:none">
@@ -1175,6 +1287,7 @@
                 <input type="text" id="mongo-db-new" placeholder="new_database" size="22" class="mono">
                 <button id="btn-mongo-db-create" class="primary">Create database</button>
               </div>
+              <p class="muted" style="margin:10px 0 0; font-size:12px">No charset to pick: MongoDB always stores text as UTF-8.</p>
             </div>
           </section>
           <section class="card" id="mongo-backups-card" style="display:none">
@@ -1191,6 +1304,314 @@
             </div>
           </section>
         </div>
+        <!-- SQL Server -->
+        <div class="eng-panel" id="eng-mssql">
+          <section class="card" id="mssql-runtime-card" style="display:none">
+            <div class="card-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="13" rx="2"/><path d="M6 7V4h12v3"/><path d="M6 12h.01M10 12h.01M14 12h.01"/></svg>
+              <h2>OrbStack</h2>
+              <span class="spacer"></span>
+              <button id="btn-orbstack-install" class="sm primary" style="display:none">Install OrbStack</button>
+              <button id="btn-orbstack-start" class="sm primary" style="display:none">Start OrbStack</button>
+            </div>
+            <div class="card-body">
+              <p class="muted" id="mssql-runtime-text" style="margin:0"></p>
+            </div>
+          </section>
+          <section class="card">
+            <div class="card-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+              <h2>Server</h2>
+              <span class="spacer"></span>
+              <button id="btn-adminer" class="sm" style="display:none">Open Adminer</button>
+              <button id="btn-adminer-uninstall" class="sm danger" style="display:none">Uninstall</button>
+              <button id="btn-mssql-restore" class="sm" style="display:none">Restore .bak…</button>
+              <button id="btn-mssql-backup" class="sm" style="display:none">Back up now</button>
+              <button id="btn-mssql-uninstall" class="sm danger" style="display:none">Uninstall…</button>
+            </div>
+            <div class="card-body">
+              <div class="row" id="mssql-row"></div>
+              <div class="row" id="mssql-install-row" style="display:none">
+                <span class="label">Edition</span>
+                <span class="mono">SQL Server 2025 Developer</span>
+                <button id="btn-mssql-install" class="primary">Install</button>
+                <span class="muted" id="mssql-install-note"></span>
+              </div>
+              <div class="row" id="mssql-pass-row" style="display:none">
+                <span class="label">sa password</span>
+                <input type="password" id="mssql-pass-show" readonly size="22" class="mono">
+                <button id="btn-mssql-pass-reveal" class="sm">Show</button>
+                <button id="btn-mssql-pass-copy" class="sm">Copy</button>
+                <button id="btn-mssql-pass-change" class="sm">Change…</button>
+              </div>
+              <div class="note" id="mssql-ext-note" style="display:none; margin-top:12px"></div>
+            </div>
+          </section>
+          <section class="card" id="mssql-conn-card" style="display:none">
+            <div class="card-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+              <h2>Connect</h2>
+              <span class="hint">Laravel .env</span>
+              <span class="spacer"></span>
+              <button id="btn-mssql-env-copy" class="sm">Copy</button>
+            </div>
+            <div class="card-body">
+              <pre class="mono" id="mssql-env" style="white-space:pre-wrap; background:var(--inset); border:1px solid var(--border); border-radius:8px; padding:8px 10px; margin:0; font-size:12px"></pre>
+              <p class="muted" style="margin:10px 0 0; font-size:12px">Other tools: server <span class="mono" id="mssql-host"></span>, login <span class="mono">sa</span>, and trust the server certificate (it is self-signed).</p>
+            </div>
+          </section>
+          <section class="card" id="mssql-db-card" style="display:none">
+            <div class="card-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+              <h2>Databases</h2>
+              <span class="hint" id="mssql-db-count"></span>
+            </div>
+            <div class="card-body">
+              <table>
+                <thead><tr><th style="width:36px">#</th><th>Name</th><th style="text-align:right"></th></tr></thead>
+                <tbody id="mssql-db-body"></tbody>
+              </table>
+              <div class="row" style="margin-top:16px">
+                <input type="text" id="mssql-db-new" placeholder="new_database" size="22" class="mono">
+                <button id="btn-mssql-db-create" class="primary">Create database</button>
+              </div>
+              <div class="row db-opts" id="mssql-db-opts" style="display:none">
+                <span class="label">Collation</span>
+                <select id="mssql-db-collation" class="mono"></select>
+                <button id="btn-mssql-db-default" class="sm">Set as default</button>
+                <button id="btn-mssql-db-default-reset" class="sm" style="display:none">Reset</button>
+                <span class="muted" id="mssql-db-default-note"></span>
+              </div>
+            </div>
+          </section>
+          <section class="card" id="mssql-backups-card" style="display:none">
+            <div class="card-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
+              <h2>Backups</h2>
+              <span class="hint" id="mssql-backups-count"></span>
+            </div>
+            <div class="card-body">
+              <table>
+                <thead><tr><th>Name</th><th>Time</th><th>Size</th><th>Files</th><th style="text-align:right"></th></tr></thead>
+                <tbody id="mssql-backups-body"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+        <!-- Redis -->
+        <div class="eng-panel" id="eng-redis">
+          <section class="card">
+            <div class="card-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>
+              <h2>Server</h2>
+              <span class="spacer"></span>
+              <button id="btn-redisadmin" class="sm" style="display:none">Open phpRedisAdmin</button>
+              <button id="btn-redisadmin-uninstall" class="sm danger" style="display:none">Uninstall</button>
+              <button id="btn-redis-restore" class="sm" style="display:none">Restore dump.rdb…</button>
+              <button id="btn-redis-backup" class="sm" style="display:none">Back up now</button>
+              <button id="btn-redis-uninstall" class="sm danger" style="display:none">Uninstall…</button>
+            </div>
+            <div class="card-body">
+              <div class="row" id="redis-row"></div>
+              <div class="row" id="redis-install-row" style="display:none">
+                <span class="label">Version</span>
+                <span class="mono">latest stable Redis</span>
+                <button id="btn-redis-install" class="primary">Install</button>
+                <span class="muted" id="redis-install-note"></span>
+              </div>
+              <div class="row" id="redis-update-row" style="display:none">
+                <span class="muted" id="redis-update-text"></span>
+                <button id="btn-redis-upgrade" class="sm">Upgrade</button>
+              </div>
+              <div class="note" id="redis-ext-note" style="display:none; margin-top:12px"></div>
+            </div>
+          </section>
+          <section class="card" id="redis-stats-card" style="display:none">
+            <div class="card-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+              <h2>Activity</h2>
+              <span class="hint" id="redis-stats-hint"></span>
+              <span class="spacer"></span>
+              <button id="btn-redis-flushall" class="sm danger">Flush all…</button>
+            </div>
+            <div class="card-body">
+              <div class="redis-stats" id="redis-stats"></div>
+            </div>
+          </section>
+          <section class="card" id="redis-db-card" style="display:none">
+            <div class="card-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+              <h2>Databases</h2>
+              <span class="hint" id="redis-db-count"></span>
+              <span class="spacer"></span>
+              <label class="muted" style="font-size:12px; display:inline-flex; gap:6px; align-items:center"><input type="checkbox" id="redis-db-empty"> show empty</label>
+            </div>
+            <div class="card-body">
+              <table>
+                <thead><tr><th style="width:60px">DB</th><th>Keys</th><th>With TTL</th><th style="text-align:right"></th></tr></thead>
+                <tbody id="redis-db-body"></tbody>
+              </table>
+            </div>
+          </section>
+          <section class="card" id="redis-conn-card" style="display:none">
+            <div class="card-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+              <h2>Connect</h2>
+              <span class="hint">Laravel .env</span>
+              <span class="spacer"></span>
+              <button id="btn-redis-env-copy" class="sm">Copy</button>
+            </div>
+            <div class="card-body">
+              <pre class="mono" id="redis-env" style="white-space:pre-wrap; background:var(--inset); border:1px solid var(--border); border-radius:8px; padding:8px 10px; margin:0; font-size:12px"></pre>
+              <p class="muted" style="margin:10px 0 0; font-size:12px">Laravel 11+ reads <span class="mono">CACHE_STORE</span>, 10 and older <span class="mono">CACHE_DRIVER</span> — keep the one your version uses. A project's <b>Cache</b> tab can write these into its <span class="mono">.env</span> for you. Other clients: <span class="mono" id="redis-host"></span>, no password.</p>
+            </div>
+          </section>
+          <section class="card" id="redis-backups-card" style="display:none">
+            <div class="card-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><path d="M10 12h4"/></svg>
+              <h2>Backups</h2>
+              <span class="hint" id="redis-backups-count"></span>
+            </div>
+            <div class="card-body">
+              <table>
+                <thead><tr><th>Name</th><th>Time</th><th>Size</th><th>Files</th><th style="text-align:right"></th></tr></thead>
+                <tbody id="redis-backups-body"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <!-- ═══ MAIL (Mailpit) ═══ -->
+      <div class="page" id="page-mail">
+        <section class="card" id="mail-install-card">
+          <div class="card-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2.5"/><path d="M22 7l-10 6L2 7"/></svg>
+            <h2>A local mail server for testing</h2>
+          </div>
+          <div class="card-body">
+            <div class="mail-hero">
+              <div>
+                <p style="margin:0">Mail runs <a href="https://mailpit.axllent.org/" target="_blank" rel="noopener">Mailpit</a> — an SMTP server on your machine that
+                  <b>catches every email</b> your apps send and shows it in an inbox, instead of delivering it. Like Mailtrap, but local.</p>
+                <ul>
+                  <li>Point Laravel, Symfony, WordPress, Node… at <span class="mono">127.0.0.1:1025</span> — no account, no password.</li>
+                  <li>Read messages here or at <span class="mono">https://mail.<span class="js-tld">test</span></span>, with HTML, link and header checks.</li>
+                  <li>Optionally catch PHP's <span class="mono">mail()</span>, and release a chosen message to a real inbox.</li>
+                </ul>
+              </div>
+            </div>
+            <div class="row" style="margin-top:18px">
+              <button id="btn-mail-install" class="primary">Install Mail</button>
+              <span class="muted">Downloads Mailpit (about 10 MB) from its GitHub releases.</span>
+            </div>
+          </div>
+        </section>
+
+        <section class="card" id="mail-server-card" style="display:none">
+          <div class="card-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2.5"/><path d="M22 7l-10 6L2 7"/></svg>
+            <h2>Mail server</h2>
+            <span id="mail-pill" class="pill off">…</span>
+            <span class="spacer"></span>
+            <button id="btn-mail-open" class="sm primary">Open inbox</button>
+            <button id="btn-mail-start" class="sm" style="display:none">Start</button>
+            <button id="btn-mail-stop" class="sm" style="display:none">Stop</button>
+            <button id="btn-mail-restart" class="sm" style="display:none">Restart</button>
+            <button id="btn-mail-uninstall" class="sm danger">Uninstall…</button>
+          </div>
+          <div class="card-body">
+            <div class="mail-facts">
+              <div class="mail-fact"><span class="k">Version</span><span class="v" id="mail-version">—</span></div>
+              <div class="mail-fact"><span class="k">SMTP</span><span class="v" id="mail-smtp">—</span></div>
+              <div class="mail-fact"><span class="k">Inbox</span><span class="v" id="mail-ui">—</span></div>
+              <div class="mail-fact"><span class="k">Messages</span><span class="v" id="mail-count">—</span></div>
+            </div>
+            <div class="mail-update" id="mail-update-row" style="display:none; margin-top:14px">
+              <span class="badge fw" id="mail-update-text"></span>
+              <button id="btn-mail-upgrade" class="sm primary">Upgrade</button>
+            </div>
+            <div class="warn" id="mail-site-note" style="display:none; margin-top:14px"></div>
+            <div class="row" style="margin-top:16px">
+              <label class="toggle"><span class="switch"><input type="checkbox" id="mail-catch-php"><i></i></span> <b style="color:var(--text)">Catch PHP mail()</b></label>
+              <span class="muted" id="mail-catch-php-help"></span>
+            </div>
+          </div>
+        </section>
+
+        <section class="card" id="mail-inbox-card" style="display:none">
+          <div class="card-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
+            <h2>Inbox</h2>
+            <span class="badge" id="mail-inbox-count" style="display:none"></span>
+            <span class="spacer"></span>
+            <button id="btn-mail-send" class="sm primary">Send test email…</button>
+            <button id="btn-mail-refresh" class="sm">Refresh</button>
+            <button id="btn-mail-clear" class="sm danger">Delete all</button>
+          </div>
+          <div class="card-body">
+            <table id="mail-inbox-table">
+              <thead><tr><th style="width:24px"></th><th>From</th><th>To</th><th>Subject</th><th style="text-align:right">Received</th></tr></thead>
+              <tbody id="mail-inbox-body"></tbody>
+            </table>
+            <p class="muted" style="margin:12px 0 0">The newest 50 messages, refreshed every few seconds. Mailpit keeps up to 1,000 — the oldest go first.</p>
+          </div>
+        </section>
+
+        <section class="card" id="mail-connect-card" style="display:none">
+          <div class="card-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+            <h2>Connect your app</h2>
+            <div class="db-tabs" id="mail-env-tabs" style="margin-left:6px">
+              <button data-menv="laravel">Laravel .env</button>
+              <button data-menv="node">Node (nodemailer)</button>
+              <button data-menv="smtp">Any SMTP client</button>
+            </div>
+            <span class="spacer"></span>
+            <button id="btn-mail-env-copy" class="sm">Copy</button>
+          </div>
+          <div class="card-body">
+            <pre class="mono mail-snippet" id="mail-env"></pre>
+            <p class="muted" id="mail-env-note" style="margin:10px 0 0"></p>
+          </div>
+        </section>
+
+        <section class="card" id="mail-relay-card" style="display:none">
+          <div class="card-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            <h2>Release to a real inbox</h2>
+            <span class="badge" id="mail-relay-badge">off</span>
+          </div>
+          <div class="card-body">
+            <p class="muted" style="margin:0">Captured mail never leaves your machine. With a relay set up, a message's <b>Release…</b> button
+              delivers that one message through a real SMTP server (Gmail, Mailgun, your company's…) to the address you choose.
+              The settings, password included, are stored only on this machine (readable by you alone).</p>
+            <div class="mail-form">
+              <label>Relay</label>
+              <label class="toggle"><span class="switch"><input type="checkbox" id="relay-enabled"><i></i></span> <span>Enable releasing</span></label>
+              <label for="relay-host">SMTP host</label>
+              <input type="text" id="relay-host" class="mono" placeholder="smtp.gmail.com">
+              <label for="relay-port">Port</label>
+              <input type="number" id="relay-port" class="mono" placeholder="587" min="1" max="65535">
+              <label for="relay-security">Security</label>
+              <select id="relay-security">
+                <option value="starttls">STARTTLS (usually port 587)</option>
+                <option value="tls">TLS / SSL (usually port 465)</option>
+                <option value="none">None (port 25 — trusted servers only)</option>
+              </select>
+              <label for="relay-user">Username</label>
+              <input type="text" id="relay-user" class="mono" placeholder="optional" autocomplete="off">
+              <label for="relay-pass">Password</label>
+              <input type="password" id="relay-pass" class="mono" placeholder="optional" autocomplete="new-password">
+              <label for="relay-allowed">Allowed recipients</label>
+              <input type="text" id="relay-allowed" class="mono" placeholder="e.g. @mycompany\.com$ — a regular expression; empty = anyone">
+            </div>
+            <div class="row" style="margin-top:16px">
+              <button id="btn-relay-save" class="primary">Save relay</button>
+              <span class="muted" id="relay-note"></span>
+            </div>
+          </div>
+        </section>
       </div>
 
       <!-- ═══ PORTS & SSL ═══ -->
@@ -1261,6 +1682,30 @@
 
       <!-- ═══ SETTINGS ═══ -->
       <div class="page" id="page-settings">
+        <section class="card" id="about-updates">
+          <div class="card-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>
+            <h2>About &amp; updates</h2>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <span class="label">Version</span>
+              <span class="mono" style="font-weight:650; font-size:14px" id="upd-current">—</span>
+              <span class="badge" id="upd-channel" style="display:none"></span>
+            </div>
+            <div class="row">
+              <span class="label">Latest</span>
+              <span class="mterm-status" id="upd-latest"><span class="muted">Not checked yet</span></span>
+              <span class="spacer"></span>
+              <button class="sm" id="btn-upd-check">Check for updates</button>
+              <button class="sm primary" id="btn-upd-upgrade" style="display:none">Upgrade</button>
+            </div>
+            <div class="mono muted" id="upgrade-status" style="display:none; margin-top:12px"></div>
+            <pre class="mono" id="upgrade-log" style="display:none"></pre>
+            <div class="warn" id="upgrade-error" style="display:none"></div>
+            <p class="muted" style="margin:12px 0 0" id="upd-manual"></p>
+          </div>
+        </section>
         <section class="card">
           <div class="card-head">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -1315,6 +1760,29 @@
               </div>
               <p class="muted" id="term-openin-help" style="margin:12px 0 0"></p>
             </div>
+          </div>
+        </section>
+        <section class="card">
+          <div class="card-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            <h2>Frontend dev servers</h2>
+            <span class="hint" id="idle-hint"></span>
+          </div>
+          <div class="card-body">
+            <div class="mail-form" style="margin-top:0; grid-template-columns: 210px 1fr">
+              <label for="idle-notab">Sleep after (no tab open)</label>
+              <div class="row"><input type="number" id="idle-notab" class="mono" min="1" max="1440" style="width:110px"><span class="muted">minutes idle</span></div>
+              <label for="idle-withtab">Sleep after (tab open)</label>
+              <div class="row"><input type="number" id="idle-withtab" class="mono" min="1" max="1440" style="width:110px"><span class="muted">minutes idle</span></div>
+              <label>Never sleep</label>
+              <label class="toggle"><span class="switch"><input type="checkbox" id="idle-never"><i></i></span> <span>Keep every dev server running</span></label>
+            </div>
+            <div class="row" style="margin-top:16px">
+              <button id="btn-idle-save" class="primary">Save</button>
+              <button id="btn-idle-reset">Reset to defaults</button>
+            </div>
+            <p class="muted" style="margin:12px 0 0">A dev server sleeps when it gets no requests and no source edits for this long — sooner when no
+              browser tab has it open — and wakes as soon as you open its link. A site can override this on its Settings tab.</p>
           </div>
         </section>
         <section class="card">
@@ -1632,7 +2100,8 @@ const TITLES = {
   terminal: ['Terminal', 'Shells in your projects, with Mullion\'s PHP & Node on PATH'],
   php:      ['PHP', 'Versions and extensions'],
   node:     ['Node', 'Versions — per project or global'],
-  database: ['Database', 'MySQL, PostgreSQL, or MongoDB — pick an engine below'],
+  database: ['Database', 'MySQL, PostgreSQL, MongoDB, SQL Server or Redis — pick an engine below'],
+  mail:     ['Mail', 'A local mail server that catches every email your apps send'],
   ports:    ['Ports & SSL', 'Ports in use, local HTTPS certificates, and wildcard DNS'],
   settings: ['Settings', 'General options for the whole panel'],
 };
@@ -1673,11 +2142,13 @@ function showPage(route) {
   $('page-sub').textContent = name === 'project' ? 'Commands, workers, packages, and domains' : TITLES[name][1];
   if (name === 'project') enterProject(project); else leaveProject();
   renderTabStrip();
+  renderTopTools();
   if (name === 'database') showDbTab(dbTab, true);
   if (name === 'php' && state) loadIni();
   if (name === 'terminal') ensureTerminal();
   if (name === 'ports') loadPortsPage();
-  if (name === 'settings') { loadBackupDir(); MullionExtTerm.load(true); }
+  if (name === 'mail') enterMailPage();
+  if (name === 'settings') { loadBackupDir(); MullionExtTerm.load(true); loadUpdates(); loadDevIdle(); }
 }
 const pageActive = name => currentPage === name;
 
@@ -1694,11 +2165,14 @@ function showDbTab(name, force) {
     b.classList.toggle('active', b.dataset.engtab === name));
   document.querySelectorAll('.eng-panel').forEach(p =>
     p.classList.toggle('active', p.id === 'eng-' + name));
+  renderTopTools();
   if (!state || !document.querySelector('#page-database').classList.contains('active')) return;
   if (name === 'mysql' && state.mysql.installed && state.mysql.running) loadDatabases(force);
   else if (name === 'postgres' && state.postgres.installed && state.postgres.running) loadPgDatabases(force);
   else if (name === 'mongo' && state.mongo.installed && state.mongo.running) loadMongoDatabases(force);
-  if (state.mysql.installed || state.postgres.installed || state.mongo.installed) loadBackups(force);
+  else if (name === 'mssql' && state.mssql && state.mssql.installed && state.mssql.running) loadMssqlDatabases(force);
+  else if (name === 'redis' && state.redis && state.redis.installed) { loadRedisStats(force); checkRedisUpdate(); }
+  if (state.mysql.installed || state.postgres.installed || state.mongo.installed || (state.mssql && state.mssql.installed) || (state.redis && state.redis.installed)) loadBackups(force);
 }
 document.querySelectorAll('#db-tabs button').forEach(b =>
   b.onclick = () => showDbTab(b.dataset.engtab, true));
@@ -1707,15 +2181,33 @@ document.querySelectorAll('[data-go]').forEach(el =>
   el.addEventListener('click', () => { location.hash = el.dataset.go; }));
 
 /* ── plumbing ──────────────────────────────────────────────── */
-async function api(path, body) {
-  const res = await fetch(path, {
-    method: body === undefined ? 'GET' : 'POST',
-    headers: { 'X-Mullion-Token': token, 'Content-Type': 'application/json' },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
-  const out = await res.json();
-  if (!out.ok) throw new Error(out.error || 'request failed');
-  return out.data;
+// api calls one panel endpoint. With timeoutMs it gives up after that
+// long — rejecting with an error whose timedOut is true — instead of
+// waiting on an answer that may never come (WebView2/Chromium never
+// time a fetch out on their own).
+async function api(path, body, timeoutMs) {
+  const ctl = timeoutMs ? new AbortController() : null;
+  const timer = ctl ? setTimeout(() => ctl.abort(), timeoutMs) : 0;
+  try {
+    const res = await fetch(path, {
+      method: body === undefined ? 'GET' : 'POST',
+      headers: { 'X-Mullion-Token': token, 'Content-Type': 'application/json' },
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: ctl ? ctl.signal : undefined,
+    });
+    const out = await res.json();
+    if (!out.ok) throw new Error(out.error || 'request failed');
+    return out.data;
+  } catch (e) {
+    if (ctl && ctl.signal.aborted) {
+      const err = new Error('no answer from the panel after ' + Math.round(timeoutMs / 1000) + 's');
+      err.timedOut = true;
+      throw err;
+    }
+    throw e;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 function toast(msg) {
   const t = $('toast');
@@ -1782,8 +2274,6 @@ function render() {
     $('composer-version').textContent = s.composer || 'not installed';
     $('btn-composer-install').textContent = s.composer ? 'Update' : 'Install';
   }
-  $('btn-pma').style.display = s.sites.some(x => x.name === 'phpmyadmin') ? '' : 'none';
-  $('btn-heidi').style.display = s.heidisql ? '' : 'none';
   $('autostart-label').textContent = s.windows ? 'Start with Windows' : 'Start at login';
   if (s.version) $('ver').textContent = 'Mullion v' + s.version;
   if (s.backupsDir) $('backups-dir').textContent = 'to ' + s.backupsDir + ' ';
@@ -1821,6 +2311,7 @@ function render() {
   if (s.mysql.installed) dbBits.push('MySQL ' + (s.mysql.running ? 'running' : 'stopped'));
   if (s.postgres.installed) dbBits.push('Postgres ' + (s.postgres.running ? 'running' : 'stopped'));
   if (s.mongo.installed) dbBits.push('Mongo ' + (s.mongo.running ? 'running' : 'stopped'));
+  if (s.mssql && s.mssql.installed) dbBits.push('SQL Server ' + (s.mssql.running ? 'running' : 'stopped'));
   $('st-db-d').textContent = dbBits.length ? dbBits.join(' · ') : 'not installed yet';
 
   /* php page */
@@ -1890,6 +2381,9 @@ function render() {
 
   renderPostgres(s);
   renderMongo(s);
+  renderMssql(s);
+  renderRedis(s);
+  renderMail(s);
   renderAdminTools(s);
 
   /* settings page */
@@ -1900,7 +2394,7 @@ function render() {
   }
 
   if (document.querySelector('#page-database').classList.contains('active') &&
-      (s.mysql.installed || s.postgres.installed || s.mongo.installed)) {
+      (s.mysql.installed || s.postgres.installed || s.mongo.installed || (s.mssql && s.mssql.installed) || (s.redis && s.redis.installed))) {
     loadBackups();
   }
 
@@ -1979,6 +2473,365 @@ function renderMongo(s) {
       document.querySelector('#page-database').classList.contains('active')) loadMongoDatabases();
 }
 
+/* ── SQL Server ─────────────────────────────────────────────── */
+// macOS runs SQL Server as a container under OrbStack (runtime.kind
+// "container"); Windows runs a native instance. The OrbStack card only
+// shows while the container runtime is missing or not running.
+function renderMssql(s) {
+  const m = s.mssql || { installed: false };
+  setDot('dot-mssql', m.installed, m.running);
+  const rt = m.runtime || {};
+  const container = m.containerEngine;
+  const needOrb = container && !m.running && !rt.daemon;
+  const orbMissing = needOrb && !rt.orbstack && !rt.docker;
+  $('mssql-runtime-card').style.display = needOrb ? '' : 'none';
+  $('btn-orbstack-install').style.display = orbMissing ? '' : 'none';
+  $('btn-orbstack-start').style.display = (needOrb && !orbMissing) ? '' : 'none';
+  $('mssql-runtime-text').innerHTML = orbMissing
+    ? 'SQL Server has no macOS build, so Mullion runs Microsoft\'s official SQL Server container — that needs <b>OrbStack</b>, a light Docker runtime for Mac (free for personal use). ' +
+      'Install downloads it from orbstack.dev into Applications. Its first launch opens a setup window that may ask you to approve its helper — accept it.'
+    : 'OrbStack is installed but not running. Start it to run SQL Server' + (m.installed ? '' : ' or install it') + '.';
+
+  const row = $('mssql-row');
+  if (!m.installed) {
+    row.innerHTML = '<span class="muted">Not installed yet — Microsoft SQL Server 2025, Developer edition (free for development).</span>';
+    $('mssql-install-row').style.display = '';
+    $('btn-mssql-install').disabled = !!orbMissing;
+    $('mssql-install-note').textContent = container
+      ? (orbMissing ? 'install OrbStack first' : 'about 1.5 GB download · runs on Apple Silicon through Rosetta (not officially supported by Microsoft)')
+      : 'about 1.5 GB download · asks for administrator rights · 10-20 minutes';
+  } else {
+    $('mssql-install-row').style.display = 'none';
+    row.innerHTML = `<span style="font-weight:650; font-size:15px">${esc(m.label)}</span>
+      <span class="badge ${m.running ? 'on' : 'off'}">${m.running ? 'running' : 'stopped'}</span>
+      <span class="muted mono">127.0.0.1,${m.port} · sa · ${container ? 'container' : 'instance MULLION'}</span>
+      <span class="spacer"></span>
+      <button id="btn-mssql-toggle">${m.running ? 'Stop' : 'Start'}</button>`;
+    $('btn-mssql-toggle').onclick = () =>
+      runJob(m.running ? 'Stopping SQL Server…' : 'Starting SQL Server…',
+          m.running ? '/api/mssql/stop' : '/api/mssql/start', {},
+          m.running ? 'SQL Server stopped' : 'SQL Server is running');
+  }
+  $('mssql-pass-row').style.display = m.installed ? '' : 'none';
+  const pf = $('mssql-pass-show');
+  if (m.installed && pf.value !== m.password) pf.value = m.password || '';
+  $('mssql-conn-card').style.display = m.installed ? '' : 'none';
+  if (m.installed) {
+    $('mssql-env').textContent = m.env || '';
+    $('mssql-host').textContent = '127.0.0.1,' + m.port;
+  }
+  const noExt = m.installed && !m.phpExt;
+  $('mssql-ext-note').style.display = noExt ? '' : 'none';
+  if (noExt) {
+    $('mssql-ext-note').innerHTML = esc(m.phpExtHint || 'Enable the SQL Server PHP extension in PHP → Extensions') +
+      ' <button class="sm" id="btn-mssql-php-ext" style="margin-left:6px">Enable it now</button>' +
+      ' <a href="#php" style="color:inherit; font-weight:650; margin-left:6px">Open PHP →</a>';
+    $('btn-mssql-php-ext').onclick = () =>
+      runJob('Enabling the SQL Server PHP extension…', '/api/mssql/php-ext', {}, 'SQL Server PHP extension enabled');
+  }
+  $('btn-adminer').style.display = m.installed ? '' : 'none';
+  $('mssql-db-card').style.display = (m.installed && m.running) ? '' : 'none';
+  $('btn-mssql-backup').style.display = m.installed ? '' : 'none';
+  $('btn-mssql-restore').style.display = m.installed ? '' : 'none';
+  $('btn-mssql-uninstall').style.display = m.installed ? '' : 'none';
+  if (m.installed && m.running && dbTab === 'mssql' &&
+      document.querySelector('#page-database').classList.contains('active')) loadMssqlDatabases();
+}
+
+let mssqlDbsLoadedAt = 0;
+async function loadMssqlDatabases(force) {
+  if (!force && Date.now() - mssqlDbsLoadedAt < 4000) return;
+  mssqlDbsLoadedAt = Date.now();
+  loadMssqlCreateOpts();
+  try {
+    const dbs = await api('/api/mssql/db/list', {});
+    renderDbRows('mssql-db-body', 'mssql-db-count', dbs, d => d.collation || '',
+      name => openAdminer(name),
+      name => { mssqlDbsLoadedAt = 0; act('Dropping ' + name + '…', '/api/mssql/db/drop', { name }, 'Dropped'); });
+  } catch (e) { /* SQL Server not reachable yet */ }
+}
+
+$('btn-orbstack-install').onclick = async () => {
+  const ok = await confirmModal({
+    title: 'Install OrbStack?',
+    message: 'Download OrbStack from <span class="mono">orbstack.dev</span> and install it into Applications? SQL Server runs inside it.',
+    detail: 'OrbStack\'s first launch opens its own setup window and may ask you to approve its helper (an administrator prompt) — accept it, and Mullion carries on.',
+    confirmText: 'Install OrbStack',
+  });
+  if (!ok) return;
+  runJob('Downloading OrbStack…', '/api/mssql/orbstack/install', {}, 'OrbStack is running');
+};
+$('btn-orbstack-start').onclick = () =>
+  runJob('Starting OrbStack…', '/api/mssql/orbstack/start', {}, 'OrbStack is running');
+$('btn-mssql-install').onclick = async () => {
+  const win = state && state.windows;
+  const ok = await confirmModal({
+    title: 'Install SQL Server 2025?',
+    message: 'Install Microsoft SQL Server 2025 Developer edition (free for development and testing, not for production)? By installing you accept Microsoft\'s SQL Server license terms.',
+    detail: win
+      ? 'Downloads about 1.5 GB from Microsoft and runs its setup — accept the administrator (UAC) prompt. It takes 10-20 minutes.'
+      : 'Downloads Microsoft\'s container image (about 1.5 GB) into OrbStack. The first start takes a minute or two.',
+    confirmText: 'Install',
+  });
+  if (!ok) return;
+  runJob('Installing SQL Server 2025…', '/api/mssql/install', {}, r => (r || 'SQL Server') + ' installed');
+};
+$('btn-mssql-pass-reveal').onclick = () => {
+  const f = $('mssql-pass-show');
+  const show = f.type === 'password';
+  f.type = show ? 'text' : 'password';
+  $('btn-mssql-pass-reveal').textContent = show ? 'Hide' : 'Show';
+};
+$('btn-mssql-pass-copy').onclick = async () => {
+  const pw = state && state.mssql && state.mssql.password;
+  if (pw && await copyText(pw)) toast('Password copied');
+};
+$('btn-mssql-env-copy').onclick = async () => {
+  const env = state && state.mssql && state.mssql.env;
+  if (env && await copyText(env)) toast('.env settings copied');
+};
+$('btn-mssql-pass-change').onclick = async () => {
+  const val = await promptModal({
+    title: 'Change the sa password',
+    message: 'New password for <span class="mono">sa</span> — leave empty to generate a strong one.',
+    detail: 'At least 8 characters from three of: uppercase, lowercase, digits, symbols. Update <span class="mono">DB_PASSWORD</span> in your projects afterwards.',
+    input: { type: 'text', value: '', label: 'New password' },
+    confirmText: 'Change password',
+  });
+  if (val === null) return;
+  act('Changing the sa password…', '/api/mssql/password', { password: val }, 'Password changed');
+};
+$('btn-mssql-db-create').onclick = () => {
+  const name = $('mssql-db-new').value.trim();
+  if (!name) return toast('Type a database name first');
+  mssqlDbsLoadedAt = 0;
+  const opts = mssqlOpts ? { collation: $('mssql-db-collation').value } : {};
+  act('Creating ' + name + '…', '/api/mssql/db/create', { name, ...opts }, 'Created');
+  $('mssql-db-new').value = '';
+};
+$('btn-mssql-restore').onclick = async () => {
+  const path = await pickFile('Choose a SQL Server backup (.bak)', ['bak']);
+  if (!path) return;
+  const base = path.replace(/[\\/]+$/, '').split(/[\\/]/).pop().replace(/\.bak$/i, '');
+  const val = await promptModal({
+    title: 'Restore backup?',
+    message: `Restore <span class="mono">${esc(path)}</span> into SQL Server? A database with the same name is overwritten.`,
+    input: { type: 'text', value: base, label: 'Database name' },
+    confirmText: 'Restore',
+    danger: true,
+  });
+  if (val === null) return;
+  runJob('Restoring the backup…', '/api/mssql/restore', { path, db: String(val).trim() }, 'Restored');
+};
+// openAdminer opens Adminer on SQL Server's login (on database db when
+// given), linking Adminer first — downloading it the first time — when
+// it isn't yet.
+async function openAdminer(db) {
+  const m = state && state.mssql;
+  const withDb = u => db ? u + '&db=' + encodeURIComponent(db) : u;
+  if (m && m.adminerLinked && m.adminerUrl) {
+    if (!m.phpExt) toast(m.phpExtHint || 'Enable the SQL Server PHP extension in PHP → Extensions');
+    window.open(withDb(m.adminerUrl), '_blank');
+    return;
+  }
+  const url = await runJob(m && m.adminerLinked ? 'Opening Adminer…' : 'Setting up Adminer…', '/api/adminer/open', {}, 'Adminer ready');
+  if (url) {
+    if (m && !m.phpExt) toast(m.phpExtHint || 'Enable the SQL Server PHP extension in PHP → Extensions');
+    window.open(withDb(url), '_blank');
+  }
+}
+$('btn-adminer').onclick = () => openAdminer();
+$('btn-adminer-top').onclick = () => openAdminer();
+
+/* ── Redis ─────────────────────────────────────────────────── */
+// renderRedis paints the Redis tab from getState's cheap "redis" entry;
+// the live numbers (INFO) come from loadRedisStats while the tab shows.
+function renderRedis(s) {
+  const r = s.redis || { installed: false };
+  setDot('dot-redis', r.installed, r.running && r.owned);
+  const row = $('redis-row');
+  $('redis-install-row').style.display = r.installed ? 'none' : '';
+  if (!r.installed) {
+    row.innerHTML = '<span class="muted">Not installed yet — Redis for cache, sessions and queues, on 127.0.0.1:6379.</span>';
+    $('redis-install-note').textContent = r.platform === 'windows'
+      ? 'downloads the portable build from github.com/redis-windows (about 14 MB)'
+      : 'builds the official source with the Xcode Command Line Tools — about a minute';
+    $('redis-update-row').style.display = 'none';
+  } else {
+    const foreign = r.running && !r.owned;
+    const badge = foreign ? '<span class="badge warnb">port taken</span>'
+      : `<span class="badge ${r.running ? 'on' : 'off'}">${r.running ? 'running' : (r.stopped ? 'stopped by you' : 'stopped')}</span>`;
+    row.innerHTML = `<span style="font-weight:650; font-size:15px">${esc(r.label)}</span>
+      ${badge}
+      <span class="muted mono">127.0.0.1:${r.port} · no password</span>
+      <span class="spacer"></span>
+      ${r.running && r.owned ? '<button id="btn-redis-restart" class="sm">Restart</button>' : ''}
+      <button id="btn-redis-toggle">${r.running && r.owned ? 'Stop' : 'Start'}</button>`;
+    $('btn-redis-toggle').onclick = () => (r.running && r.owned)
+      ? act('Stopping Redis…', '/api/redis/stop', {}, 'Redis stopped')
+      : act('Starting Redis…', '/api/redis/start', {}, 'Redis is running');
+    const rb = $('btn-redis-restart');
+    if (rb) rb.onclick = () => act('Restarting Redis…', '/api/redis/restart', {}, 'Redis restarted');
+    if (foreign) row.insertAdjacentHTML('beforeend', `<div class="muted" style="flex-basis:100%; font-size:12px">Another program answers on port ${r.port} — stop it, or move Redis on the Ports page.</div>`);
+  }
+  // PHP's redis extension (phpredis): built into the macOS builds; on
+  // Windows it comes from PECL.
+  const noExt = r.installed && r.globalPhp && !r.phpExt;
+  $('redis-ext-note').style.display = noExt ? '' : 'none';
+  if (noExt) {
+    $('redis-ext-note').innerHTML = `PHP ${esc(r.globalPhp)} doesn't have the <span class="mono">redis</span> extension, which Laravel's default <span class="mono">REDIS_CLIENT=phpredis</span> needs.` +
+      (r.platform === 'windows' ? ' <button class="sm" id="btn-redis-php-ext" style="margin-left:6px">Get it from PECL</button>' : ' Enable it in PHP → Extensions.') +
+      ' <a href="#php" style="color:inherit; font-weight:650; margin-left:6px">Open PHP →</a>';
+    const b = $('btn-redis-php-ext');
+    if (b) b.onclick = () => runJob('Getting the redis extension…', '/api/redis/php-ext', {}, 'redis extension installed');
+  }
+  $('btn-redisadmin').style.display = r.installed ? '' : 'none';
+  $('btn-redis-backup').style.display = r.installed ? '' : 'none';
+  $('btn-redis-restore').style.display = r.installed ? '' : 'none';
+  $('btn-redis-uninstall').style.display = r.installed ? '' : 'none';
+  $('redis-conn-card').style.display = r.installed ? '' : 'none';
+  if (r.installed) {
+    $('redis-env').textContent = r.env || '';
+    $('redis-host').textContent = '127.0.0.1:' + r.port;
+  }
+  const live = r.installed && r.running && r.owned;
+  $('redis-stats-card').style.display = live ? '' : 'none';
+  $('redis-db-card').style.display = live ? '' : 'none';
+  if (live && dbTab === 'redis' && document.querySelector('#page-database').classList.contains('active')) loadRedisStats();
+}
+
+let redisStatsAt = 0, redisStats = null;
+async function loadRedisStats(force) {
+  if (!force && Date.now() - redisStatsAt < 3000) return;
+  redisStatsAt = Date.now();
+  try {
+    redisStats = await api('/api/redis/stats', {});
+  } catch (e) { return; }
+  const st = redisStats;
+  const up = st.uptime < 3600 ? Math.floor(st.uptime / 60) + ' min' : st.uptime < 86400 ? Math.floor(st.uptime / 3600) + ' h' : Math.floor(st.uptime / 86400) + ' d';
+  const total = (st.keyspace || []).reduce((n, d) => n + d.keys, 0);
+  const maxMb = st.maxMemory ? Math.round(st.maxMemory / 1048576) + ' MB' : 'no cap';
+  const tiles = [
+    [st.memoryHuman || '0B', 'memory used · max ' + maxMb],
+    [String(total), 'keys in all databases'],
+    [String(st.opsPerSec), 'ops / second'],
+    [st.hitRate < 0 ? '–' : st.hitRate.toFixed(1) + '%', 'hit rate (' + st.hits + ' hits, ' + st.misses + ' misses)'],
+    [String(st.clients), 'connected clients'],
+    [String(st.expired), 'keys expired'],
+    [String(st.evicted), 'keys evicted'],
+    [st.changes ? st.changes + ' changes' : 'saved', 'since the last snapshot'],
+  ];
+  $('redis-stats').innerHTML = tiles.map(([v, l]) => `<div class="st"><b title="${esc(v)}">${esc(v)}</b><span>${esc(l)}</span></div>`).join('');
+  $('redis-stats-hint').textContent = 'Redis ' + st.version + ' · up ' + up + ' · ' + st.policy;
+  renderRedisDbs();
+}
+function renderRedisDbs() {
+  const st = redisStats;
+  if (!st) return;
+  const showEmpty = $('redis-db-empty').checked;
+  const byDb = {};
+  (st.keyspace || []).forEach(d => { byDb[d.db] = d; });
+  const used = Object.keys(byDb).length;
+  $('redis-db-count').textContent = used + (used === 1 ? ' database in use' : ' databases in use') + ' of ' + st.databases;
+  const tb = $('redis-db-body');
+  tb.innerHTML = '';
+  for (let i = 0; i < st.databases; i++) {
+    const d = byDb[i];
+    if (!d && !showEmpty) continue;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="mono" style="font-weight:600">db${i}</td>
+      <td class="mono">${d ? d.keys : 0}</td>
+      <td class="mono muted">${d ? d.expires : 0}</td>
+      <td style="text-align:right; white-space:nowrap">
+        <button class="sm" data-rshow="${i}">Show</button>
+        <button class="danger sm" data-rflush="${i}"${d ? '' : ' disabled'}>Flush…</button>
+      </td>`;
+    tb.appendChild(tr);
+  }
+  if (!tb.children.length) tb.innerHTML = '<tr><td colspan="4" class="empty">Every database is empty.</td></tr>';
+  tb.querySelectorAll('[data-rshow]').forEach(el => el.onclick = () => openRedisAdmin(+el.dataset.rshow));
+  tb.querySelectorAll('[data-rflush]').forEach(el => el.onclick = () => flushRedis(+el.dataset.rflush));
+}
+$('redis-db-empty').onchange = renderRedisDbs;
+
+async function flushRedis(db) {
+  const all = db < 0;
+  const d = !all && redisStats && (redisStats.keyspace || []).find(x => x.db === db);
+  const ok = await confirmModal({
+    title: all ? 'Flush every database?' : 'Flush db' + db + '?',
+    message: all
+      ? 'Delete <b>every key in every Redis database</b> (FLUSHALL)? Cached data, sessions and queued jobs of every project go.'
+      : `Delete all ${d ? d.keys : ''} keys in <span class="mono">db${db}</span> (FLUSHDB)? Every project using that database loses its data there.`,
+    detail: 'This cannot be undone — back up first if you may need it.',
+    confirmText: all ? 'Flush all' : 'Flush db' + db,
+    danger: true,
+  });
+  if (!ok) return;
+  await act('Flushing…', '/api/redis/flush', all ? {} : { db }, 'Flushed');
+  loadRedisStats(true);
+}
+$('btn-redis-flushall').onclick = () => flushRedis(-1);
+
+// openRedisAdmin opens phpRedisAdmin (on database db when given),
+// linking it first — downloading it the first time.
+async function openRedisAdmin(db) {
+  const t = window.__adminTools && window.__adminTools.phpredisadmin;
+  const withDb = u => db === undefined ? u : u.replace(/\/?(\?.*)?$/, '/?s=0&d=' + db);
+  if (t && t.installed && t.url) return void window.open(withDb(t.url), '_blank');
+  const url = await runJob('Setting up phpRedisAdmin…', '/api/redis/admin/open', db === undefined ? {} : { db }, 'phpRedisAdmin ready');
+  if (url) window.open(url, '_blank');
+}
+$('btn-redisadmin').onclick = () => openRedisAdmin();
+$('btn-redisadmin-top').onclick = () => openRedisAdmin();
+
+$('btn-redis-install').onclick = async () => {
+  const win = state && state.windows;
+  const ok = await confirmModal({
+    title: 'Install Redis?',
+    message: win
+      ? 'Download the latest Redis for Windows (the portable MSYS2 build from <span class="mono">github.com/redis-windows/redis-windows</span>, compiled from the official sources) and start it on 127.0.0.1?'
+      : 'Download the latest stable Redis source from <span class="mono">download.redis.io</span> (checksum-verified), build it, and start it on 127.0.0.1?',
+    detail: win
+      ? 'No installer and no administrator rights — it runs from Mullion\'s folder. Redis is licensed RSALv2 / SSPLv1 / AGPLv3 (your choice).'
+      : 'Building takes about a minute and needs the Xcode Command Line Tools (if they are missing you\'ll be told how to get them). Redis is licensed RSALv2 / SSPLv1 / AGPLv3 (your choice).',
+    confirmText: 'Install',
+  });
+  if (!ok) return;
+  runJob('Installing Redis…', '/api/redis/install', {}, r => (r || 'Redis') + ' installed');
+};
+let redisUpdateChecked = 0;
+async function checkRedisUpdate() {
+  if (Date.now() - redisUpdateChecked < 30 * 60 * 1000) return;
+  redisUpdateChecked = Date.now();
+  try {
+    const { latest } = await api('/api/redis/update', {});
+    $('redis-update-row').style.display = latest ? '' : 'none';
+    if (latest) $('redis-update-text').textContent = 'Redis ' + latest + ' is available.';
+  } catch (e) { /* offline */ }
+}
+$('btn-redis-upgrade').onclick = () =>
+  runJob('Upgrading Redis…', '/api/redis/install', {}, r => 'Upgraded to ' + (r || 'the latest Redis'));
+$('btn-redis-env-copy').onclick = async () => {
+  const env = state && state.redis && state.redis.env;
+  if (env && await copyText(env)) toast('.env settings copied');
+};
+$('btn-redis-restore').onclick = async () => {
+  const path = await pickFile('Choose a Redis snapshot (dump.rdb)', ['rdb']);
+  if (!path) return;
+  const ok = await confirmModal({
+    title: 'Restore this snapshot?',
+    message: `Replace <b>every key in Redis</b> with <span class="mono">${esc(path)}</span>? Redis restarts to load it.`,
+    detail: 'The current data is kept next to it as dump.rdb.before-restore.',
+    confirmText: 'Restore',
+    danger: true,
+  });
+  if (!ok) return;
+  const dir = path.replace(/[\\/][^\\/]+$/, '');
+  if (/-redis$/.test(dir) && /dump\.rdb$/i.test(path)) runJob('Restoring…', '/api/backups/restore', { dir, db: '' }, 'Restored');
+  else runJob('Restoring…', '/api/redis/restore-file', { path }, 'Restored');
+};
+
 /* ── admin tools (pgAdmin, mongo-express, phpMyAdmin) ─────────── */
 // adminTools comes from getState — one entry per bundled admin UI, with
 // whether it's installed, whether its database engine is installed, and
@@ -1997,12 +2850,34 @@ function renderAdminTools(s) {
   $('btn-pma-install').style.display = (!pmaLinked && pma && pma.engineInstalled) ? '' : 'none';
 
   const pg = byName['pgadmin'];
-  $('btn-pgadmin-top').style.display = (pg && pg.installed) ? '' : 'none';
   $('btn-pgadmin-uninstall').style.display = (pg && pg.installed) ? '' : 'none';
 
   const me = byName['mongo-express'];
-  $('btn-mongoexpress-top').style.display = (me && me.installed) ? '' : 'none';
   $('btn-mongoexpress-uninstall').style.display = (me && me.installed) ? '' : 'none';
+
+  const ad = byName['adminer'];
+  $('btn-adminer-uninstall').style.display = (ad && ad.installed) ? '' : 'none';
+
+  const ra = byName['phpredisadmin'];
+  $('btn-redisadmin-uninstall').style.display = (ra && ra.installed) ? '' : 'none';
+  renderTopTools();
+}
+// renderTopTools shows the top bar's admin-tool button for the engine
+// tab in view — phpMyAdmin (and HeidiSQL) for MySQL, pgAdmin for
+// PostgreSQL, mongo-express for MongoDB, Adminer for SQL Server — and
+// only on the Databases page, only once that tool is installed. Runs on
+// every state refresh, page change and engine-tab switch.
+function renderTopTools() {
+  const s = state;
+  const t = window.__adminTools || {};
+  const tab = s && currentPage === 'database' ? dbTab : '';
+  const show = (id, on) => { $(id).style.display = on ? '' : 'none'; };
+  show('btn-pma', tab === 'mysql' && s.sites.some(x => x.name === 'phpmyadmin'));
+  show('btn-heidi', tab === 'mysql' && !!s.heidisql);
+  show('btn-pgadmin-top', tab === 'postgres' && !!(t.pgadmin && t.pgadmin.installed));
+  show('btn-mongoexpress-top', tab === 'mongo' && !!(t['mongo-express'] && t['mongo-express'].installed));
+  show('btn-adminer-top', tab === 'mssql' && !!(t.adminer && t.adminer.installed));
+  show('btn-redisadmin-top', tab === 'redis' && !!(t.phpredisadmin && t.phpredisadmin.installed));
 }
 function openAdminTool(name) {
   const t = window.__adminTools && window.__adminTools[name];
@@ -2036,6 +2911,8 @@ wireToolUninstall('btn-pgadmin-uninstall', 'pgadmin');
 wireToolUninstall('btn-mongoexpress-uninstall', 'mongo-express');
 $('btn-pma-install').onclick = () =>
   runJob('Installing phpMyAdmin…', '/api/phpmyadmin/install', {}, 'phpMyAdmin installed');
+wireToolUninstall('btn-adminer-uninstall', 'adminer');
+wireToolUninstall('btn-redisadmin-uninstall', 'phpredisadmin');
 
 /* ── PHP versions (uninstall) ─────────────────────────────────── */
 function renderPhpVersions(s) {
@@ -2783,6 +3660,11 @@ const ALL_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 // renderTabStrip draws the Sites tab strip: a fixed "All" tab (the site
 // list) and one closable tab per open project. It shows on the Sites
 // and project pages, and only while at least one project is open.
+// watchAlerts: projects whose Watch tab saw exceptions the user hasn't
+// looked at yet (project.js fires the events) — a dot on their tab.
+var watchAlerts = new Set(); // var: renderTabStrip may run before this line
+window.addEventListener('mullion:watch-exception', e => { watchAlerts.add(e.detail.site); renderTabStrip(); });
+window.addEventListener('mullion:watch-seen', e => { if (watchAlerts.delete(e.detail.site)) renderTabStrip(); });
 function renderTabStrip() {
   const strip = $('ptabs');
   const onProject = pageActive('project');
@@ -2795,11 +3677,18 @@ function renderTabStrip() {
     return `<div class="ptab${on ? ' active' : ''}" role="tab" tabindex="0" draggable="true"
         aria-selected="${on}" data-tab="${t.id}" title="${esc(t.name)}">
       ${fwMark(x && x.detect ? x.detect.icon : 'unknown', false).replace('fw-mark', 'fw-mark xs')}
-      <span class="nm">${esc(t.name)}</span>
+      <span class="nm">${esc(t.name)}</span>${watchAlerts && watchAlerts.has(t.name) ? '<span class="wdot" title="new exceptions — see the Watch tab"></span>' : ''}
       <span class="x" data-close="${t.id}" title="Close tab" role="button">${X_ICON}</span></div>`;
   }).join('');
+  // Bring the active tab into view by scrolling the strip sideways only:
+  // scrollIntoView would also scroll the page up to the strip, and this
+  // runs on every watch exception / "seen" — mid-scroll on a project tab.
   const act = strip.querySelector('.ptab.active');
-  if (act) act.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  if (act) {
+    const sr = strip.getBoundingClientRect(), ar = act.getBoundingClientRect();
+    if (ar.left < sr.left) strip.scrollLeft += ar.left - sr.left;
+    else if (ar.right > sr.right) strip.scrollLeft += ar.right - sr.right;
+  }
 }
 // goTab shows a project tab, navigating from the "All" tab if needed.
 function goTab(t) {
@@ -3384,8 +4273,8 @@ function startTermWindow(site, cwd) {
 /* ── ports & SSL page ──────────────────────────────────────── */
 let portsLoadedAt = 0;
 let portsList = [];
-const PORT_GROUPS = [['caddy', 'Web'], ['php', 'PHP'], ['db', 'Databases'], ['dev', 'Dev servers'], ['agent', 'Agent']];
-const portGroup = k => (['mysql', 'postgres', 'mongo'].includes(k) ? 'db' : k);
+const PORT_GROUPS = [['caddy', 'Web'], ['php', 'PHP'], ['db', 'Databases'], ['mail', 'Mail'], ['dev', 'Dev servers'], ['agent', 'Agent']];
+const portGroup = k => (['mysql', 'postgres', 'mongo', 'mssql', 'redis'].includes(k) ? 'db' : (k === 'mail-smtp' || k === 'mail-ui') ? 'mail' : k);
 function loadPortsPage() {
   portsLoadedAt = Date.now();
   loadPorts();
@@ -3448,7 +4337,17 @@ async function changePort(p) {
     message: `Move ${what} from port <span class="mono">${p.port}</span> to:`,
     detail: isDev
       ? 'A running dev server restarts on the new port. Mullion passes it as <span class="mono">PORT</span>; a port hard-coded in the project\'s config wins over it.'
-      : 'The database restarts on the new port, and phpMyAdmin, HeidiSQL, pgAdmin and mongo-express follow. Your projects\' <span class="mono">.env</span> files are never edited.',
+      : (p.kind === 'mail-smtp'
+        ? 'Mail restarts on the new port, and "Catch PHP mail()" follows. Point your apps\' <span class="mono">MAIL_PORT</span> at it — their <span class="mono">.env</span> files are never edited.'
+      : p.kind === 'mail-ui'
+        ? 'Mail restarts on the new port; <span class="mono">https://mail.' + esc(state ? state.tld : 'test') + '</span> follows.'
+      : p.kind === 'redis'
+        ? 'Redis restarts on the new port (its data is kept), and phpRedisAdmin follows. Point your apps\' <span class="mono">REDIS_PORT</span> at it — a project\'s Cache tab can update its <span class="mono">.env</span> for you.'
+      : p.kind === 'mssql'
+        ? (state && state.windows
+          ? 'SQL Server restarts on the new port (changing it needs an administrator prompt). Adminer follows. Your projects\' <span class="mono">.env</span> files are never edited.'
+          : 'SQL Server\'s container is recreated on the new port — your databases stay in its data volume. Adminer follows. Your projects\' <span class="mono">.env</span> files are never edited.')
+        : 'The database restarts on the new port, and phpMyAdmin, HeidiSQL, pgAdmin and mongo-express follow. Your projects\' <span class="mono">.env</span> files are never edited.'),
     input: {
       type: 'number', value: suggested, label: 'New port',
       action: {
@@ -3769,9 +4668,121 @@ function iniRow(s, version) {
   return row;
 }
 
+
+/* ── OPcache card (PHP page) ───────────────────────────────── */
+// Settings come from the version's php.ini; the status is read from
+// its running php-fpm/php-cgi (what sites see), not from the CLI.
+async function loadOpcache() {
+  const version = $('ini-version').value;
+  if (!version) return;
+  try {
+    renderOpcache(await api('/api/php/opcache', { version }), version);
+  } catch (e) {
+    $('opc-grid').innerHTML = '<span class="muted">Error: ' + esc(e.message) + '</span>';
+  }
+}
+function renderOpcache(info, version) {
+  const s = info.settings, st = info.status;
+  const mb = n => (n / 1048576).toFixed(1) + ' MB';
+  let tiles = [];
+  if (!info.running) {
+    $('opc-hint').textContent = 'PHP ' + version + ' · not serving any site right now';
+  } else if (info.statusError) {
+    $('opc-hint').textContent = 'status unavailable: ' + info.statusError;
+  } else if (st && !st.enabled) {
+    $('opc-hint').textContent = 'off in ' + st.sapi;
+  } else if (st) {
+    $('opc-hint').textContent = 'live from ' + st.sapi + ' (PHP ' + st.php + ')';
+    tiles = [
+      [st.hitRate.toFixed(1) + '%', 'hit rate (' + st.hits + ' hits, ' + st.misses + ' misses)'],
+      [mb(st.memoryUsed), 'memory used of ' + mb(st.memoryUsed + st.memoryFree)],
+      [String(st.cachedScripts), 'scripts cached'],
+      [st.jitEnabled ? (st.jitOn ? 'on' : 'enabled') : 'off', 'JIT' + (st.jitBuffer ? ' (' + mb(st.jitBuffer) + ' buffer)' : '')],
+    ];
+    if (st.cacheFull) tiles.push(['full', 'raise the memory or max files']);
+  }
+  $('opc-status').innerHTML = tiles.map(([v, l]) => `<div class="st"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join('');
+  $('opc-status').style.display = tiles.length ? '' : 'none';
+  $('opc-note').innerHTML = esc(s.configNote) + '. For development keep <b>validate timestamps</b> on with a <b>revalidate frequency of 0</b> — PHP then re-checks each file on every request, so edits show on the next reload.' +
+    (info.jitNote ? '<br><span style="color:var(--warn-text)">JIT: ' + esc(info.jitNote) + '.</span>' : '');
+  $('btn-opc-reset').disabled = !info.running;
+  $('btn-opc-reset').title = info.running ? 'Empty the cache by restarting PHP ' + version + '’s php-fpm/php-cgi' : 'no php-fpm/php-cgi runs for this version';
+
+  const grid = $('opc-grid');
+  grid.innerHTML = '';
+  const save = async (change, label) => {
+    $('busy-label').textContent = 'Saving ' + label + '…';
+    $('busy').classList.add('show');
+    try {
+      renderOpcache(await api('/api/php/opcache/set', { version, change }), version);
+      toast(label + ' saved for PHP ' + version + (info.running ? ' (PHP restarted)' : ''));
+    } catch (e) {
+      toast('Error: ' + e.message);
+      loadOpcache();
+    } finally {
+      $('busy').classList.remove('show');
+    }
+  };
+  const row = (name, key, control) => {
+    const r = document.createElement('div');
+    r.className = 'ini-row';
+    r.innerHTML = `<div class="ini-label"><span class="ini-name">${name}</span><span class="ini-key">${key}</span></div><div class="ini-control"></div>`;
+    r.querySelector('.ini-control').appendChild(control);
+    grid.appendChild(r);
+  };
+  const toggle = (name, key, field, value) => {
+    const sw = document.createElement('span');
+    sw.className = 'switch';
+    sw.innerHTML = `<input type="checkbox"${value ? ' checked' : ''}><i></i>`;
+    sw.querySelector('input').onchange = e => save({ [field]: e.target.checked }, name);
+    row(name, key, sw);
+  };
+  const number = (name, key, field, value, suffix) => {
+    const w = document.createElement('span');
+    w.style.cssText = 'display:inline-flex; gap:6px; align-items:center';
+    w.innerHTML = `<input type="text" class="mono" style="width:90px" value="${esc(String(value))}">${suffix ? `<span class="muted">${suffix}</span>` : ''}<button class="sm">Save</button>`;
+    const inp = w.querySelector('input');
+    w.querySelector('button').onclick = () => {
+      const v = field === 'jitBuffer' ? inp.value.trim() : parseInt(inp.value, 10);
+      if (field !== 'jitBuffer' && !Number.isFinite(v)) return toast('Type a whole number');
+      save({ [field]: v }, name);
+    };
+    inp.onkeydown = e => { if (e.key === 'Enter') w.querySelector('button').click(); };
+    row(name, key, w);
+  };
+  toggle('Enabled for sites', 'opcache.enable', 'enabled', s.enabled);
+  toggle('Enabled for the CLI', 'opcache.enable_cli', 'cli', s.cli);
+  const jit = document.createElement('select');
+  jit.className = 'mono';
+  [['off', 'off'], ['tracing', 'tracing (1254)'], ['function', 'function (1205)']].concat(s.jit === 'custom' ? [['custom', 'custom: ' + s.jitRaw]] : [])
+    .forEach(([v, l]) => { const o = document.createElement('option'); o.value = v; o.textContent = l; o.selected = v === s.jit; o.disabled = v === 'custom'; jit.appendChild(o); });
+  jit.onchange = () => save({ jit: jit.value }, 'JIT mode');
+  row('JIT mode', 'opcache.jit', jit);
+  number('JIT buffer size', 'opcache.jit_buffer_size', 'jitBuffer', s.jitBuffer, 'e.g. 64M');
+  number('Memory', 'opcache.memory_consumption', 'memory', s.memory, 'MB');
+  number('Max cached files', 'opcache.max_accelerated_files', 'maxFiles', s.maxFiles, '');
+  toggle('Validate timestamps', 'opcache.validate_timestamps', 'validate', s.validate);
+  number('Revalidate frequency', 'opcache.revalidate_freq', 'revalidate', s.revalidate, 'seconds (0 = every request)');
+}
+$('btn-opc-refresh').onclick = () => loadOpcache();
+$('btn-opc-reset').onclick = async () => {
+  const version = $('ini-version').value;
+  $('busy-label').textContent = 'Resetting OPcache…';
+  $('busy').classList.add('show');
+  try {
+    renderOpcache(await api('/api/php/opcache/reset', { version }), version);
+    toast('OPcache reset for PHP ' + version);
+  } catch (e) {
+    toast('Error: ' + e.message);
+  } finally {
+    $('busy').classList.remove('show');
+  }
+};
+
 async function loadIni() {
   const version = $('ini-version').value;
   if (!version) return;
+  loadOpcache();
   const grid = $('ini-grid');
   grid.innerHTML = '<span class="muted" style="padding:12px 16px; display:block">Loading…</span>';
   try {
@@ -3794,41 +4805,92 @@ function confirmDropDb(name) {
     danger: true,
   });
 }
+// renderDbRows fills one engine's database table. Each row's name and
+// its Show button open the database in that engine's admin tool
+// (show(name, button)); meta(db) is the small muted charset/collation
+// text. dbs are {name, ...} objects (Mongo's are plain names).
+function renderDbRows(tbodyId, countId, dbs, meta, show, drop) {
+  $(countId).textContent = dbs.length + (dbs.length === 1 ? ' database' : ' databases');
+  const tb = $(tbodyId);
+  tb.innerHTML = '';
+  if (!dbs.length) {
+    tb.innerHTML = '<tr><td colspan="3" class="empty">No databases yet — create one below.</td></tr>';
+  }
+  dbs.forEach((db, i) => {
+    const name = typeof db === 'string' ? db : db.name;
+    const m = meta ? meta(db) : '';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td class="muted">${i + 1}</td>
+      <td class="mono"><button type="button" class="db-name" data-dbshow="${esc(name)}" title="Show in its admin tool">${esc(name)}</button>${m ? `<span class="muted db-meta">${esc(m)}</span>` : ''}</td>
+      <td style="text-align:right; white-space:nowrap">
+        <button class="sm" data-dbshow="${esc(name)}">Show</button>
+        <button class="danger sm" data-dbdrop="${esc(name)}">Drop</button>
+      </td>`;
+    tb.appendChild(tr);
+  });
+  tb.querySelectorAll('[data-dbshow]').forEach(el => el.onclick = () => show(el.dataset.dbshow, el));
+  tb.querySelectorAll('[data-dbdrop]').forEach(el => el.onclick = async () => {
+    const name = el.dataset.dbdrop;
+    if (!(await confirmDropDb(esc(name)))) return;
+    drop(name);
+  });
+}
+const dbTld = () => (state && state.tld) || 'test';
+
+// MySQL → phpMyAdmin's structure page for the database (phpMyAdmin 5's
+// routing: index.php?route=/database/structure&db=<name>). Without
+// phpMyAdmin, offer to install it first.
+async function showMysqlDb(name) {
+  const url = 'https://phpmyadmin.' + dbTld() + '/index.php?route=/database/structure&db=' + encodeURIComponent(name);
+  if (state.sites.some(x => x.name === 'phpmyadmin')) return void window.open(url, '_blank');
+  const ok = await confirmModal({
+    title: 'Install phpMyAdmin?',
+    message: `phpMyAdmin isn't installed yet. Install it now and open <span class="mono">${esc(name)}</span> in it?`,
+    confirmText: 'Install phpMyAdmin',
+  });
+  if (!ok) return;
+  const r = await runJob('Installing phpMyAdmin…', '/api/phpmyadmin/install', {}, 'phpMyAdmin installed');
+  if (r !== undefined) window.open(url, '_blank');
+}
+// PostgreSQL: pgAdmin 4 is a desktop app (its own runtime, a random
+// local port, no URL or command-line way to select a database), so it
+// opens with Mullion's server registered; Adminer can open the database
+// itself when the active PHP has pgsql/pdo_pgsql.
+function openPgAdmin() {
+  return runJob(state && state.postgres.pgadminInstalled ? 'Opening pgAdmin…' : 'Downloading pgAdmin… (~290 MB, about a minute or two)',
+      '/api/pgadmin/open', {}, 'pgAdmin opened');
+}
+async function openPgInAdminer(name) {
+  const url = await runJob('Opening Adminer…', '/api/adminer/open', { engine: 'pgsql' }, 'Adminer ready');
+  if (url) window.open(url + '&db=' + encodeURIComponent(name), '_blank');
+}
+function showPgDb(name, anchor) {
+  openMenu(anchor, [
+    { icon: '', label: 'Open pgAdmin', right: 'all databases', run: () => openPgAdmin() },
+    { icon: '', label: 'Open ' + name + ' in Adminer', right: 'web', run: () => openPgInAdminer(name) },
+  ]);
+}
+// MongoDB → mongo-express's database page (/db/<name>). The site wakes
+// on its own when opened; without it, install/start it first.
+async function showMongoDb(name) {
+  const path = '/db/' + encodeURIComponent(name);
+  if (state.mongo.uiLinked) return void window.open('https://mongo.' + dbTld() + path, '_blank');
+  const url = await runJob('Setting up mongo-express…', '/api/mongo-express/open', {}, 'mongo-express ready');
+  if (url) window.open(url.replace(/\/$/, '') + path, '_blank');
+}
+
 let dbsLoadedAt = 0;
 async function loadDatabases(force) {
   if (!force && Date.now() - dbsLoadedAt < 4000) return;
   dbsLoadedAt = Date.now();
+  loadMysqlCreateOpts();
   try {
     const dbs = await api('/api/db/list', {});
-    $('db-count').textContent = dbs.length + (dbs.length === 1 ? ' database' : ' databases');
-    const tb = $('db-body');
-    tb.innerHTML = '';
-    if (!dbs.length) {
-      tb.innerHTML = '<tr><td colspan="3" class="empty">No databases yet — create one below.</td></tr>';
-    }
-    dbs.forEach((db, i) => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td class="muted">${i + 1}</td>
-        <td class="mono" style="font-weight:600">${db}</td>
-        <td style="text-align:right">
-          ${state.sites.some(x => x.name === 'phpmyadmin')
-            ? `<button class="sm" data-opendb="${db}">Open</button> ` : ''}
-          <button class="danger sm" data-dropdb="${db}">Drop</button>
-        </td>`;
-      tb.appendChild(tr);
-    });
-    tb.querySelectorAll('[data-opendb]').forEach(el => el.onclick = () => {
-      const host = 'phpmyadmin.' + (state ? state.tld : 'test');
-      window.open('https://' + host + '/index.php?route=/database/structure&db=' +
-        encodeURIComponent(el.dataset.opendb), '_blank');
-    });
-    tb.querySelectorAll('[data-dropdb]').forEach(el => el.onclick = async () => {
-      const name = el.dataset.dropdb;
-      if (!(await confirmDropDb(name))) return;
-      dbsLoadedAt = 0;
-      act('Dropping ' + name + '…', '/api/db/drop', { name }, 'Dropped');
-    });
+    renderDbRows('db-body', 'db-count', dbs,
+      d => [d.charset, d.collation].filter(Boolean).join(' · '),
+      showMysqlDb,
+      name => { dbsLoadedAt = 0; act('Dropping ' + name + '…', '/api/db/drop', { name }, 'Dropped'); });
   } catch (e) { /* mysql not reachable yet */ }
 }
 
@@ -3836,37 +4898,13 @@ let pgDbsLoadedAt = 0;
 async function loadPgDatabases(force) {
   if (!force && Date.now() - pgDbsLoadedAt < 4000) return;
   pgDbsLoadedAt = Date.now();
+  loadPgCreateOpts();
   try {
     const dbs = await api('/api/pg/db/list', {});
-    $('pg-db-count').textContent = dbs.length + (dbs.length === 1 ? ' database' : ' databases');
-    const tb = $('pg-db-body');
-    tb.innerHTML = '';
-    if (!dbs.length) {
-      tb.innerHTML = '<tr><td colspan="3" class="empty">No databases yet — create one below.</td></tr>';
-    }
-    dbs.forEach((db, i) => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td class="muted">${i + 1}</td>
-        <td class="mono" style="font-weight:600">${db}</td>
-        <td style="text-align:right">
-          <button class="sm" data-pgopendb="${db}">Open</button>
-          <button class="danger sm" data-pgdropdb="${db}">Drop</button>
-        </td>`;
-      tb.appendChild(tr);
-    });
-    // Postgres has no per-database admin URL — opening any row just
-    // opens pgAdmin, where the server (and every database on it) is
-    // already registered.
-    tb.querySelectorAll('[data-pgopendb]').forEach(el => el.onclick = () =>
-      runJob(state.postgres.pgadminInstalled ? 'Opening pgAdmin…' : 'Downloading pgAdmin… (~290 MB, about a minute or two)',
-          '/api/pgadmin/open', {}, 'pgAdmin opened'));
-    tb.querySelectorAll('[data-pgdropdb]').forEach(el => el.onclick = async () => {
-      const name = el.dataset.pgdropdb;
-      if (!(await confirmDropDb(name))) return;
-      pgDbsLoadedAt = 0;
-      act('Dropping ' + name + '…', '/api/pg/db/drop', { name }, 'Dropped');
-    });
+    renderDbRows('pg-db-body', 'pg-db-count', dbs,
+      d => [d.encoding, d.collate].filter(Boolean).join(' · '),
+      showPgDb,
+      name => { pgDbsLoadedAt = 0; act('Dropping ' + name + '…', '/api/pg/db/drop', { name }, 'Dropped'); });
   } catch (e) { /* postgres not reachable yet */ }
 }
 
@@ -3876,35 +4914,162 @@ async function loadMongoDatabases(force) {
   mongoDbsLoadedAt = Date.now();
   try {
     const dbs = await api('/api/mongo/db/list', {});
-    $('mongo-db-count').textContent = dbs.length + (dbs.length === 1 ? ' database' : ' databases');
-    const tb = $('mongo-db-body');
-    tb.innerHTML = '';
-    if (!dbs.length) {
-      tb.innerHTML = '<tr><td colspan="3" class="empty">No databases yet — create one below.</td></tr>';
-    }
-    dbs.forEach((db, i) => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td class="muted">${i + 1}</td>
-        <td class="mono" style="font-weight:600">${db}</td>
-        <td style="text-align:right">
-          ${state.mongo.uiLinked ? `<button class="sm" data-mgopendb="${db}">Open</button> ` : ''}
-          <button class="danger sm" data-mgdropdb="${db}">Drop</button>
-        </td>`;
-      tb.appendChild(tr);
-    });
-    tb.querySelectorAll('[data-mgopendb]').forEach(el => el.onclick = () => {
-      const host = 'mongo.' + (state ? state.tld : 'test');
-      window.open('https://' + host + '/db/' + encodeURIComponent(el.dataset.mgopendb), '_blank');
-    });
-    tb.querySelectorAll('[data-mgdropdb]').forEach(el => el.onclick = async () => {
-      const name = el.dataset.mgdropdb;
-      if (!(await confirmDropDb(name))) return;
-      mongoDbsLoadedAt = 0;
-      act('Dropping ' + name + '…', '/api/mongo/db/drop', { name }, 'Dropped');
-    });
+    renderDbRows('mongo-db-body', 'mongo-db-count', dbs, null, showMongoDb,
+      name => { mongoDbsLoadedAt = 0; act('Dropping ' + name + '…', '/api/mongo/db/drop', { name }, 'Dropped'); });
   } catch (e) { /* mongo not reachable yet */ }
 }
+
+/* ── create-database options (charset / encoding / collation) ── */
+// Each engine's choices come from its server (fetched once per server
+// version); the saved default lives in MullionPrefs under
+// db.default.<engine>.<field>, and "Reset" clears it.
+function fillSelect(sel, items, value) {
+  sel.innerHTML = '';
+  let groups = null;
+  for (const it of items) {
+    if (it.group !== undefined) {
+      groups = document.createElement('optgroup');
+      groups.label = it.group;
+      sel.appendChild(groups);
+      continue;
+    }
+    const o = document.createElement('option');
+    o.value = it.value;
+    o.textContent = it.label || it.value;
+    (groups || sel).appendChild(o);
+  }
+  if (items.some(it => it.value === value)) sel.value = value;
+}
+function defaultNote(noteId, resetId, saved) {
+  $(noteId).textContent = saved ? 'your default: ' + saved : '';
+  $(resetId).style.display = saved ? '' : 'none';
+}
+
+let mysqlOpts = null, mysqlOptsKey = '';
+async function loadMysqlCreateOpts() {
+  const key = state && state.mysql.version;
+  if (!key || mysqlOptsKey === key) return;
+  mysqlOptsKey = key;
+  try {
+    mysqlOpts = await api('/api/db/charsets', {});
+  } catch (e) { mysqlOptsKey = ''; return; }
+  $('db-opts').style.display = '';
+  applyMysqlDefault();
+}
+function applyMysqlDefault() {
+  const o = mysqlOpts;
+  if (!o) return;
+  const savedCs = MullionPrefs.get('db.default.mysql.charset', '');
+  const savedColl = MullionPrefs.get('db.default.mysql.collation', '');
+  const has = n => o.charsets.some(c => c.name === n);
+  const cs = has(savedCs) ? savedCs : has('utf8mb4') ? 'utf8mb4' : o.serverCharset;
+  fillSelect($('db-charset'), o.charsets.map(c => ({ value: c.name, label: c.name + (c.name === o.serverCharset ? ' (server default)' : '') })), cs);
+  fillMysqlCollations(savedCs === cs && savedColl ? savedColl : (cs === 'utf8mb4' ? 'utf8mb4_unicode_ci' : ''));
+  defaultNote('db-default-note', 'btn-db-default-reset', savedCs ? savedCs + (savedColl ? ' / ' + savedColl : '') : '');
+}
+function fillMysqlCollations(want) {
+  const o = mysqlOpts;
+  const c = o && o.charsets.find(x => x.name === $('db-charset').value);
+  if (!c) return;
+  const value = c.collations.includes(want) ? want : c.defaultCollation;
+  fillSelect($('db-collation'), c.collations.map(n => ({
+    value: n,
+    label: n + (n === c.defaultCollation ? ' (charset default)' : '') + (n === o.serverCollation ? ' (server default)' : ''),
+  })), value);
+}
+$('db-charset').onchange = () => fillMysqlCollations($('db-charset').value === 'utf8mb4' ? 'utf8mb4_unicode_ci' : '');
+$('btn-db-default').onclick = () => {
+  MullionPrefs.set('db.default.mysql.charset', $('db-charset').value);
+  MullionPrefs.set('db.default.mysql.collation', $('db-collation').value);
+  applyMysqlDefault();
+  toast('New MySQL databases default to ' + $('db-charset').value + ' / ' + $('db-collation').value);
+};
+$('btn-db-default-reset').onclick = () => {
+  MullionPrefs.set('db.default.mysql.charset', '');
+  MullionPrefs.set('db.default.mysql.collation', '');
+  applyMysqlDefault();
+  toast('Back to the built-in default (utf8mb4 / utf8mb4_unicode_ci)');
+};
+
+let pgOpts = null, pgOptsKey = '';
+async function loadPgCreateOpts() {
+  const key = state && state.postgres.version;
+  if (!key || pgOptsKey === key) return;
+  pgOptsKey = key;
+  try {
+    pgOpts = await api('/api/pg/db/locales', {});
+  } catch (e) { pgOptsKey = ''; return; }
+  $('pg-db-opts').style.display = '';
+  applyPgDefault();
+}
+function applyPgDefault() {
+  const o = pgOpts;
+  if (!o) return;
+  const savedEnc = MullionPrefs.get('db.default.pg.encoding', '');
+  const savedLoc = MullionPrefs.get('db.default.pg.collate', '');
+  const enc = o.encodings.includes(savedEnc) ? savedEnc : (o.defaultEncoding || 'UTF8');
+  fillSelect($('pg-db-encoding'), o.encodings.map(e => ({ value: e, label: e + (e === o.defaultEncoding ? ' (server default)' : '') })), enc);
+  fillPgLocales(savedLoc || o.defaultLocale);
+  defaultNote('pg-db-default-note', 'btn-pg-db-default-reset', savedEnc ? savedEnc + (savedLoc ? ' / ' + savedLoc : '') : '');
+}
+// fillPgLocales lists the locales that work with the chosen encoding:
+// a libc locale is tied to one (en_US.UTF-8 → UTF8); C and POSIX fit all.
+function fillPgLocales(want) {
+  const o = pgOpts;
+  if (!o) return;
+  const enc = $('pg-db-encoding').value;
+  const fits = o.locales.filter(l => !l.encoding || l.encoding === enc);
+  fillSelect($('pg-db-locale'), fits.map(l => ({ value: l.name, label: l.name + (l.name === o.defaultLocale ? ' (server default)' : '') })),
+    fits.some(l => l.name === want) ? want : (fits.some(l => l.name === o.defaultLocale) ? o.defaultLocale : 'C'));
+}
+$('pg-db-encoding').onchange = () => fillPgLocales($('pg-db-locale').value);
+$('btn-pg-db-default').onclick = () => {
+  MullionPrefs.set('db.default.pg.encoding', $('pg-db-encoding').value);
+  MullionPrefs.set('db.default.pg.collate', $('pg-db-locale').value);
+  applyPgDefault();
+  toast('New PostgreSQL databases default to ' + $('pg-db-encoding').value + ' / ' + $('pg-db-locale').value);
+};
+$('btn-pg-db-default-reset').onclick = () => {
+  MullionPrefs.set('db.default.pg.encoding', '');
+  MullionPrefs.set('db.default.pg.collate', '');
+  applyPgDefault();
+  toast('Back to the server default');
+};
+
+let mssqlOpts = null, mssqlOptsKey = '';
+async function loadMssqlCreateOpts() {
+  const key = state && state.mssql && state.mssql.series;
+  if (!key || mssqlOptsKey === key) return;
+  mssqlOptsKey = key;
+  try {
+    mssqlOpts = await api('/api/mssql/db/collations', {});
+  } catch (e) { mssqlOptsKey = ''; return; }
+  $('mssql-db-opts').style.display = '';
+  applyMssqlDefault();
+}
+// The server's (5000+) collations: the common ones on top, then the rest.
+const MSSQL_COMMON = ['SQL_Latin1_General_CP1_CI_AS', 'Latin1_General_100_CI_AS_SC_UTF8', 'Latin1_General_CI_AS', 'Arabic_CI_AS', 'Arabic_100_CI_AS_SC_UTF8'];
+function applyMssqlDefault() {
+  const o = mssqlOpts;
+  if (!o) return;
+  const saved = MullionPrefs.get('db.default.mssql.collation', '');
+  const label = n => n + (n === o.default ? ' (server default)' : '');
+  const common = o.collations.filter(n => MSSQL_COMMON.includes(n));
+  const items = [{ group: 'Common' }, ...common.map(n => ({ value: n, label: label(n) })),
+    { group: 'All collations' }, ...o.collations.filter(n => !common.includes(n)).map(n => ({ value: n, label: label(n) }))];
+  fillSelect($('mssql-db-collation'), items, o.collations.includes(saved) ? saved : o.default);
+  defaultNote('mssql-db-default-note', 'btn-mssql-db-default-reset', saved);
+}
+$('btn-mssql-db-default').onclick = () => {
+  MullionPrefs.set('db.default.mssql.collation', $('mssql-db-collation').value);
+  applyMssqlDefault();
+  toast('New SQL Server databases default to ' + $('mssql-db-collation').value);
+};
+$('btn-mssql-db-default-reset').onclick = () => {
+  MullionPrefs.set('db.default.mssql.collation', '');
+  applyMssqlDefault();
+  toast('Back to the server default');
+};
 
 /* ── backups ───────────────────────────────────────────────── */
 function fmtSize(bytes) {
@@ -3924,6 +5089,8 @@ async function loadBackups(force) {
     renderBackupsTable('mysql', 'mysql-backups-card', 'mysql-backups-count', 'mysql-backups-body');
     renderBackupsTable('postgres', 'pg-backups-card', 'pg-backups-count', 'pg-backups-body');
     renderBackupsTable('mongo', 'mongo-backups-card', 'mongo-backups-count', 'mongo-backups-body');
+    renderBackupsTable('mssql', 'mssql-backups-card', 'mssql-backups-count', 'mssql-backups-body');
+    renderBackupsTable('redis', 'redis-backups-card', 'redis-backups-count', 'redis-backups-body');
   } catch (e) { /* not reachable yet */ }
 }
 function renderBackupsTable(engine, cardId, countId, bodyId) {
@@ -4007,12 +5174,18 @@ function wireEngineUninstall(btnId, engine, label) {
 wireEngineUninstall('btn-mysql-uninstall', 'mysql', 'MySQL');
 wireEngineUninstall('btn-pg-uninstall', 'postgres', 'PostgreSQL');
 wireEngineUninstall('btn-mongo-uninstall', 'mongo', 'MongoDB');
+wireEngineUninstall('btn-mssql-uninstall', 'mssql', 'SQL Server');
+wireEngineUninstall('btn-redis-uninstall', 'redis', 'Redis');
 $('btn-mysql-backup').onclick = () =>
   runJob('Backing up MySQL…', '/api/engine/backup', { engine: 'mysql' }, r => 'Backed up to ' + r);
 $('btn-pg-backup').onclick = () =>
   runJob('Backing up PostgreSQL…', '/api/engine/backup', { engine: 'postgres' }, r => 'Backed up to ' + r);
 $('btn-mongo-backup').onclick = () =>
   runJob('Backing up MongoDB…', '/api/engine/backup', { engine: 'mongo' }, r => 'Backed up to ' + r);
+$('btn-mssql-backup').onclick = () =>
+  runJob('Backing up SQL Server…', '/api/engine/backup', { engine: 'mssql' }, r => 'Backed up to ' + r);
+$('btn-redis-backup').onclick = () =>
+  runJob('Backing up Redis…', '/api/engine/backup', { engine: 'redis' }, r => 'Backed up to ' + r);
 
 /* ── settings ──────────────────────────────────────────────── */
 $('btn-settings-tld').onclick = async () => {
@@ -4098,7 +5271,8 @@ $('btn-db-create').onclick = () => {
   const name = $('db-new').value.trim();
   if (!name) return;
   dbsLoadedAt = 0;
-  act('Creating ' + name + '…', '/api/db/create', { name }, 'Created');
+  const opts = mysqlOpts ? { charset: $('db-charset').value, collation: $('db-collation').value } : {};
+  act('Creating ' + name + '…', '/api/db/create', { name, ...opts }, 'Created');
   $('db-new').value = '';
 };
 $('btn-mysql-switch').onclick = () => {
@@ -4138,7 +5312,8 @@ $('btn-pg-db-create').onclick = () => {
   const name = $('pg-db-new').value.trim();
   if (!name) return;
   pgDbsLoadedAt = 0;
-  act('Creating ' + name + '…', '/api/pg/db/create', { name }, 'Created');
+  const opts = pgOpts ? { encoding: $('pg-db-encoding').value, locale: $('pg-db-locale').value } : {};
+  act('Creating ' + name + '…', '/api/pg/db/create', { name, ...opts }, 'Created');
   $('pg-db-new').value = '';
 };
 $('btn-pgadmin').onclick = () =>
@@ -4220,20 +5395,100 @@ function browseFolder(pathId, nameId, title) {
 }
 $('btn-be-browse').onclick = browseFolder('be-link-path', 'be-link-name', 'Choose the backend project folder');
 $('btn-fe-browse').onclick = browseFolder('fe-link-path', 'fe-link-name', 'Choose the frontend project folder');
+// Adding a project: /api/sites/link validates and SAVES the site, then
+// answers at once with a background job that sets it up (dev server,
+// hosts file — maybe behind an administrator prompt —, Caddy). The busy
+// overlay follows that job for up to LINK_BUSY_MS; past that it closes
+// and the job is watched quietly, so the panel can never stay stuck on
+// "Linking…" while the site is in fact linked.
+const LINK_REQUEST_MS = 20000;   // validate + save: normally instant
+const LINK_BUSY_MS = 45000;      // room to answer an admin/UAC prompt
+const LINK_WATCH_MS = 15 * 60000; // a first `npm install` can be slow
+const linkSleep = ms => new Promise(r => setTimeout(r, ms));
+function samePath(a, b) {
+  const norm = p => String(p || '').replace(/[\\/]+$/, '').toLowerCase();
+  return norm(a) === norm(b);
+}
+// followLinkJob polls a job until it is done or ms passed, passing each
+// status line to onStatus. Resolves to {done, error} — done is false on
+// a timeout, or when the job can no longer be read (the panel
+// restarted, or its record expired).
+async function followLinkJob(id, ms, onStatus) {
+  const until = Date.now() + ms;
+  let failures = 0;
+  while (Date.now() < until) {
+    await linkSleep(1000);
+    let st;
+    try {
+      st = await api('/api/job', { id }, 10000);
+      failures = 0;
+    } catch (e) {
+      if (++failures >= 5) return { done: false };
+      continue;
+    }
+    if (st.log && onStatus) onStatus(st.log);
+    if (st.done) return { done: true, error: st.error || '' };
+  }
+  return { done: false };
+}
+// waitForLinkedSite is the safety net for a link request that never
+// answered: the site may well be saved anyway — poll the state for it.
+async function waitForLinkedSite(path, ms) {
+  const until = Date.now() + ms;
+  while (Date.now() < until) {
+    try {
+      const st = await api('/api/state', undefined, 10000);
+      const site = (st.sites || []).find(x => samePath(x.path, path));
+      if (site) return site;
+    } catch (e) { /* not reachable yet — keep trying */ }
+    await linkSleep(2000);
+  }
+  return null;
+}
 function linkProject(pathId, nameId) {
   return async () => {
-    const path = $(pathId).value.trim();
+    // Explorer's "Copy as path" wraps the path in quotes (the server
+    // strips them too).
+    const path = $(pathId).value.trim().replace(/^"+|"+$/g, '');
     if (!path) return toast('Type the project folder path first');
+    const started = Date.now();
+    let busyOpen = true;
+    const closeBusy = () => {
+      if (busyOpen) { busyOpen = false; $('busy').classList.remove('show'); }
+    };
     $('busy-label').textContent = 'Linking…';
     $('busy').classList.add('show');
     try {
-      const url = await api('/api/sites/link', { path, name: $(nameId).value.trim() });
+      let link;
+      try {
+        link = await api('/api/sites/link', { path, name: $(nameId).value.trim() }, LINK_REQUEST_MS);
+      } catch (e) {
+        if (!e.timedOut) throw e;
+        $('busy-label').textContent = 'Still linking — checking whether the project was added…';
+        const site = await waitForLinkedSite(path, 30000);
+        if (!site) throw new Error(e.message + ' — check the Sites list in a moment');
+        $(pathId).value = ''; $(nameId).value = '';
+        toast('Linked: ' + site.url);
+        return;
+      }
       $(pathId).value = ''; $(nameId).value = '';
-      toast('Linked: ' + url);
+      refresh(); // the site is saved: list it right away
+      const onStatus = s => { if (busyOpen) $('busy-label').textContent = s; };
+      const res = await followLinkJob(link.job, Math.max(0, LINK_BUSY_MS - (Date.now() - started)), onStatus);
+      if (res.done) {
+        toast(res.error ? 'Linked ' + link.url + ', but setting it up failed: ' + res.error : 'Linked: ' + link.url);
+        return;
+      }
+      closeBusy();
+      toast('Linked: ' + link.url + ' — still finishing setup in the background');
+      followLinkJob(link.job, LINK_WATCH_MS).then(r => {
+        if (r.done) toast(r.error ? 'Setting up ' + link.name + ' failed: ' + r.error : link.url + ' is ready');
+        refresh();
+      });
     } catch (e) {
       toast('Error: ' + e.message);
     } finally {
-      $('busy').classList.remove('show');
+      closeBusy();
       refresh();
     }
   };
@@ -4245,6 +5500,701 @@ $('autostart').onchange = () =>
 $('btn-pma').onclick = openPhpMyAdmin;
 $('btn-heidi').onclick = () =>
   act('Opening HeidiSQL…', '/api/heidisql/open', {}, 'HeidiSQL opened');
+
+/* ── About & updates ───────────────────────────────────────── */
+// Settings → About & updates shows the version, how Mullion was
+// installed, and the latest release; "Upgrade" runs /api/upgrade/start
+// as a streaming job. Each panel load checks GitHub at most every 6
+// hours (the last check lives in MullionPrefs: localStorage is per-port,
+// so it'd be wiped every launch); a newer release lights a dot on
+// Settings and is offered once per version in an action toast.
+const UPDATE_CHECK_MS = 6 * 3600 * 1000;
+const MANUAL_SEP = ' — to upgrade by hand, run: ';
+let updInfo = null, upgrading = false, updPending = null;
+// verNewer mirrors selfupdate.Newer: numeric parts compare as numbers, and
+// a release beats its own pre-release.
+function verNewer(a, b) {
+  const split = v => {
+    v = String(v || '').replace(/^v/, '').split('+')[0];
+    const i = v.indexOf('-');
+    return [(i < 0 ? v : v.slice(0, i)).split('.').map(n => parseInt(n, 10) || 0), i < 0 ? '' : v.slice(i + 1)];
+  };
+  const [na, pa] = split(a), [nb, pb] = split(b);
+  for (let i = 0; i < Math.max(na.length, nb.length); i++) {
+    const x = na[i] || 0, y = nb[i] || 0;
+    if (x !== y) return x > y;
+  }
+  if (!pa || !pb) return !pa && !!pb;
+  return pa > pb;
+}
+const currentVersion = () => (state && state.version) || (updInfo && updInfo.current) || '';
+// updateAvailable is the newer version known (fresh or remembered), or ''.
+function updateAvailable() {
+  const latest = (updInfo && updInfo.latest) || MullionPrefs.get('update.latest', '');
+  return latest && currentVersion() && verNewer(latest, currentVersion()) ? latest : '';
+}
+function renderUpdateDot() { $('nav-update-dot').hidden = !updateAvailable() || upgrading; }
+function renderUpdates() {
+  const i = updInfo;
+  $('upd-current').textContent = currentVersion() ? 'v' + currentVersion() : '—';
+  const ch = $('upd-channel');
+  if (i) { ch.textContent = 'via ' + i.channelLabel; ch.style.display = ''; }
+  const out = $('upd-latest'), up = $('btn-upd-upgrade');
+  if (!i) out.innerHTML = '<span class="muted">Checking…</span>';
+  else if (!i.latest) out.innerHTML = `<span class="muted">${esc(i.error || 'Could not reach GitHub')}</span>`;
+  else {
+    const date = i.published && !i.published.startsWith('0001') ? new Date(i.published).toLocaleDateString() : '';
+    const link = i.url ? ` · <a href="${esc(i.url)}" target="_blank" rel="noopener">What's new</a>` : '';
+    out.innerHTML = (i.update ? `<span class="badge warnb">v${esc(i.latest)} available</span>` : '<span class="badge on">up to date</span>') +
+      `<span class="muted">latest v${esc(i.latest)}${date ? ' · ' + esc(date) : ''}${link}</span>`;
+  }
+  up.style.display = i && i.update && !upgrading ? '' : 'none';
+  if (i && i.update) up.textContent = 'Upgrade to v' + i.latest;
+  $('btn-upd-check').disabled = upgrading;
+  $('upd-manual').innerHTML = i
+    ? `To upgrade from a terminal: <span class="mono">mullion upgrade</span> — or by hand: <span class="mono">${esc(i.manual)}</span>`
+    : '';
+  renderUpdateDot();
+}
+function checkUpdates(force) {
+  // A silent check reuses one already in flight (Settings open at load).
+  if (!force && updPending) return updPending;
+  updPending = runUpdateCheck(force).finally(() => { updPending = null; });
+  return updPending;
+}
+async function runUpdateCheck(force) {
+  const btn = $('btn-upd-check');
+  btn.disabled = true;
+  try {
+    updInfo = await api('/api/upgrade/status', { force: !!force }, 15000);
+    if (updInfo.latest) {
+      MullionPrefs.set('update.checkedAt', String(Date.now()));
+      MullionPrefs.set('update.latest', updInfo.latest);
+    }
+    if (force && updInfo.error) toast('Could not check for updates: ' + updInfo.error);
+    else if (force && updInfo.latest && !updInfo.update) toast('Mullion is up to date');
+  } catch (e) {
+    if (force) toast('Error: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    renderUpdates();
+  }
+  return updInfo;
+}
+function loadUpdates() {
+  renderUpdates();
+  if (!updInfo) checkUpdates(false);
+}
+function goToUpdates() {
+  location.hash = 'settings';
+  setTimeout(() => $('about-updates').scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
+}
+// maybeCheckUpdates runs once per panel load: it greets a fresh upgrade,
+// then checks (at most every 6 h) and offers a newer release.
+async function maybeCheckUpdates() {
+  const just = MullionPrefs.get('update.justUpgraded', '');
+  if (just && currentVersion()) {
+    if (just === currentVersion()) toast('Mullion is now v' + just);
+    if (!verNewer(just, currentVersion())) MullionPrefs.set('update.justUpgraded', '');
+  }
+  const last = parseInt(MullionPrefs.get('update.checkedAt', '0'), 10) || 0;
+  if (Date.now() - last > UPDATE_CHECK_MS) await checkUpdates(false);
+  else renderUpdateDot();
+  const v = updateAvailable();
+  if (v && MullionPrefs.get('update.notified') !== v) {
+    MullionPrefs.set('update.notified', v);
+    actionToast(`Mullion v${v} is available.`, 'Upgrade', goToUpdates);
+  }
+}
+// showUpgradeError puts a failure in the card, with the manual command
+// (the backend appends it after MANUAL_SEP) set apart.
+function showUpgradeError(message) {
+  const [msg, manual] = String(message).split(MANUAL_SEP);
+  const box = $('upgrade-error');
+  box.innerHTML = '<b>The upgrade did not finish.</b> ' + esc(msg) +
+    (manual ? `<div style="margin-top:8px">Run it by hand in a terminal: <span class="mono">${esc(manual)}</span></div>` : '');
+  box.style.display = '';
+}
+async function startUpgrade() {
+  const i = updInfo;
+  if (!i || !i.update || upgrading) return;
+  const how = {
+    homebrew: 'Homebrew (<span class="mono">brew upgrade anabiiil/tap/mullion</span>)',
+    scoop: 'Scoop (<span class="mono">scoop update mullion</span>)',
+  }[i.channel] || 'downloading the release from GitHub and replacing the installed binary';
+  const back = {
+    app: 'Mullion quits and reopens on the new version by itself.',
+    window: 'This window closes and reopens on the new version by itself.',
+    tab: 'The panel reopens in a new browser tab — you can close this one afterwards.',
+  }[i.relaunch] || '';
+  const ok = await confirmModal({
+    title: 'Upgrade to Mullion v' + esc(i.latest) + '?',
+    message: `Mullion upgrades through ${how}. Afterwards the background agent` +
+      `${state && state.windows ? ', the tray icon' : ''} and this panel restart, so sites and services blip for a moment. ${back}`,
+    confirmText: 'Upgrade',
+  });
+  if (!ok) return;
+  upgrading = true;
+  renderUpdates();
+  const log = $('upgrade-log'), st = $('upgrade-status');
+  log.textContent = '';
+  log.style.display = '';
+  st.style.display = '';
+  st.textContent = 'Starting…';
+  $('upgrade-error').style.display = 'none';
+  try {
+    const { job } = await api('/api/upgrade/start', {});
+    let res;
+    for (;;) {
+      await new Promise(r => setTimeout(r, 700));
+      const s = await api('/api/job', { id: job });
+      if (s.status) st.textContent = s.status;
+      if (typeof s.log === 'string' && log.textContent !== s.log) {
+        log.textContent = s.log;
+        log.scrollTop = log.scrollHeight;
+      }
+      if (s.done) {
+        if (s.error) throw new Error(s.error);
+        res = s.result || {};
+        break;
+      }
+    }
+    st.textContent = `Mullion v${res.to} is installed — restarting…`;
+    toast('Mullion is now v' + res.to + ' — restarting…');
+    waitForRelaunch(res);
+  } catch (e) {
+    upgrading = false;
+    st.style.display = 'none';
+    showUpgradeError(e.message);
+    renderUpdates();
+  }
+}
+// waitForRelaunch watches this (old) panel go away once the new binary
+// takes over; if it never does, it says how to finish by hand.
+function waitForRelaunch(res) {
+  const st = $('upgrade-status');
+  const started = Date.now();
+  const tick = async () => {
+    try {
+      await api('/api/state', undefined, 3000);
+    } catch {
+      st.textContent = res.relaunch === 'tab'
+        ? `Mullion restarted on v${res.to} — the new panel opened in a new tab; you can close this one.`
+        : `Mullion is restarting on v${res.to} — this window reopens by itself.`;
+      return;
+    }
+    if (Date.now() - started > 60000) {
+      st.textContent = `v${res.to} is installed, but this panel is still the old one — quit and reopen Mullion.`;
+      upgrading = false;
+      renderUpdates();
+      return;
+    }
+    setTimeout(tick, 1500);
+  };
+  setTimeout(tick, 1500);
+}
+/* ── Mail (Mailpit) ────────────────────────────────────────── */
+// The inbox is read through Mullion's /api/mail/* endpoints (no CORS,
+// and no need for the page to know Mailpit's port).
+let mailMsgs = [];
+let mailLoadedAt = 0;
+let mailEnvTab = 'laravel';
+let mailRelay = null;
+const mailState = () => (state && state.mail) || { installed: false };
+const mailAddr = a => (a && (a.name ? a.name + ' <' + a.address + '>' : a.address)) || '';
+const mailAddrShort = a => (a && (a.name || a.address)) || '(none)';
+function mailWhen(iso) {
+  const d = new Date(iso);
+  if (isNaN(d)) return '';
+  const secs = (Date.now() - d.getTime()) / 1000;
+  if (secs < 45) return 'just now';
+  if (secs < 3600) return Math.round(secs / 60) + ' min ago';
+  if (d.toDateString() === new Date().toDateString()) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+function renderMail(s) {
+  const m = s.mail || { installed: false };
+  const unread = m.installed && m.running ? (m.unread || 0) : 0;
+  const nb = $('nav-mail');
+  nb.textContent = unread > 99 ? '99+' : unread;
+  nb.hidden = !unread;
+  $('mail-install-card').style.display = m.installed ? 'none' : '';
+  ['mail-server-card', 'mail-inbox-card', 'mail-connect-card', 'mail-relay-card'].forEach(id => {
+    $(id).style.display = m.installed ? '' : 'none';
+  });
+  if (!m.installed) return;
+  const pill = $('mail-pill');
+  pill.className = 'pill ' + (m.running ? 'on' : 'off');
+  pill.textContent = m.running ? 'Running' : (m.stopped ? 'Stopped by you' : 'Stopped');
+  $('btn-mail-start').style.display = m.running ? 'none' : '';
+  $('btn-mail-stop').style.display = m.running ? '' : 'none';
+  $('btn-mail-restart').style.display = m.running ? '' : 'none';
+  $('btn-mail-open').disabled = !m.running;
+  $('btn-mail-send').disabled = !m.running;
+  $('btn-mail-clear').disabled = !m.running;
+  $('mail-version').textContent = m.label || '—';
+  $('mail-smtp').textContent = '127.0.0.1:' + m.smtpPort;
+  $('mail-ui').textContent = (m.siteTaken ? m.directUrl : m.url).replace(/^https?:\/\//, '');
+  $('mail-ui').title = m.siteTaken ? m.directUrl : m.url;
+  $('mail-count').textContent = m.running && m.total !== undefined ? m.total + (m.unread ? ' · ' + m.unread + ' unread' : '') : '—';
+  const note = $('mail-site-note');
+  if (m.siteTaken) {
+    note.style.display = '';
+    note.textContent = 'A linked site is named "mail", so the inbox isn\'t served on mail.' + s.tld + ' — it opens at ' + m.directUrl + ' instead.';
+  } else note.style.display = 'none';
+  $('mail-catch-php').checked = !!m.catchPhp;
+  $('mail-catch-php-help').innerHTML = s.windows
+    ? 'Points <span class="mono">SMTP</span> / <span class="mono">smtp_port</span> in every PHP version\'s php.ini at Mail.'
+    : 'Sets <span class="mono">sendmail_path</span> in every PHP version\'s php.ini to Mailpit\'s sendmail. Off restores the previous value.';
+  renderMailEnv();
+}
+function mailSnippet(tab) {
+  const m = mailState();
+  if (tab === 'node') return m.node || '';
+  if (tab === 'smtp') {
+    return 'Host:       127.0.0.1\nPort:       ' + m.smtpPort + '\nEncryption: none (plain SMTP — no TLS/STARTTLS)\n' +
+      'Username:   any, or none\nPassword:   any, or none\n\nInbox:      ' + (m.siteTaken ? m.directUrl : m.url) + '\n' +
+      'REST API:   ' + m.directUrl + '/api/v1/\n';
+  }
+  return m.env || '';
+}
+function renderMailEnv() {
+  document.querySelectorAll('#mail-env-tabs button').forEach(b => b.classList.toggle('active', b.dataset.menv === mailEnvTab));
+  $('mail-env').textContent = mailSnippet(mailEnvTab);
+  $('mail-env-note').innerHTML = {
+    laravel: 'Laravel 11+ reads <span class="mono">MAIL_SCHEME</span>, Laravel 10 and older <span class="mono">MAIL_ENCRYPTION</span> — keeping both is harmless. Run <span class="mono">php artisan config:clear</span> if the config is cached.',
+    node: 'Install it with <span class="mono">npm i nodemailer</span>. Any SMTP library works the same way.',
+    smtp: 'Symfony: <span class="mono">MAILER_DSN=smtp://127.0.0.1:' + mailState().smtpPort + '</span> · WordPress: any SMTP plugin with the settings above.',
+  }[mailEnvTab];
+}
+document.querySelectorAll('#mail-env-tabs button').forEach(b => b.onclick = () => {
+  mailEnvTab = b.dataset.menv;
+  MullionPrefs.set('mail.envTab', mailEnvTab);
+  renderMailEnv();
+});
+$('btn-mail-env-copy').onclick = async () => toast(await copyText(mailSnippet(mailEnvTab)) ? 'Copied' : 'Could not copy');
+
+function enterMailPage() {
+  mailEnvTab = MullionPrefs.get('mail.envTab', mailEnvTab);
+  if (state) renderMail(state);
+  loadMailInbox(true);
+  loadMailRelay();
+  checkMailUpdate();
+}
+async function loadMailInbox(force) {
+  const m = mailState();
+  const body = $('mail-inbox-body');
+  if (!m.installed) return;
+  if (!m.running) {
+    mailMsgs = [];
+    body.innerHTML = '<tr><td colspan="5" class="empty">Mail is stopped — start it to receive messages.</td></tr>';
+    $('mail-inbox-count').style.display = 'none';
+    return;
+  }
+  if (!force && Date.now() - mailLoadedAt < 2500) return;
+  mailLoadedAt = Date.now();
+  try {
+    const r = await api('/api/mail/messages', { limit: 50 }, 8000);
+    mailMsgs = r.messages;
+    renderMailInbox(r);
+  } catch (e) {
+    body.innerHTML = `<tr><td colspan="5" class="muted">Error: ${esc(e.message)}</td></tr>`;
+  }
+}
+function renderMailInbox(r) {
+  const cnt = $('mail-inbox-count');
+  cnt.style.display = r.total ? '' : 'none';
+  cnt.textContent = r.total + (r.unread ? ' · ' + r.unread + ' unread' : '');
+  cnt.className = 'badge' + (r.unread ? ' fw' : '');
+  if (!r.messages.length) {
+    $('mail-inbox-body').innerHTML = '<tr><td colspan="5" class="empty">No messages yet — send one from your app, or press “Send test email…”.</td></tr>';
+    return;
+  }
+  $('mail-inbox-body').innerHTML = r.messages.map((m, i) => `<tr class="mail-row${m.read ? '' : ' unread'}" data-mi="${i}">
+      <td><span class="mail-dot" title="${m.read ? '' : 'Unread'}"></span></td>
+      <td class="mail-who" title="${esc(mailAddr(m.from))}">${esc(mailAddrShort(m.from))}</td>
+      <td class="mail-who muted" title="${esc(m.to.map(mailAddr).join(', '))}">${esc(m.to.map(mailAddrShort).join(', ') || '—')}</td>
+      <td><span class="mail-subj">${m.attachments ? '📎 ' : ''}${esc(m.subject || '(no subject)')}</span><span class="mail-snip">${esc(m.snippet)}</span></td>
+      <td class="mail-time" title="${esc(new Date(m.created).toLocaleString())}">${esc(mailWhen(m.created))}</td>
+    </tr>`).join('');
+}
+$('mail-inbox-body').addEventListener('click', e => {
+  const tr = e.target.closest('[data-mi]');
+  if (tr && mailMsgs[+tr.dataset.mi]) openMailMessage(mailMsgs[+tr.dataset.mi].id);
+});
+// Auto-refresh while the page is visible.
+setInterval(() => {
+  if (pageActive('mail') && document.visibilityState === 'visible' && mailState().running) loadMailInbox();
+}, 4000);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && pageActive('mail')) loadMailInbox(true);
+});
+
+// mailSheet opens a large modal built from html; it resolves when closed.
+function mailSheet(cls, html, wire) {
+  return new Promise(resolve => {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'modal-backdrop';
+    const card = document.createElement('div');
+    card.className = 'modal-card ' + cls;
+    card.setAttribute('role', 'dialog');
+    card.setAttribute('aria-modal', 'true');
+    card.style.position = 'relative';
+    card.innerHTML = html;
+    backdrop.appendChild(card);
+    document.body.appendChild(backdrop);
+    const prevFocus = document.activeElement;
+    let closed = false;
+    const close = v => {
+      if (closed) return;
+      closed = true;
+      document.removeEventListener('keydown', onKey, true);
+      backdrop.classList.remove('show');
+      setTimeout(() => backdrop.remove(), 180);
+      if (prevFocus && prevFocus.focus) prevFocus.focus();
+      resolve(v);
+    };
+    const onKey = e => {
+      if (e.key === 'Escape' && !document.querySelectorAll('.modal-backdrop')[1]) { e.preventDefault(); close(null); }
+    };
+    document.addEventListener('keydown', onKey, true);
+    backdrop.addEventListener('mousedown', e => { if (e.target === backdrop) close(null); });
+    wire(card, close);
+    requestAnimationFrame(() => backdrop.classList.add('show'));
+  });
+}
+const mailX = '<button class="sm mail-view-x" data-x aria-label="Close">✕</button>';
+
+async function openMailMessage(id) {
+  let msg;
+  try {
+    msg = await api('/api/mail/message', { id }, 12000);
+  } catch (e) { toast('Error: ' + e.message); return; }
+  // Opening marks it read in Mailpit: reflect that right away.
+  const row = mailMsgs.find(x => x.id === id);
+  if (row) row.read = true;
+  loadMailInbox(true);
+  refresh();
+  const m = mailState();
+  const relayOn = mailRelay && mailRelay.enabled;
+  const base = m.siteTaken ? m.directUrl : m.url;
+  const tabs = [['html', 'HTML'], ['text', 'Text'], ['headers', 'Headers'], ['raw', 'Source'], ['checks', 'Checks']];
+  const html = `${mailX}
+    <div class="mail-view-head">
+      <h3 class="modal-title">${esc(msg.subject || '(no subject)')}</h3>
+      <div class="mail-view-meta">
+        <span class="k">From</span><span class="v">${esc(mailAddr(msg.from) || '—')}</span>
+        <span class="k">To</span><span class="v">${esc(msg.to.map(mailAddr).join(', ') || '—')}</span>
+        ${msg.cc.length ? `<span class="k">Cc</span><span class="v">${esc(msg.cc.map(mailAddr).join(', '))}</span>` : ''}
+        ${msg.replyTo.length ? `<span class="k">Reply-To</span><span class="v">${esc(msg.replyTo.map(mailAddr).join(', '))}</span>` : ''}
+        <span class="k">Date</span><span class="v">${esc(msg.date ? new Date(msg.date).toLocaleString() : '—')} · ${(msg.size / 1024).toFixed(1)} KB</span>
+      </div>
+      ${msg.attachments.length ? '<div class="mail-atts">' + msg.attachments.map(a => `<span class="badge mono">📎 ${esc(a.name)} · ${(a.size / 1024).toFixed(1)} KB</span>`).join('') + '</div>' : ''}
+    </div>
+    <div class="mail-view-tabs"><div class="db-tabs" data-tabs>${tabs.map(([k, l]) => `<button data-t="${k}">${l}</button>`).join('')}</div></div>
+    <div class="mail-view-body" data-body></div>
+    <div class="mail-view-foot">
+      <button class="primary" data-open>Open in Mailpit</button>
+      <button data-release>${relayOn ? 'Release…' : 'Release… (set up a relay first)'}</button>
+      <span class="spacer"></span>
+      <button class="danger" data-delete>Delete</button>
+    </div>`;
+  await mailSheet('mail-view', html, (card, close) => {
+    const body = card.querySelector('[data-body]');
+    let raw = null;
+    const show = async t => {
+      card.querySelectorAll('[data-t]').forEach(b => b.classList.toggle('active', b.dataset.t === t));
+      if (t === 'html') {
+        if (!msg.html) { body.innerHTML = '<p class="empty">This message has no HTML part.</p>'; return; }
+        // Sandboxed: no scripts, no same-origin access; links open outside.
+        const f = document.createElement('iframe');
+        f.setAttribute('sandbox', 'allow-popups allow-popups-to-escape-sandbox');
+        f.setAttribute('referrerpolicy', 'no-referrer');
+        f.srcdoc = '<base target="_blank">' + msg.html;
+        body.innerHTML = '';
+        body.appendChild(f);
+      } else if (t === 'text') {
+        body.innerHTML = msg.text ? `<pre class="mono">${esc(msg.text)}</pre>` : '<p class="empty">This message has no plain-text part.</p>';
+      } else if (t === 'headers') {
+        body.innerHTML = '<table><tbody>' + msg.headers.map(([k, v]) =>
+          `<tr><td class="mono" style="white-space:nowrap; font-weight:650; vertical-align:top">${esc(k)}</td><td class="mono" style="word-break:break-all">${esc(v)}</td></tr>`).join('') + '</tbody></table>';
+      } else if (t === 'raw') {
+        body.innerHTML = '<p class="muted">Loading…</p>';
+        try {
+          if (raw === null) raw = await api('/api/mail/raw', { id }, 12000);
+          body.innerHTML = `<div class="row" style="margin-bottom:10px"><button class="sm" data-copyraw>Copy source</button></div><pre class="mono">${esc(raw)}</pre>`;
+          body.querySelector('[data-copyraw]').onclick = async () => toast(await copyText(raw) ? 'Copied' : 'Could not copy');
+        } catch (e) { body.innerHTML = `<p class="muted">Error: ${esc(e.message)}</p>`; }
+      } else if (t === 'checks') {
+        body.innerHTML = `
+          <div class="mail-check"><h4>HTML compatibility</h4>
+            <p class="muted" style="margin:0 0 10px">How well this message's HTML and CSS are supported across mail clients (Gmail, Outlook, Apple Mail…), from caniemail.com data.</p>
+            <button class="sm" data-run="html" ${msg.html ? '' : 'disabled'}>Run HTML check</button><div data-res="html" style="margin-top:10px"></div></div>
+          <div class="mail-check"><h4>Links</h4>
+            <p class="muted" style="margin:0 0 10px">Mailpit requests every link and image in the message and reports the broken ones.</p>
+            <button class="sm" data-run="links">Check links</button><div data-res="links" style="margin-top:10px"></div></div>
+          <div class="mail-check"><h4>Spam score</h4>
+            <p class="muted" style="margin:0">${mailRelay && mailRelay.spamAssassin ? 'SpamAssassin is enabled — open the message in Mailpit to see its score.' : 'Needs a SpamAssassin server, which Mullion doesn\'t run. The HTML and link checks cover most of what a spam filter looks at in testing.'}</p></div>`;
+        body.querySelectorAll('[data-run]').forEach(b => b.onclick = async () => {
+          const kind = b.dataset.run;
+          const res = body.querySelector(`[data-res="${kind}"]`);
+          b.disabled = true;
+          res.innerHTML = '<span class="muted">Checking…</span>';
+          try {
+            const r = await api('/api/mail/check', { id, kind }, 70000);
+            if (kind === 'html') {
+              const t = r.Total || {};
+              const pct = v => (Math.round((v || 0) * 10) / 10) + '%';
+              res.innerHTML = `<div class="row"><span class="badge on">${pct(t.Supported)} supported</span><span class="badge warnb">${pct(t.Partial)} partial</span><span class="badge bad">${pct(t.Unsupported)} unsupported</span><span class="muted">${t.Tests || 0} tests on ${t.Nodes || 0} elements</span></div>` +
+                ((r.Warnings || []).length ? '<ul style="margin:10px 0 0; padding-left:18px; font-size:12.5px">' + r.Warnings.slice(0, 25).map(w =>
+                  `<li><b>${esc(w.Title)}</b> <span class="muted">(${esc(w.Category)}) — unsupported in ${pct(w.Score && w.Score.Unsupported)} of clients</span></li>`).join('') + '</ul>' : '');
+            } else {
+              const links = r.Links || [];
+              res.innerHTML = `<div class="row"><span class="badge ${r.Errors ? 'bad' : 'on'}">${r.Errors ? r.Errors + ' broken' : 'no broken links'}</span><span class="muted">${links.length} checked</span></div>` +
+                (links.length ? '<table style="margin-top:8px"><tbody>' + links.map(l =>
+                  `<tr><td><span class="badge ${l.StatusCode >= 200 && l.StatusCode < 400 ? 'on' : 'bad'}">${l.StatusCode || '—'}</span></td><td class="mono" style="word-break:break-all">${esc(l.URL)}</td><td class="muted">${esc(l.Status)}</td></tr>`).join('') + '</tbody></table>' : '');
+            }
+          } catch (e) { res.innerHTML = `<span class="muted">Error: ${esc(e.message)}</span>`; }
+          b.disabled = false;
+        });
+      }
+    };
+    card.querySelectorAll('[data-t]').forEach(b => b.onclick = () => show(b.dataset.t));
+    show(msg.html ? 'html' : 'text');
+    card.querySelector('[data-x]').onclick = () => close(null);
+    card.querySelector('[data-open]').onclick = () => window.open(base + '/view/' + encodeURIComponent(id), '_blank');
+    card.querySelector('[data-release]').onclick = async () => {
+      if (!(mailRelay && mailRelay.enabled)) {
+        close(null);
+        $('mail-relay-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        $('relay-host').focus();
+        return;
+      }
+      const to = await promptModal({
+        title: 'Release this message',
+        message: `Deliver <span class="mono">${esc(msg.subject || '(no subject)')}</span> for real, through <span class="mono">${esc(mailRelay.host + ':' + mailRelay.port)}</span>.`,
+        detail: 'The message is sent as-is to the address(es) below — not to its original recipients.' +
+          (mailRelay.allowedRecipients ? ' Only addresses matching <span class="mono">' + esc(mailRelay.allowedRecipients) + '</span> are allowed.' : ''),
+        input: { label: 'Deliver to', placeholder: 'you@yourcompany.com', value: '' },
+        confirmText: 'Release',
+      });
+      if (!to || !to.trim()) return;
+      $('busy-label').textContent = 'Releasing through ' + mailRelay.host + '…';
+      $('busy').classList.add('show');
+      try {
+        await api('/api/mail/release', { id, to: [to] }, 70000);
+        toast('Released to ' + to.trim());
+      } catch (e) { toast('Error: ' + e.message); } finally { $('busy').classList.remove('show'); }
+    };
+    card.querySelector('[data-delete]').onclick = async () => {
+      try {
+        await api('/api/mail/delete', { ids: [id] });
+        toast('Message deleted');
+        close(null);
+        loadMailInbox(true);
+        refresh();
+      } catch (e) { toast('Error: ' + e.message); }
+    };
+  });
+}
+
+function sendTestEmail() {
+  const html = `${mailX}
+    <h3 class="modal-title">Send a test email</h3>
+    <p class="modal-message">It goes over SMTP to Mail, the same way your app's mailer would — then shows up in the inbox.</p>
+    <div class="mail-form">
+      <label for="ms-from">From</label><input type="text" id="ms-from" class="mono" value="hello@example.test">
+      <label for="ms-to">To</label><input type="text" id="ms-to" class="mono" value="you@example.test" placeholder="one or more, comma-separated">
+      <label for="ms-subj">Subject</label><input type="text" id="ms-subj" value="Test email from Mullion">
+      <label>Format</label>
+      <div class="db-tabs" id="ms-fmt"><button data-f="text">Plain text</button><button data-f="html" class="active">HTML</button><button data-f="both">HTML + text</button></div>
+      <label for="ms-html" data-for="html">HTML</label>
+      <textarea id="ms-html" class="mono" rows="7" data-for="html">&lt;h1&gt;Hello 👋&lt;/h1&gt;
+&lt;p&gt;This is a &lt;b&gt;test email&lt;/b&gt; sent from Mullion's Mail page.&lt;/p&gt;
+&lt;p&gt;&lt;a href="https://mailpit.axllent.org/"&gt;A link to check&lt;/a&gt;&lt;/p&gt;</textarea>
+      <label for="ms-text" data-for="text">Text</label>
+      <textarea id="ms-text" rows="5" data-for="text">Hello!
+
+This is a test email sent from Mullion's Mail page.</textarea>
+      <label for="ms-file">Attachment</label>
+      <div class="row"><input type="file" id="ms-file" multiple><span class="muted">optional, up to 10 MB each</span></div>
+    </div>
+    <div class="modal-actions"><button data-cancel>Cancel</button><button class="primary" data-send>Send</button></div>`;
+  return mailSheet('mail-compose', html, (card, close) => {
+    let fmt = 'html';
+    const q = sel => card.querySelector(sel);
+    const sync = () => {
+      card.querySelectorAll('#ms-fmt button').forEach(b => b.classList.toggle('active', b.dataset.f === fmt));
+      card.querySelectorAll('[data-for]').forEach(el => {
+        el.style.display = (fmt === 'both' || fmt === el.dataset.for) ? '' : 'none';
+      });
+    };
+    card.querySelectorAll('#ms-fmt button').forEach(b => b.onclick = () => { fmt = b.dataset.f; sync(); });
+    sync();
+    q('[data-x]').onclick = () => close(null);
+    q('[data-cancel]').onclick = () => close(null);
+    const readFile = f => new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(String(r.result).replace(/^data:[^,]*,/, ''));
+      r.onerror = () => rej(new Error('could not read ' + f.name));
+      r.readAsDataURL(f);
+    });
+    q('[data-send]').onclick = async () => {
+      const files = Array.from(q('#ms-file').files || []);
+      const big = files.find(f => f.size > 10 * 1024 * 1024);
+      if (big) return toast(big.name + ' is larger than 10 MB');
+      const btn = q('[data-send]');
+      btn.disabled = true;
+      try {
+        const attachments = [];
+        for (const f of files) attachments.push({ name: f.name, type: f.type, data: await readFile(f) });
+        await api('/api/mail/send', {
+          from: q('#ms-from').value.trim(),
+          to: [q('#ms-to').value],
+          subject: q('#ms-subj').value,
+          text: fmt === 'html' ? '' : q('#ms-text').value,
+          html: fmt === 'text' ? '' : q('#ms-html').value,
+          attachments,
+        }, 30000);
+        toast('Test email sent');
+        close(true);
+        setTimeout(() => { loadMailInbox(true); refresh(); }, 400);
+      } catch (e) {
+        toast('Error: ' + e.message);
+        btn.disabled = false;
+      }
+    };
+    setTimeout(() => q('#ms-to').focus(), 50);
+  });
+}
+$('btn-mail-send').onclick = sendTestEmail;
+$('btn-mail-refresh').onclick = () => loadMailInbox(true);
+$('btn-mail-clear').onclick = async () => {
+  const n = (mailState().total || 0);
+  if (!(await confirmModal({
+    title: 'Delete all messages?',
+    message: `This permanently deletes ${n ? '<b>' + n + '</b>' : 'every'} message${n === 1 ? '' : 's'} in the inbox.`,
+    confirmText: 'Delete all', danger: true,
+  }))) return;
+  await act('Deleting all messages…', '/api/mail/clear', {}, 'Inbox emptied');
+  loadMailInbox(true);
+};
+$('btn-mail-install').onclick = async () => {
+  const r = await runJob('Installing Mail…', '/api/mail/install', {}, 'Mail is ready');
+  if (r) enterMailPage();
+};
+$('btn-mail-upgrade').onclick = async () => {
+  const r = await runJob('Upgrading Mailpit…', '/api/mail/install', {}, r => 'Mailpit ' + r.version + ' installed');
+  if (r) { $('mail-update-row').style.display = 'none'; enterMailPage(); }
+};
+$('btn-mail-start').onclick = () => runJob('Starting Mail…', '/api/mail/start', {}, 'Mail started').then(() => loadMailInbox(true));
+$('btn-mail-stop').onclick = () => runJob('Stopping Mail…', '/api/mail/stop', {}, 'Mail stopped').then(() => loadMailInbox(true));
+$('btn-mail-restart').onclick = () => runJob('Restarting Mail…', '/api/mail/restart', {}, 'Mail restarted').then(() => loadMailInbox(true));
+$('btn-mail-open').onclick = () => {
+  const m = mailState();
+  window.open(m.siteTaken ? m.directUrl : m.url, '_blank');
+};
+$('btn-mail-uninstall').onclick = async () => {
+  const r = await modal({
+    title: 'Uninstall Mail?',
+    message: 'This stops Mailpit and removes it. "Catch PHP mail()" is turned off and php.ini is restored.',
+    checkboxes: [{ id: 'keep', label: 'Keep the caught messages', hint: 'a reinstall picks them up again', checked: false }],
+    confirmText: 'Uninstall', danger: true,
+  });
+  if (!r) return;
+  await runJob('Removing Mail…', '/api/mail/uninstall', { keepMail: r.checks.keep }, 'Mail uninstalled');
+};
+$('mail-catch-php').onchange = async e => {
+  const on = e.target.checked;
+  $('busy-label').textContent = (on ? 'Pointing PHP mail() at Mail' : 'Restoring PHP\'s mail settings') + ' — restarting PHP…';
+  $('busy').classList.add('show');
+  try {
+    await api('/api/mail/catch-php', { on });
+    toast(on ? 'PHP mail() now lands in Mail' : 'PHP mail() settings restored');
+  } catch (err) {
+    e.target.checked = !on;
+    toast('Error: ' + err.message);
+  } finally {
+    $('busy').classList.remove('show');
+    refresh();
+  }
+};
+async function checkMailUpdate() {
+  if (!mailState().installed) return;
+  try {
+    const r = await api('/api/mail/update', {}, 7000);
+    $('mail-update-row').style.display = r.latest ? '' : 'none';
+    if (r.latest) $('mail-update-text').textContent = 'Mailpit ' + r.latest + ' is available';
+  } catch {}
+}
+async function loadMailRelay() {
+  if (!mailState().installed) return;
+  try {
+    mailRelay = await api('/api/mail/relay', {}, 5000);
+  } catch { return; }
+  const r = mailRelay;
+  $('relay-enabled').checked = r.enabled;
+  $('relay-host').value = r.host || '';
+  $('relay-port').value = r.port || '';
+  $('relay-security').value = r.security || 'starttls';
+  $('relay-user').value = r.username || '';
+  $('relay-pass').value = '';
+  $('relay-pass').placeholder = r.hasPassword ? 'saved — leave empty to keep it' : 'optional';
+  $('relay-allowed').value = r.allowedRecipients || '';
+  const badge = $('mail-relay-badge');
+  badge.className = 'badge' + (r.enabled ? ' on' : '');
+  badge.textContent = r.enabled ? (r.active === false && mailState().running ? 'on — restart Mail' : 'on') : 'off';
+  $('relay-note').textContent = r.enabled ? 'Messages go out only when you press Release on one.' : '';
+}
+$('relay-security').onchange = () => {
+  const port = $('relay-port');
+  if (!port.value || ['25', '465', '587'].includes(port.value)) port.value = { starttls: 587, tls: 465, none: 25 }[$('relay-security').value];
+};
+$('btn-relay-save').onclick = async () => {
+  const enabled = $('relay-enabled').checked;
+  const port = parseInt($('relay-port').value, 10) || 0;
+  if (enabled && !$('relay-host').value.trim()) return toast('Enter the SMTP host');
+  if (enabled && !(port >= 1 && port <= 65535)) return toast('Enter the SMTP port');
+  const r = await runJob('Saving the relay…', '/api/mail/relay/save', {
+    enabled, host: $('relay-host').value.trim(), port, security: $('relay-security').value,
+    username: $('relay-user').value.trim(), password: $('relay-pass').value,
+    allowedRecipients: $('relay-allowed').value.trim(),
+  }, enabled ? 'Relay saved — Release is available on each message' : 'Relay turned off');
+  loadMailRelay();
+  return r;
+};
+
+/* ── Settings: frontend dev servers' idle sleep ────────────── */
+let devIdleDefaults = { noTabMin: 2, withTabMin: 10 };
+async function loadDevIdle() {
+  try {
+    const r = await api('/api/dev/idle', {}, 5000);
+    devIdleDefaults = { noTabMin: r.defaultNoTabMin, withTabMin: r.defaultWithTabMin };
+    $('idle-notab').value = r.noTabMin;
+    $('idle-withtab').value = r.withTabMin;
+    $('idle-never').checked = r.never;
+    syncDevIdle();
+  } catch {}
+}
+function syncDevIdle() {
+  const never = $('idle-never').checked;
+  $('idle-notab').disabled = never;
+  $('idle-withtab').disabled = never;
+  $('idle-hint').textContent = never ? 'never sleep' : 'sleep after ' + $('idle-notab').value + ' / ' + $('idle-withtab').value + ' min';
+}
+$('idle-never').onchange = syncDevIdle;
+async function saveDevIdle(noTabMin, withTabMin, never) {
+  for (const v of [noTabMin, withTabMin]) {
+    if (!(v >= 1 && v <= 1440)) return toast('Use 1 to 1440 minutes');
+  }
+  await act('Saving…', '/api/dev/idle/set', { noTabMin, withTabMin, never }, never ? 'Dev servers will never sleep' : 'Idle limits saved');
+  loadDevIdle();
+}
+$('btn-idle-save').onclick = () => saveDevIdle(parseInt($('idle-notab').value, 10), parseInt($('idle-withtab').value, 10), $('idle-never').checked);
+$('btn-idle-reset').onclick = () => saveDevIdle(devIdleDefaults.noTabMin, devIdleDefaults.withTabMin, false);
+
+$('btn-upd-check').onclick = () => checkUpdates(true);
+$('btn-upd-upgrade').onclick = startUpgrade;
 
 (async () => {
   if (standalone && standalone.kind === 'term') { startTermWindow(standalone.site, standalone.cwd); return; }
@@ -4259,6 +6209,7 @@ $('btn-heidi').onclick = () =>
   await refresh();
   if (!document.body.classList.contains('projwin')) {
     restoreTabs();
+    maybeCheckUpdates();
     MullionExtTerm.load(false).then(maybeAskTerminal);
   } else MullionExtTerm.load(false);
   if ((location.hash.slice(1) || 'overview') === 'php') loadIni();

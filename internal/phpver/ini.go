@@ -132,7 +132,7 @@ func ListIni(paths pmdir.Paths, version string) ([]IniSetting, error) {
 		fmt.Fprintf(&code, `echo %s, "\n";`, opt)
 	}
 
-	out, err := exec.Command(php, "-r", code.String()).Output()
+	out, err := exec.Command(php, iniArgs(php, "-r", code.String())...).Output()
 	if err != nil {
 		return nil, fmt.Errorf("reading php.ini settings from PHP %s: %w", version, err)
 	}
@@ -270,7 +270,7 @@ func SetIni(paths pmdir.Paths, version, key, value string) error {
 		}
 		if key == "date.timezone" {
 			php := filepath.Join(paths.PhpVersionDir(version), PhpExeName)
-			cmd := exec.Command(php, "-r", `exit(in_array($argv[1], timezone_identifiers_list()) ? 0 : 1);`, value)
+			cmd := exec.Command(php, iniArgs(php, "-r", `exit(in_array($argv[1], timezone_identifiers_list()) ? 0 : 1);`, value)...)
 			if err := cmd.Run(); err != nil {
 				return fmt.Errorf("%q is not a valid timezone identifier", value)
 			}
@@ -284,4 +284,63 @@ func SetIni(paths pmdir.Paths, version, key, value string) error {
 		return fmt.Errorf("setting %s in %s: %w", key, iniPath, err)
 	}
 	return nil
+}
+
+// IniPath is the php.ini of an installed version.
+func IniPath(paths pmdir.Paths, version string) string {
+	return filepath.Join(paths.PhpVersionDir(version), "php.ini")
+}
+
+// IniDirective returns the raw right-hand side (quotes kept) of the last
+// active "key=..." line in an ini file, and whether there is one.
+func IniDirective(path, key string) (string, bool) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", false
+	}
+	val, found := "", false
+	for _, line := range strings.Split(string(data), "\n") {
+		if matchesIniKey(line, key) {
+			l := strings.TrimSpace(line)
+			val, found = strings.TrimSpace(l[strings.Index(l, "=")+1:]), true
+		}
+	}
+	return val, found
+}
+
+// SetIniDirective sets "key=value" (value written verbatim — quote it
+// yourself) in an ini file; see setIniDirective.
+func SetIniDirective(path, key, value string) error {
+	return setIniDirective(path, key, value)
+}
+
+// RemoveIniDirective deletes every active "key=..." line from an ini
+// file, so PHP falls back to its built-in default (commented-out lines
+// stay). A missing file is not an error.
+func RemoveIniDirective(path, key string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil
+		}
+		return err
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+	lines := strings.Split(string(data), "\n")
+	out := lines[:0]
+	removed := false
+	for _, l := range lines {
+		if matchesIniKey(l, key) {
+			removed = true
+			continue
+		}
+		out = append(out, l)
+	}
+	if !removed {
+		return nil
+	}
+	return os.WriteFile(path, []byte(strings.Join(out, "\n")), info.Mode())
 }

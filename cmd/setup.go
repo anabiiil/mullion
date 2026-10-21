@@ -17,6 +17,7 @@ import (
 	"pm/internal/caddy"
 	"pm/internal/composer"
 	"pm/internal/console"
+	"pm/internal/diskfree"
 	"pm/internal/elevate"
 	"pm/internal/heidisql"
 	"pm/internal/macapp"
@@ -31,6 +32,7 @@ import (
 )
 
 var setupPause bool
+var setupBackupDir string
 
 // signInPhrase names the OS's login moment in questions and messages.
 var signInPhrase = map[string]string{"windows": "sign in to Windows", "darwin": "log in to your Mac"}[runtime.GOOS]
@@ -299,7 +301,7 @@ func doSetup(cmd *cobra.Command, wantAutostart bool, dbChoice string) error {
 			// An existing MySQL (Laragon, XAMPP, a service...) already on
 			// port 3306: offer to bring its databases along using the
 			// freshly-installed client tools, then take the port over.
-			importDump := importFromExistingMysql(a, v)
+			importDir := importFromExistingMysql(a, v)
 
 			a.State.Config.MySQL = v
 			if err := a.State.Save(); err != nil {
@@ -311,14 +313,9 @@ func doSetup(cmd *cobra.Command, wantAutostart bool, dbChoice string) error {
 			if err := mysql.Start(a.Paths, v); err != nil {
 				return err
 			}
-			if importDump != "" {
+			if importDir != "" {
 				fmt.Println("Importing the databases from your old server...")
-				if err := mysql.RestoreFile(a.Paths, v, importDump); err != nil {
-					fmt.Println("warning:", err)
-					fmt.Println("Import them later with: mullion mysql restore \"" + filepath.Dir(importDump) + "\"")
-				} else {
-					fmt.Println("Databases imported. Backup kept at", filepath.Dir(importDump))
-				}
+				restoreImportedDatabases(a, v, importDir)
 			}
 			fmt.Printf("MySQL %s is running on 127.0.0.1:%d (user `root`, empty password).\n", v, mysql.Port)
 		} else {
@@ -400,9 +397,12 @@ Control panel: run `+"`mullion ui`"+`%s.
 
 // importFromExistingMysql handles a foreign MySQL (Laragon, XAMPP, a
 // service) sitting on port 3306 during setup: with the user's OK it
-// exports that server's databases (returning the dump to restore into
-// Mullion's MySQL) and stops it so Mullion's server can take the port.
-// Returns "" when there is nothing to import.
+// exports that server's databases as one self-contained <name>.sql
+// file per database — no combined all-databases.sql, which would
+// double the disk and time a multi-GB export needs — and stops the
+// foreign server so Mullion's own can take the port. Returns the
+// export folder to restore from, or "" when there is nothing to
+// import.
 func importFromExistingMysql(a *app.App, version string) string {
 	if !portBusy(mysql.Port) {
 		return ""
@@ -414,7 +414,7 @@ func importFromExistingMysql(a *app.App, version string) string {
 	}
 	fmt.Println(".")
 
-	dump := ""
+	importDir := ""
 	if console.Interactive() && askYesNo("Import its databases into Mullion?", true) {
 		// Dev stacks usually run root with an empty password — but when
 		// that server has one, ASK for it instead of skipping the import.
@@ -440,13 +440,20 @@ func importFromExistingMysql(a *app.App, version string) string {
 		case len(dbs) == 0:
 			fmt.Println("It has no user databases — nothing to import.")
 		default:
-			dir := filepath.Join(a.Paths.BackupsDir(),
-				time.Now().Format("2006-01-02_150405")+"-imported")
-			fmt.Printf("Exporting %d database(s) to %s: %s\n", len(dbs), dir, strings.Join(dbs, ", "))
-			if err := mysql.BackupTo(a.Paths, version, dbs, dir); err != nil {
-				fmt.Println("warning: export failed -", err)
-			} else {
-				dump = filepath.Join(dir, "all-databases.sql")
+			base, estimate, skip := chooseBackupBase(a, version, dbs)
+			if !skip {
+				dir := filepath.Join(base, time.Now().Format("2006-01-02_150405")+"-imported")
+				if !ensureDatadirSpace(a, estimate, base) {
+					fmt.Println("Skipping the import — the other server's data stays untouched on disk.")
+				} else {
+					fmt.Printf("Exporting %d database(s) to %s: %s\n", len(dbs), dir, strings.Join(dbs, ", "))
+					if err := mysql.BackupDatabases(a.Paths, version, dbs, dir); err != nil {
+						fmt.Println("warning: export failed -", err)
+					} else {
+						importDir = dir
+						fmt.Println("Exported to", dir)
+					}
+				}
 			}
 		}
 		mysql.RootPassword = savedPassword
@@ -458,7 +465,7 @@ func importFromExistingMysql(a *app.App, version string) string {
 	}
 	if !stop {
 		fmt.Println("warning: Mullion's MySQL cannot start while the other server holds the port.")
-		return dump
+		return importDir
 	}
 	if owner > 0 {
 		stopConflict(portConflict{Port: mysql.Port, PID: owner, Name: name})
@@ -469,7 +476,244 @@ func importFromExistingMysql(a *app.App, version string) string {
 	if portBusy(mysql.Port) {
 		fmt.Println("warning: port", mysql.Port, "is still busy (the other stack may auto-restart its services — quit it fully).")
 	}
-	return dump
+	return importDir
+}
+
+// restoreFilesIn lists which files to restore from an export folder:
+// all-databases.sql alone when present (a combined dump, e.g. from
+// `mullion mysql backup` or an older Mullion), otherwise every *.sql
+// file in it — the per-database dumps importFromExistingMysql now
+// writes — in the same sorted-by-name order os.ReadDir returns them.
+// Each per-database file is self-contained (CREATE DATABASE + USE), so
+// the order never affects correctness, only which database's progress
+// prints first.
+func restoreFilesIn(dir string) ([]string, error) {
+	if _, err := os.Stat(filepath.Join(dir, "all-databases.sql")); err == nil {
+		return []string{filepath.Join(dir, "all-databases.sql")}, nil
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	var files []string
+	for _, e := range entries {
+		if !e.IsDir() && strings.EqualFold(filepath.Ext(e.Name()), ".sql") {
+			files = append(files, filepath.Join(dir, e.Name()))
+		}
+	}
+	if len(files) == 0 {
+		return nil, fmt.Errorf("no .sql files in %s", dir)
+	}
+	return files, nil
+}
+
+// restoreImportedDatabases imports everything importFromExistingMysql
+// exported into dir into the now-running Mullion MySQL. Unlike one big
+// combined file, importing one self-contained per-database file at a
+// time means a failure on one database doesn't take the rest down with
+// it — so this reports exactly which databases made it in and which
+// didn't, with the exact command to retry each failure.
+func restoreImportedDatabases(a *app.App, version, dir string) {
+	files, err := restoreFilesIn(dir)
+	if err != nil {
+		fmt.Println("warning:", err)
+		fmt.Println(`Import later with: mullion mysql restore "` + dir + `"`)
+		return
+	}
+	var ok, failed []string
+	for _, f := range files {
+		name := strings.TrimSuffix(filepath.Base(f), filepath.Ext(f))
+		if err := mysql.RestoreFile(a.Paths, version, f); err != nil {
+			fmt.Println("warning: importing", name, "failed -", err)
+			failed = append(failed, name)
+			continue
+		}
+		ok = append(ok, name)
+	}
+	switch {
+	case len(failed) == 0:
+		fmt.Println("Databases imported. Backup kept at", dir)
+	case len(ok) == 0:
+		fmt.Println("warning: none of the databases imported.")
+		fmt.Println(`Retry with: mullion mysql restore "` + dir + `"`)
+	default:
+		fmt.Println("Imported:", strings.Join(ok, ", "))
+		fmt.Println("warning: failed to import:", strings.Join(failed, ", "))
+		for _, name := range failed {
+			fmt.Println(`  retry: mullion mysql restore "` + filepath.Join(dir, name+".sql") + `"`)
+		}
+	}
+}
+
+// ensureDatadirSpace checks that the volume holding Mullion's own
+// MySQL data directory has enough free room for the import on top of
+// the export that's about to land in backupBase: restoring a dump back
+// into InnoDB tends to need somewhat more space than the dump itself,
+// and when backupBase and the data directory share a volume the two
+// needs draw from the same pool of free space (see
+// app.ImportSpaceRequirement). estimate <= 0 (the export's size
+// couldn't be determined) skips the check, the same as the backup
+// dir's own space check does.
+//
+// Returns whether the import should proceed: true whenever there's
+// enough room (or the check couldn't be done); otherwise it warns and,
+// with a human present, asks whether to continue anyway — a
+// non-interactive run just skips the import rather than guessing.
+func ensureDatadirSpace(a *app.App, estimate int64, backupBase string) bool {
+	if estimate <= 0 {
+		return true
+	}
+	datadir := a.Paths.MysqlDataDir()
+	same := diskfree.SameVolume(backupBase, datadir)
+	_, needed := app.ImportSpaceRequirement(estimate, same)
+	free, err := diskfree.Free(datadir)
+	if err != nil {
+		return true // can't tell either way — don't block the import over it
+	}
+	if free >= needed {
+		return true
+	}
+	fmt.Printf("warning: Mullion's MySQL data directory (%s) needs about %s free for the import, but only %s is available",
+		datadir, app.HumanBytes(needed), app.HumanBytes(free))
+	if same {
+		fmt.Print(" (it shares a volume with the export folder, so both draw from the same free space)")
+	}
+	fmt.Println(".")
+	if !console.Interactive() {
+		fmt.Println("Skipping the import — free up space and import later with `mullion mysql restore`.")
+		return false
+	}
+	return askYesNo("Continue the import anyway?", false)
+}
+
+// chooseBackupBase decides which folder importFromExistingMysql
+// exports the foreign server's databases into: the --backup-dir flag
+// when one was given, the interactive prompt otherwise, or (piped
+// input, CI, the elevated relaunch) today's default, a.Paths.BackupsDir(),
+// unchanged. estimate is the export's estimated size in bytes (0 when
+// it couldn't be determined), returned so the caller can also check it
+// against Mullion's own data directory. skip reports that the user
+// chose to abandon the import rather than accept any folder.
+func chooseBackupBase(a *app.App, version string, dbs []string) (base string, estimate int64, skip bool) {
+	def := a.Paths.BackupsDir()
+	estimate, err := mysql.DatabasesSize(a.Paths, version, dbs)
+	if err != nil {
+		fmt.Println("note: could not estimate the export's size — skipping the free-space check.")
+		estimate = 0
+	}
+
+	if setupBackupDir != "" {
+		chosen := normalizeBackupPath(setupBackupDir)
+		if err := validateBackupBase(chosen, estimate); err != nil {
+			fmt.Println("warning: --backup-dir", chosen, "is unusable -", err)
+			fmt.Println("Falling back to the default backup location,", def)
+			return def, estimate, false
+		}
+		return chosen, estimate, false
+	}
+
+	if !console.Interactive() {
+		return def, estimate, false
+	}
+	base, skip = promptBackupDir(def, estimate)
+	return base, estimate, skip
+}
+
+// validateBackupBase checks dir the way the export is about to use it
+// (see internal/app.ValidateBackupDirForExport), printing a note when
+// the folder doesn't exist yet so creating it isn't a silent surprise.
+func validateBackupBase(dir string, estimate int64) error {
+	if _, err := os.Stat(dir); err != nil {
+		fmt.Println("creating", dir)
+	}
+	return app.ValidateBackupDirForExport(dir, estimate)
+}
+
+// promptBackupDir asks where to put the export, accepting Enter for
+// def. It accepts quoted, ~-prefixed, relative, and (on Windows)
+// %VAR%-containing paths — see normalizeBackupPath — and validates the
+// answer before accepting it, giving up to 3 tries before falling back
+// to asking whether to use def anyway or skip the import entirely.
+func promptBackupDir(def string, estimate int64) (base string, skip bool) {
+	const maxAttempts = 3
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		console.FlushInput()
+		fmt.Printf("Save the export where? [%s]: ", def)
+		line, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+		raw := strings.TrimSpace(line)
+		candidate := def
+		if raw != "" {
+			candidate = normalizeBackupPath(raw)
+		}
+		if err := validateBackupBase(candidate, estimate); err != nil {
+			fmt.Println("warning:", err)
+			continue
+		}
+		return candidate, false
+	}
+	fmt.Println("Still no usable folder after", maxAttempts, "tries.")
+	if askYesNo(fmt.Sprintf("Use the default (%s) instead?", def), true) {
+		return def, false
+	}
+	fmt.Println("Skipping the import — the other server's data stays untouched on disk.")
+	return "", true
+}
+
+// normalizeBackupPath turns what a human typed or pasted for a backup
+// folder into a clean absolute path: it strips a pair of surrounding
+// quotes (Windows' "Copy as path" adds them), expands a leading ~ and
+// environment variables ($VAR via os.ExpandEnv, plus %VAR% on
+// Windows), and makes a relative path absolute against the current
+// directory.
+func normalizeBackupPath(raw string) string {
+	s := strings.TrimSpace(raw)
+	if n := len(s); n >= 2 {
+		if (s[0] == '"' && s[n-1] == '"') || (s[0] == '\'' && s[n-1] == '\'') {
+			s = strings.TrimSpace(s[1 : n-1])
+		}
+	}
+	if runtime.GOOS == "windows" {
+		s = expandWindowsEnv(s)
+	}
+	s = os.ExpandEnv(s)
+	if s == "~" || strings.HasPrefix(s, "~/") || strings.HasPrefix(s, `~\`) {
+		if home, err := os.UserHomeDir(); err == nil {
+			if s == "~" {
+				s = home
+			} else {
+				s = filepath.Join(home, s[2:])
+			}
+		}
+	}
+	if !filepath.IsAbs(s) {
+		if abs, err := filepath.Abs(s); err == nil {
+			s = abs
+		}
+	}
+	return filepath.Clean(s)
+}
+
+// expandWindowsEnv expands %VAR% references the way cmd.exe does.
+// os.ExpandEnv only understands $VAR/${VAR}; Windows paths pasted from
+// Explorer or a batch file use %VAR% instead (e.g. %USERPROFILE%).
+// An unmatched or unknown %VAR% is left exactly as typed.
+func expandWindowsEnv(s string) string {
+	var b strings.Builder
+	for i := 0; i < len(s); {
+		if s[i] == '%' {
+			if j := strings.IndexByte(s[i+1:], '%'); j >= 0 {
+				name := s[i+1 : i+1+j]
+				if val, ok := os.LookupEnv(name); ok && name != "" {
+					b.WriteString(val)
+					i += j + 2
+					continue
+				}
+			}
+		}
+		b.WriteByte(s[i])
+		i++
+	}
+	return b.String()
 }
 
 // installSelf puts the running executable at bin/mullion: a SYMLINK
@@ -549,5 +793,7 @@ func copyFile(src, dst string) error {
 func init() {
 	setupCmd.Flags().BoolVar(&setupPause, "pause", false, "wait for Enter before exiting (used by the elevated relaunch)")
 	_ = setupCmd.Flags().MarkHidden("pause")
+	setupCmd.Flags().StringVar(&setupBackupDir, "backup-dir", "",
+		"where to export another MySQL server's databases during setup (default: next to the install root)")
 	rootCmd.AddCommand(setupCmd)
 }

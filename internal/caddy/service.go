@@ -1,11 +1,13 @@
 package caddy
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -162,10 +164,41 @@ func Reload(paths pmdir.Paths) error {
 	cmd := proc.Quiet(paths.CaddyExe(), "reload",
 		"--config", paths.Caddyfile(), "--adapter", "caddyfile")
 	cmd.Dir = paths.Home
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("caddy reload: %v: %s", err, out)
+	return runBounded(cmd, reloadTimeout, "caddy reload")
+}
+
+// reloadTimeout bounds `caddy reload`: Caddy answers once the old
+// config has stopped, which the Caddyfile's grace_period keeps short —
+// this is the backstop for a Caddyfile written before that, or an
+// admin API that never answers.
+const reloadTimeout = 30 * time.Second
+
+// runBounded runs cmd like CombinedOutput, but kills it and reports a
+// clear error when it is still running after timeout, so a caller (the
+// panel's background setup job) can never hang on it forever.
+func runBounded(cmd *exec.Cmd, timeout time.Duration, what string) error {
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Stderr = &out
+	// Stop waiting on the output pipe shortly after a kill even if some
+	// grandchild still holds it.
+	cmd.WaitDelay = 2 * time.Second
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("%s: %w", what, err)
 	}
-	return nil
+	done := make(chan error, 1)
+	go func() { done <- cmd.Wait() }()
+	select {
+	case err := <-done:
+		if err != nil {
+			return fmt.Errorf("%s: %v: %s", what, err, strings.TrimSpace(out.String()))
+		}
+		return nil
+	case <-time.After(timeout):
+		_ = cmd.Process.Kill()
+		<-done
+		return fmt.Errorf("%s did not finish within %s — Caddy may still be applying the new config; run `mullion restart` if sites misbehave", what, timeout)
+	}
 }
 
 // Stop shuts down the running instance (no-op when not running).

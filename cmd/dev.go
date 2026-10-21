@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"fmt"
+	"strconv"
+	"time"
 
 	"pm/internal/console"
 
@@ -141,6 +143,123 @@ func devTarget(a *app.App, args []string) (*app.App, *config.Site, error) {
 		return nil, nil, fmt.Errorf("%s is not a frontend site", site.Name)
 	}
 	return a, site, nil
+}
+
+var (
+	devIdleNoTab, devIdleWithTab, devIdleSite string
+	devIdleNever, devIdleSleep, devIdleReset  bool
+)
+
+// idleMinutes parses a --no-tab/--with-tab value ("5m", "1h30m", or a
+// bare number of minutes) into whole minutes, 1 at least.
+func idleMinutes(v string) (int, error) {
+	if v == "" {
+		return 0, nil
+	}
+	if n, err := strconv.Atoi(v); err == nil {
+		v = strconv.Itoa(n) + "m"
+	}
+	d, err := time.ParseDuration(v)
+	if err != nil {
+		return 0, fmt.Errorf("invalid duration %q (try 5m or 1h)", v)
+	}
+	m := int(d.Round(time.Minute) / time.Minute)
+	if m < 1 || m > config.MaxDevIdleMin {
+		return 0, fmt.Errorf("%s is out of range — use 1m to 24h", v)
+	}
+	return m, nil
+}
+
+var devIdleCmd = &cobra.Command{
+	Use:   "idle",
+	Short: "Show or set how long an idle dev server runs before it sleeps",
+	Long: `A frontend site's dev server sleeps after a while without requests or
+source edits — sooner when no browser tab has it open — and wakes when
+you open its link. Without flags this shows the limits; --site sets one
+site's own (--reset makes it follow the global setting again).`,
+	Example: `  mullion dev idle --no-tab 5m --with-tab 30m
+  mullion dev idle --never
+  mullion dev idle --site shop --never
+  mullion dev idle --site shop --reset`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		a := a2()
+		noTab, err := idleMinutes(devIdleNoTab)
+		if err != nil {
+			return err
+		}
+		withTab, err := idleMinutes(devIdleWithTab)
+		if err != nil {
+			return err
+		}
+		changing := noTab > 0 || withTab > 0 || devIdleNever || devIdleSleep || devIdleReset
+		if devIdleSite != "" {
+			if changing {
+				mode := "custom"
+				switch {
+				case devIdleReset:
+					mode = "global"
+				case devIdleNever:
+					mode = "never"
+				}
+				if err := a.SetSiteDevIdle(devIdleSite, mode, noTab, withTab); err != nil {
+					return err
+				}
+			}
+			s := a.State.FindSite(devIdleSite)
+			if s == nil {
+				return fmt.Errorf("no site named %q", devIdleSite)
+			}
+			src := "follows the global setting"
+			if s.DevIdleNever || s.DevIdleNoTabMin > 0 || s.DevIdleWithTabMin > 0 {
+				src = "its own setting"
+			}
+			printIdle(s.Name+" ("+src+")", a.State.Config, *s)
+			return nil
+		}
+		if changing {
+			c := a.State.Config
+			if noTab == 0 {
+				noTab = c.DevIdleNoTabMin
+			}
+			if withTab == 0 {
+				withTab = c.DevIdleWithTabMin
+			}
+			never := c.DevNeverSleep
+			if devIdleNever {
+				never = true
+			}
+			if devIdleSleep || devIdleReset {
+				never = false
+			}
+			if devIdleReset {
+				noTab, withTab = 0, 0
+			}
+			if err := a.SetDevIdle(noTab, withTab, never); err != nil {
+				return err
+			}
+		}
+		printIdle("all dev servers", a.State.Config, config.Site{})
+		return nil
+	},
+}
+
+func printIdle(label string, c config.Config, s config.Site) {
+	noTab, withTab, never := c.DevIdle(s)
+	if never {
+		fmt.Printf("%s: never sleep\n", label)
+		return
+	}
+	fmt.Printf("%s: sleep after %s idle with no tab open, %s with a tab open\n", label, noTab, withTab)
+}
+
+func init() {
+	devIdleCmd.Flags().StringVar(&devIdleNoTab, "no-tab", "", "idle time before sleeping when no browser tab is open (e.g. 5m)")
+	devIdleCmd.Flags().StringVar(&devIdleWithTab, "with-tab", "", "idle time before sleeping while a tab is open (e.g. 30m)")
+	devIdleCmd.Flags().BoolVar(&devIdleNever, "never", false, "never put dev servers to sleep")
+	devIdleCmd.Flags().BoolVar(&devIdleSleep, "sleep", false, "turn sleeping back on after --never")
+	devIdleCmd.Flags().BoolVar(&devIdleReset, "reset", false, "back to the defaults (with --site: follow the global setting)")
+	devIdleCmd.Flags().StringVar(&devIdleSite, "site", "", "set or show one site's own limits")
+	devCmd.AddCommand(devIdleCmd)
 }
 
 func init() {

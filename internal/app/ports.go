@@ -17,11 +17,14 @@ import (
 	"pm/internal/config"
 	"pm/internal/devserver"
 	"pm/internal/heidisql"
+	"pm/internal/mailpit"
 	"pm/internal/mongodb"
+	"pm/internal/mssql"
 	"pm/internal/mysql"
 	"pm/internal/pgadmin"
 	"pm/internal/phpver"
 	"pm/internal/postgres"
+	"pm/internal/redis"
 	"pm/internal/sysproc"
 )
 
@@ -125,6 +128,10 @@ func ApplyPortConfig(c config.Config) {
 	mysql.Port = orDefault(c.MySQLPort, mysql.DefaultPort)
 	postgres.Port = orDefault(c.PostgresPort, postgres.DefaultPort)
 	mongodb.Port = orDefault(c.MongoPort, mongodb.DefaultPort)
+	mssql.Port = orDefault(c.MSSQLPort, mssql.DefaultPort)
+	mailpit.SMTPPort = orDefault(c.MailSMTPPort, mailpit.DefaultSMTPPort)
+	mailpit.UIPort = orDefault(c.MailUIPort, mailpit.DefaultUIPort)
+	redis.Port = orDefault(c.RedisPort, redis.DefaultPort)
 }
 
 func orDefault(port, def int) int {
@@ -151,7 +158,7 @@ type PortInfo struct {
 	// Service is the human label: "Caddy HTTP", "MySQL", "PHP 8.4
 	// FastCGI", "dev: wa-legal-frontend".
 	Service string `json:"service"`
-	// Kind is caddy|php|mysql|postgres|mongo|dev|agent.
+	// Kind is caddy|php|mysql|postgres|mongo|mssql|mail-smtp|mail-ui|redis|dev|agent.
 	Kind string `json:"kind"`
 	// Site is the node site a dev server belongs to.
 	Site string `json:"site,omitempty"`
@@ -210,6 +217,17 @@ func (a *App) services() []service {
 	if c.Mongo != "" {
 		out = append(out, service{"mongo", PortInfo{Service: mongodb.Label(c.Mongo), Kind: "mongo", Port: mongodb.Port, Configurable: true}})
 	}
+	if c.MSSQL != "" {
+		out = append(out, service{"mssql", PortInfo{Service: mssql.Label(c.MSSQL), Kind: "mssql", Port: mssql.Port, Configurable: true}})
+	}
+	if c.Mailpit != "" {
+		out = append(out,
+			service{"mail-smtp", PortInfo{Service: "Mail SMTP", Kind: "mail-smtp", Port: mailpit.SMTPPort, Configurable: true}},
+			service{"mail-ui", PortInfo{Service: "Mail inbox", Kind: "mail-ui", Port: mailpit.UIPort, Configurable: true}})
+	}
+	if c.Redis != "" {
+		out = append(out, service{"redis", PortInfo{Service: redis.Label(c.Redis), Kind: "redis", Port: redis.Port, Configurable: true}})
+	}
 	for _, s := range a.State.Sites {
 		if s.Kind != "node" || s.DevPort <= 0 {
 			continue
@@ -245,6 +263,10 @@ func (a *App) reservedBy(port int, self string) string {
 		{"mysql", "MySQL", mysql.Port},
 		{"postgres", "PostgreSQL", postgres.Port},
 		{"mongo", "MongoDB", mongodb.Port},
+		{"mssql", "SQL Server", mssql.Port},
+		{"mail-smtp", "Mail SMTP", mailpit.SMTPPort},
+		{"mail-ui", "Mail inbox", mailpit.UIPort},
+		{"redis", "Redis", redis.Port},
 	}
 	for _, e := range engines {
 		if e.key != self && e.port == port {
@@ -280,7 +302,7 @@ func (a *App) PortsOverview() []PortInfo {
 				ours = mullionPids(a.Paths.Home)
 			}
 			switch {
-			case isMullionProcess(pid, name, ours):
+			case isMullionProcess(pid, name, ours) || (s.key == "mssql" && mssqlServesPort()):
 				info.Running = true
 				info.HeldBy = "mullion"
 			case pid > 0:
@@ -365,8 +387,16 @@ func normalizeEngine(engine string) (string, error) {
 		return "postgres", nil
 	case "mongo", "mongodb":
 		return "mongo", nil
+	case "mssql", "sqlserver", "sql-server":
+		return "mssql", nil
+	case "mail-smtp", "smtp", "mail":
+		return "mail-smtp", nil
+	case "mail-ui", "mail-inbox", "mailpit":
+		return "mail-ui", nil
+	case "redis":
+		return "redis", nil
 	}
-	return "", fmt.Errorf("unknown engine %q (use mysql, postgres or mongo)", engine)
+	return "", fmt.Errorf("unknown engine %q (use mysql, postgres, mongo, mssql, mail-smtp, mail-ui or redis)", engine)
 }
 
 // engineOps is what SetEnginePort needs to know about one engine.
@@ -380,6 +410,11 @@ type engineOps struct {
 	stop    func() error
 	start   func() error
 	write   func() error // rewrite its config file for the current port
+	// owned, when set, replaces the "is the port's owner a Mullion
+	// process" check: SQL Server's port is held by OrbStack's port
+	// forwarder (macOS) or a Windows service, never by a process under
+	// Mullion's install root.
+	owned func() bool
 }
 
 func (a *App) engine(name string) engineOps {
@@ -399,6 +434,34 @@ func (a *App) engine(name string) engineOps {
 			stop:    func() error { return postgres.Stop(a.Paths, v) },
 			start:   func() error { return postgres.Start(a.Paths, v) },
 			write:   func() error { return postgres.WriteConfig(a.Paths, v) }}
+	case "mail-smtp", "mail-ui":
+		v := c.Mailpit
+		ops := engineOps{label: "Mail SMTP", version: v, port: &mailpit.SMTPPort, def: mailpit.DefaultSMTPPort, cfg: &c.MailSMTPPort,
+			running: mailpit.SMTPUp,
+			stop:    func() error { return mailpit.Stop(a.Paths) },
+			start:   func() error { return mailpit.Start(a.Paths, v) },
+			write:   func() error { return nil },
+			owned:   func() bool { return mailpit.Owned(a.Paths) }}
+		if name == "mail-ui" {
+			ops.label, ops.port, ops.def, ops.cfg, ops.running = "Mail inbox", &mailpit.UIPort, mailpit.DefaultUIPort, &c.MailUIPort, mailpit.Running
+		}
+		return ops
+	case "redis":
+		v := c.Redis
+		return engineOps{label: "Redis", version: v, port: &redis.Port, def: redis.DefaultPort, cfg: &c.RedisPort,
+			running: redis.Running,
+			stop:    func() error { return redis.Stop(a.Paths) },
+			start:   func() error { return redis.Start(a.Paths, v) },
+			write:   func() error { return redis.WriteConfig(a.Paths) },
+			owned:   func() bool { return redis.Owned(a.Paths) }}
+	case "mssql":
+		v := c.MSSQL
+		return engineOps{label: "SQL Server", version: v, port: &mssql.Port, def: mssql.DefaultPort, cfg: &c.MSSQLPort,
+			running: mssql.Running,
+			stop:    func() error { return mssql.Stop(a.Paths) },
+			start:   func() error { return mssql.Start(a.Paths) },
+			write:   func() error { return mssql.ApplyPort(a.Paths) },
+			owned:   mssqlServesPort}
 	default:
 		v := c.Mongo
 		return engineOps{label: "MongoDB", version: v, port: &mongodb.Port, def: mongodb.DefaultPort, cfg: &c.MongoPort,
@@ -438,8 +501,12 @@ func (a *App) SetEnginePort(engine string, port int, force bool) (hints []string
 	// port must never receive our shutdown command.
 	wasRunning := false
 	if e.version != "" && e.running() {
-		pid, pname := portOwner(old)
-		wasRunning = isMullionProcess(pid, pname, mullionPids(a.Paths.Home))
+		if e.owned != nil {
+			wasRunning = e.owned()
+		} else {
+			pid, pname := portOwner(old)
+			wasRunning = isMullionProcess(pid, pname, mullionPids(a.Paths.Home))
+		}
 	}
 	if wasRunning {
 		if err := e.stop(); err != nil {
@@ -493,6 +560,10 @@ func (a *App) syncAdminTools(engine string) []string {
 		note("HeidiSQL", heidisql.SyncPort(a.Paths))
 	case "postgres":
 		note("pgAdmin", pgadmin.SyncPort(a.Paths))
+	case "mail-smtp", "mail-ui":
+		note("Mail", a.afterMailPortChange(engine))
+	case "redis":
+		note("phpRedisAdmin", a.afterRedisPortChange())
 	}
 	for _, h := range portChangeHooks {
 		note("an admin tool", h(a, engine))
@@ -652,7 +723,8 @@ func (a *App) SuggestFreePort(start int) int {
 	if start < minUserPort {
 		start = minUserPort
 	}
-	taken := map[int]bool{mysql.Port: true, postgres.Port: true, mongodb.Port: true}
+	taken := map[int]bool{mysql.Port: true, postgres.Port: true, mongodb.Port: true, mssql.Port: true,
+		mailpit.SMTPPort: true, mailpit.UIPort: true, redis.Port: true}
 	for _, s := range a.services() {
 		taken[s.info.Port] = true
 	}
@@ -670,3 +742,7 @@ func (a *App) SuggestFreePort(start int) int {
 	}
 	return 0
 }
+
+// mssqlServesPort reports whether Mullion's SQL Server (container or
+// Windows service) is up — a seam for tests.
+var mssqlServesPort = mssql.Owned

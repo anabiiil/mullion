@@ -57,9 +57,19 @@ var phpExtDisableCmd = &cobra.Command{
 
 var phpExtGetCmd = &cobra.Command{
 	Use:     "get <name> [version]",
-	Aliases: []string{"add"},
-	Short:   "Download a PECL extension the build doesn't ship (redis, xdebug, imagick, ...) and enable it",
-	Args:    cobra.RangeArgs(1, 2),
+	Aliases: []string{"add", "install"},
+	Short:   "Add an extension the build doesn't ship (redis, xdebug, imagick, ldap, sqlsrv, ...) and enable it",
+	Long: `Add an extension the PHP build doesn't ship, and enable it.
+
+On Windows this downloads a prebuilt PECL DLL (redis, xdebug, imagick, ...).
+"sqlsrv" installs Microsoft's sqlsrv + pdo_sqlsrv extensions and, if missing,
+the Microsoft ODBC Driver 18 for SQL Server (asks for administrator rights).
+
+On macOS the static builds already include the PECL favorites; "ldap" and
+"sqlsrv" are built from php.net sources (needs the Xcode Command Line Tools).
+SQL Server support there is pdo_dblib (FreeTDS), which Laravel's sqlsrv
+connection and Adminer use automatically when pdo_sqlsrv is absent.`,
+	Args: cobra.RangeArgs(1, 2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		a := mustApp()
 		version, err := extTargetVersion(a, args, 1)

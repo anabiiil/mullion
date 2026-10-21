@@ -57,6 +57,7 @@ func Ensure(paths pmdir.Paths, version string) error {
 	if err := os.WriteFile(pidFile(paths, version), []byte(strconv.Itoa(pid)), 0o644); err != nil {
 		return err
 	}
+	recordWatchState(paths, version, webWatchWanted(paths))
 
 	// Confirm the port came up. Generous window: the very first launch
 	// of a freshly downloaded binary can take several seconds on macOS

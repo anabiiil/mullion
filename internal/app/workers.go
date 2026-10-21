@@ -57,6 +57,14 @@ func (a *App) SiteEnv(site config.Site) []string {
 		}
 	}
 	dirs = append(dirs, a.Paths.BinDir())
+	// The live watcher's dumps / deep mode: artisan commands and queue
+	// workers load Mullion's prepend through an extra ini scan dir (the
+	// CLI doesn't get Caddy's per-site PHP_VALUE).
+	if site.WatchPrepend() {
+		for k, v := range a.watchCLIEnv(site, env) {
+			env = setEnv(env, k, v)
+		}
+	}
 	return prependPath(env, dirs)
 }
 

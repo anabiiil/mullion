@@ -88,7 +88,7 @@ func EnsureLdap(ctx context.Context, paths pmdir.Paths, version string) error {
 
 // phpHasLdap reports whether php -m already lists the ldap extension.
 func phpHasLdap(php string) (bool, error) {
-	out, err := exec.Command(php, "-m").Output()
+	out, err := exec.Command(php, iniArgs(php, "-m")...).Output()
 	if err != nil {
 		return false, fmt.Errorf("running %s -m: %w", php, err)
 	}
@@ -245,7 +245,7 @@ func installLdapSo(php, builtSo, destSo string) error {
 		return fmt.Errorf("installing %s: %w", destSo, err)
 	}
 
-	verify := exec.Command(php, "-d", "extension="+destSo, "-r",
+	verify := exec.Command(php, "-n", "-d", "extension="+destSo, "-r",
 		`exit(extension_loaded("ldap") ? 0 : 1);`)
 	if out, err := verify.CombinedOutput(); err != nil {
 		os.Remove(destSo)

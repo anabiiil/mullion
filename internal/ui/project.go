@@ -22,6 +22,7 @@ import (
 	"pm/internal/nodever"
 	"pm/internal/phpver"
 	"pm/internal/pkgsearch"
+	"pm/internal/watch"
 )
 
 // apiRegistrar registers one token-checked JSON endpoint (see newMux).
@@ -173,6 +174,7 @@ func projectInfo(a *app.App, s config.Site) map[string]any {
 	}
 	if kind == "php" {
 		out["php"] = a.SiteVersion(s)
+		out["watch"] = watch.SettingsOf(s)
 	}
 	if kind == "node" {
 		mode := s.Mode
@@ -184,6 +186,18 @@ func projectInfo(a *app.App, s config.Site) map[string]any {
 		out["devPort"] = s.DevPort
 		out["devRunning"] = devserver.Running(a.Paths, s.Name)
 		out["devPaused"] = s.DevPaused
+		noTab, withTab, never := a.State.Config.DevIdle(s)
+		idleMode := "global"
+		if s.DevIdleNever {
+			idleMode = "never"
+		} else if s.DevIdleNoTabMin > 0 || s.DevIdleWithTabMin > 0 {
+			idleMode = "custom"
+		}
+		gNoTab, gWithTab, gNever := a.State.Config.DevIdle(config.Site{})
+		out["idle"] = map[string]any{
+			"mode": idleMode, "noTabMin": int(noTab.Minutes()), "withTabMin": int(withTab.Minutes()), "never": never,
+			"globalNoTabMin": int(gNoTab.Minutes()), "globalWithTabMin": int(gWithTab.Minutes()), "globalNever": gNever,
+		}
 		if dir, err := a.NodeVersionDirFor(s); err == nil {
 			out["node"] = filepath.Base(dir)
 		}

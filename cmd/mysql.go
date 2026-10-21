@@ -178,7 +178,7 @@ var dbListCmd = &cobra.Command{
 
 var dbCreateCmd = &cobra.Command{
 	Use:   "create <name>",
-	Short: "Create a database (utf8mb4)",
+	Short: "Create a database (utf8mb4 unless --charset/--collation say otherwise)",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		a, version, err := mustMysql()
@@ -188,7 +188,9 @@ var dbCreateCmd = &cobra.Command{
 		if err := mysql.Start(a.Paths, version); err != nil {
 			return err
 		}
-		if err := mysql.CreateDatabase(a.Paths, version, args[0]); err != nil {
+		charset, _ := cmd.Flags().GetString("charset")
+		collation, _ := cmd.Flags().GetString("collation")
+		if err := mysql.CreateDatabaseWith(a.Paths, version, args[0], charset, collation); err != nil {
 			return err
 		}
 		fmt.Printf("Database %s is ready.\n", args[0])
@@ -324,6 +326,8 @@ func mustMysql() (*app.App, string, error) {
 
 func init() {
 	mysqlCmd.AddCommand(mysqlInstallCmd, mysqlRestoreCmd, mysqlBackupCmd, mysqlPasswordCmd, mysqlStartCmd, mysqlStopCmd, mysqlUninstallCmd)
+	dbCreateCmd.Flags().String("charset", "", "character set, e.g. utf8mb4 or latin1 (default utf8mb4)")
+	dbCreateCmd.Flags().String("collation", "", "collation, e.g. utf8mb4_unicode_ci (default: the charset's default; utf8mb4_unicode_ci for utf8mb4)")
 	dbCmd.AddCommand(dbListCmd, dbCreateCmd, dbDropCmd)
 	rootCmd.AddCommand(mysqlCmd, mariadbCmd, dbCmd)
 }

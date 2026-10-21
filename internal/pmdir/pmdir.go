@@ -51,6 +51,11 @@ func (p Paths) MysqlVersionDir(v string) string { return filepath.Join(p.MysqlDi
 func (p Paths) MysqlDataDir() string            { return filepath.Join(p.MysqlDir(), "data") }
 func (p Paths) MysqlIni() string                { return filepath.Join(p.MysqlDir(), "my.ini") }
 func (p Paths) PhpMyAdminDir() string           { return filepath.Join(p.Home, "phpmyadmin") }
+func (p Paths) AdminerDir() string              { return filepath.Join(p.Home, "adminer") }
+func (p Paths) MssqlDir() string                { return filepath.Join(p.Home, "mssql") }
+func (p Paths) MailpitDir() string              { return filepath.Join(p.Home, "mailpit") }
+func (p Paths) RedisDir() string                { return filepath.Join(p.Home, "redis") }
+func (p Paths) RedisAdminDir() string           { return filepath.Join(p.Home, "phpredisadmin") }
 func (p Paths) NodeDir() string                 { return filepath.Join(p.Home, "node") }
 func (p Paths) NodeVersionDir(v string) string  { return filepath.Join(p.NodeDir(), v) }
 func (p Paths) CurrentNode() string             { return filepath.Join(p.NodeDir(), "current") }
@@ -61,6 +66,13 @@ func (p Paths) Caddyfile() string               { return filepath.Join(p.Home, "
 func (p Paths) LogsDir() string                 { return filepath.Join(p.Home, "logs") }
 func (p Paths) PidsDir() string                 { return filepath.Join(p.Home, "pids") }
 func (p Paths) TmpDir() string                  { return filepath.Join(p.Home, "tmp") }
+
+// WatchDir holds the live watcher's files: the PHP prepend and one
+// folder of events per watched site.
+func (p Paths) WatchDir() string { return filepath.Join(p.Home, "watch") }
+
+// WatchSiteDir is one site's watcher folder (events*.jsonl, config.json).
+func (p Paths) WatchSiteDir(site string) string { return filepath.Join(p.WatchDir(), site) }
 
 // EnsureLayout creates every directory the tool needs.
 func (p Paths) EnsureLayout() error {

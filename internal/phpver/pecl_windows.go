@@ -32,8 +32,18 @@ type abi struct {
 
 // InstallPeclExtension downloads a prebuilt PECL extension (e.g. redis,
 // xdebug, imagick) that the stock PHP build does not ship, drops its
-// DLL into the version's ext directory, and enables it.
+// DLL into the version's ext directory, and enables it. SQL Server
+// ("sqlsrv", "pdo_sqlsrv", "mssql") is handled by EnsureSQLServer, which
+// installs both of Microsoft's extensions plus the ODBC driver they need.
 func InstallPeclExtension(ctx context.Context, paths pmdir.Paths, version, name string) error {
+	if IsSQLServerExtension(name) {
+		return EnsureSQLServer(ctx, paths, version)
+	}
+	return installPeclZip(ctx, paths, version, name)
+}
+
+// installPeclZip is InstallPeclExtension for one PECL extension name.
+func installPeclZip(ctx context.Context, paths pmdir.Paths, version, name string) error {
 	name = normalizeExtName(name)
 	target, err := detectABI(paths, version)
 	if err != nil {

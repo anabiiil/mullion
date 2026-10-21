@@ -56,6 +56,10 @@ clear_env = no
 	return conf, os.WriteFile(conf, []byte(content), 0o644)
 }
 
+// workerUsesScanDir: php-fpm honours the per-site PHP_VALUE Caddy
+// passes, so its workers never need the watcher's scan dir.
+const workerUsesScanDir = false
+
 // killWorker terminates the fpm master AND its pool: the master runs as
 // its own process-group leader (proc.Detach uses Setsid), so signalling
 // the group takes the workers down with it — a bare SIGKILL on the

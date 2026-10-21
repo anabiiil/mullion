@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -498,6 +499,11 @@ func renderIni(paths pmdir.Paths, version, goos string) string {
 		// Large rows (blobs) in real projects blow past the 64MB default
 		// and abort imports halfway through.
 		"max_allowed_packet=512M",
+		// MySQL/MariaDB both default this to 128M. A dev machine
+		// restoring a multi-GB dump goes noticeably faster with more of
+		// InnoDB's working set cached; 512M is a conservative bump that
+		// still fits comfortably on a modest laptop.
+		"innodb_buffer_pool_size=512M",
 		"log-error=" + filepath.Join(paths.LogsDir(), "mysql.err"),
 	}
 	if !IsMaria(version) {
@@ -538,6 +544,48 @@ func UserDatabases(paths pmdir.Paths, version string) ([]string, error) {
 	return dbs, nil
 }
 
+// DatabasesSize estimates, in bytes, the on-disk size of the given
+// databases on the running server by summing information_schema's
+// per-table data+index sizes. It's an approximation — mysqldump's
+// textual output is a different size than the InnoDB pages it reads
+// from — but it's good enough to sanity-check free disk space before
+// an export (see ValidateBackupDirForExport in internal/app).
+func DatabasesSize(paths pmdir.Paths, version string, dbs []string) (int64, error) {
+	if len(dbs) == 0 {
+		return 0, nil
+	}
+	quoted := make([]string, len(dbs))
+	for i, db := range dbs {
+		quoted[i] = "'" + strings.ReplaceAll(db, "'", "''") + "'"
+	}
+	stmt := fmt.Sprintf(
+		"SELECT COALESCE(SUM(data_length+index_length),0) FROM information_schema.tables WHERE table_schema IN (%s)",
+		strings.Join(quoted, ","))
+	out, err := withPassword(proc.Quiet(clientExe(paths, version),
+		"--user=root", "--host=127.0.0.1", fmt.Sprintf("--port=%d", Port),
+		"-N", "-e", stmt)).Output()
+	if err != nil {
+		return 0, fmt.Errorf("estimating database size: %w", err)
+	}
+	n, err := strconv.ParseInt(strings.TrimSpace(string(out)), 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("parsing size estimate: %w", err)
+	}
+	return n, nil
+}
+
+// formatSize renders a byte count the way DumpAll/RestoreFile's
+// progress line does: one decimal in MB, switching to GB once the
+// number is big enough — routine now that real projects' databases run
+// 10+ GB — that megabytes stop being readable at a glance.
+func formatSize(bytes float64) string {
+	const gb = 1e9
+	if bytes >= gb {
+		return fmt.Sprintf("%.2f GB", bytes/gb)
+	}
+	return fmt.Sprintf("%.1f MB", bytes/1e6)
+}
+
 // DumpAll writes the given databases from the running server into
 // outFile using the version's own mysqldump, showing the exported size
 // grow while it runs.
@@ -563,8 +611,8 @@ func DumpAll(paths pmdir.Paths, version string, dbs []string, outFile string) er
 				return
 			case <-tick.C:
 				if info, err := os.Stat(outFile); err == nil {
-					fmt.Printf("\r  exporting %s  %.1f MB%s", label,
-						float64(info.Size())/1e6, term.ClearLine())
+					fmt.Printf("\r  exporting %s  %s%s", label,
+						formatSize(float64(info.Size())), term.ClearLine())
 				}
 			}
 		}
@@ -579,24 +627,51 @@ func DumpAll(paths pmdir.Paths, version string, dbs []string, outFile string) er
 	if info, statErr := os.Stat(outFile); statErr == nil {
 		size = info.Size()
 	}
-	fmt.Printf("\r  %s %s  %.1f MB%s\n", term.Green("✓"), filepath.Base(outFile),
-		float64(size)/1e6, term.ClearLine())
+	fmt.Printf("\r  %s %s  %s%s\n", term.Green("✓"), filepath.Base(outFile),
+		formatSize(float64(size)), term.ClearLine())
+	return nil
+}
+
+// backupFileNames returns the per-database file names BackupDatabases
+// writes for dbs, in the same order it writes them. It's a pure,
+// testable stand-in for BackupDatabases' naming/no-combined-file
+// behavior, since BackupDatabases itself needs a running server to
+// shell out to mysqldump against.
+func backupFileNames(dbs []string) []string {
+	names := make([]string, len(dbs))
+	for i, db := range dbs {
+		names[i] = db + ".sql"
+	}
+	return names
+}
+
+// BackupDatabases dumps each of dbs into its own <name>.sql file under
+// dir — self-contained (CREATE DATABASE + USE), so each can be
+// restored alone — WITHOUT also writing a combined all-databases.sql.
+// Used for setup's import of a foreign MySQL server, where a dump
+// taken twice would double the disk and time an already multi-GB
+// export needs. See BackupTo for the two-file version other callers
+// (the panel's backup) still want.
+func BackupDatabases(paths pmdir.Paths, version string, dbs []string, dir string) error {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	names := backupFileNames(dbs)
+	for i, db := range dbs {
+		fmt.Printf("database %d of %d: %s\n", i+1, len(dbs), db)
+		if err := DumpAll(paths, version, []string{db}, filepath.Join(dir, names[i])); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
 // BackupTo dumps the given databases into dir: one <name>.sql per
-// database (each self-contained with its CREATE DATABASE, so it can be
-// imported alone) plus a combined all-databases.sql for one-shot
-// restores.
+// database (via BackupDatabases) plus a combined all-databases.sql for
+// one-shot restores.
 func BackupTo(paths pmdir.Paths, version string, dbs []string, dir string) error {
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := BackupDatabases(paths, version, dbs, dir); err != nil {
 		return err
-	}
-	for i, db := range dbs {
-		fmt.Printf("database %d of %d: %s\n", i+1, len(dbs), db)
-		if err := DumpAll(paths, version, []string{db}, filepath.Join(dir, db+".sql")); err != nil {
-			return err
-		}
 	}
 	fmt.Println("combined file:")
 	return DumpAll(paths, version, dbs, filepath.Join(dir, "all-databases.sql"))
@@ -626,6 +701,16 @@ func RestoreFile(paths pmdir.Paths, version, file string) error {
 	var fed atomic.Int64
 	pr, pw := io.Pipe()
 	go func() {
+		// Bulk-import speed: a dump's rows are already consistent with
+		// its own CREATE TABLE statements (foreign keys included), so
+		// checking them again row by row during restore only costs
+		// time. Both settings are understood by MySQL and MariaDB
+		// alike; reset at the end in case this connection is ever
+		// reused.
+		if _, werr := io.WriteString(pw, "SET SESSION foreign_key_checks=0, unique_checks=0;\n"); werr != nil {
+			pw.Close()
+			return
+		}
 		br := bufio.NewReaderSize(f, 1<<20)
 		for {
 			line, readErr := br.ReadString('\n')
@@ -641,6 +726,7 @@ func RestoreFile(paths pmdir.Paths, version, file string) error {
 				}
 			}
 			if readErr != nil {
+				io.WriteString(pw, "SET SESSION foreign_key_checks=1, unique_checks=1;\n")
 				pw.Close()
 				return
 			}
@@ -660,10 +746,10 @@ func RestoreFile(paths pmdir.Paths, version, file string) error {
 				cur := fed.Load()
 				if total > 0 {
 					pct := cur * 100 / total
-					fmt.Printf("\r  importing %s  %3d%%  %.1f / %.1f MB%s", label,
-						pct, float64(cur)/1e6, float64(total)/1e6, term.ClearLine())
+					fmt.Printf("\r  importing %s  %3d%%  %s / %s%s", label,
+						pct, formatSize(float64(cur)), formatSize(float64(total)), term.ClearLine())
 				} else {
-					fmt.Printf("\r  importing %s  %.1f MB%s", label, float64(cur)/1e6, term.ClearLine())
+					fmt.Printf("\r  importing %s  %s%s", label, formatSize(float64(cur)), term.ClearLine())
 				}
 			}
 		}
@@ -679,8 +765,8 @@ func RestoreFile(paths pmdir.Paths, version, file string) error {
 		fmt.Println()
 		return fmt.Errorf("restoring dump: %v: %s", err, out)
 	}
-	fmt.Printf("\r  %s %s  %.1f MB imported%s\n", term.Green("✓"), filepath.Base(file),
-		float64(fed.Load())/1e6, term.ClearLine())
+	fmt.Printf("\r  %s %s  %s imported%s\n", term.Green("✓"), filepath.Base(file),
+		formatSize(float64(fed.Load())), term.ClearLine())
 	return nil
 }
 
@@ -751,13 +837,320 @@ func SetRootPassword(paths pmdir.Paths, version, newPassword string) error {
 // validDBName keeps identifiers boring enough to quote safely.
 var validDBName = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 
-// CreateDatabase creates a database (utf8mb4).
+// Default character set and collation for new databases when none is
+// asked for — what Mullion has always created.
+const (
+	DefaultCharset   = "utf8mb4"
+	DefaultCollation = "utf8mb4_unicode_ci"
+)
+
+// charsetNameRe is the shape every character set / collation name has
+// (utf8mb4, utf8mb4_0900_ai_ci, utf8mb4_uca1400_ai_ci...). Names are
+// also checked against the server's own lists before they reach SQL;
+// this is the belt to that pair of braces.
+var charsetNameRe = regexp.MustCompile(`^[A-Za-z0-9_]{1,64}$`)
+
+// Charset is one character set the server offers, with its collations.
+type Charset struct {
+	Name             string   `json:"name"`
+	Description      string   `json:"description"`
+	DefaultCollation string   `json:"defaultCollation"`
+	Collations       []string `json:"collations"`
+}
+
+// CharsetInfo is what the server offers for new databases.
+type CharsetInfo struct {
+	Charsets        []Charset `json:"charsets"`
+	ServerCharset   string    `json:"serverCharset"`
+	ServerCollation string    `json:"serverCollation"`
+}
+
+// DatabaseInfo is one user database with its default character set and
+// collation.
+type DatabaseInfo struct {
+	Name      string `json:"name"`
+	Charset   string `json:"charset"`
+	Collation string `json:"collation"`
+}
+
+// systemSchemas are the server's own schemas, never listed or dropped.
+var systemSchemas = map[string]bool{
+	"mysql": true, "information_schema": true,
+	"performance_schema": true, "sys": true,
+}
+
+// querySQL runs one statement as root and returns its rows, batch mode
+// (tab-separated, no headers).
+func querySQL(paths pmdir.Paths, version, stmt string) (string, error) {
+	out, err := withPassword(proc.Quiet(clientExe(paths, version),
+		"--user=root", "--host=127.0.0.1", fmt.Sprintf("--port=%d", Port),
+		"-N", "-B", "-e", stmt)).Output()
+	if err != nil {
+		if ee, ok := err.(*exec.ExitError); ok && len(ee.Stderr) > 0 {
+			return "", fmt.Errorf("mysql: %v: %s", err, strings.TrimSpace(string(ee.Stderr)))
+		}
+		return "", fmt.Errorf("mysql: %w", err)
+	}
+	return string(out), nil
+}
+
+// tsvRows splits batch-mode output into rows of tab-separated columns.
+func tsvRows(out string) [][]string {
+	var rows [][]string
+	for _, line := range strings.Split(strings.ReplaceAll(out, "\r\n", "\n"), "\n") {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		cols := strings.Split(line, "\t")
+		for i := range cols {
+			cols[i] = strings.TrimSpace(cols[i])
+		}
+		rows = append(rows, cols)
+	}
+	return rows
+}
+
+const (
+	// charsetsSQL: name, description, default collation.
+	charsetsSQL = "SELECT CHARACTER_SET_NAME, DESCRIPTION, DEFAULT_COLLATE_NAME FROM information_schema.CHARACTER_SETS"
+	// collationsSQL: charset, collation. MariaDB 10.10+ also has
+	// charset-independent names (uca1400_ai_ci) with a NULL charset
+	// here; their per-charset spellings come from fullCollationsSQL.
+	collationsSQL = "SELECT CHARACTER_SET_NAME, COLLATION_NAME FROM information_schema.COLLATIONS WHERE CHARACTER_SET_NAME IS NOT NULL"
+	// fullCollationsSQL is MariaDB 10.10+'s charset+collation pairs
+	// (utf8mb4 / utf8mb4_uca1400_ai_ci); an error on older servers and
+	// on MySQL, which is ignored.
+	fullCollationsSQL = "SELECT CHARACTER_SET_NAME, FULL_COLLATION_NAME FROM information_schema.COLLATION_CHARACTER_SET_APPLICABILITY"
+	serverCharsetSQL  = "SELECT @@character_set_server, @@collation_server"
+	schemataSQL       = "SELECT SCHEMA_NAME, DEFAULT_CHARACTER_SET_NAME, DEFAULT_COLLATION_NAME FROM information_schema.SCHEMATA ORDER BY SCHEMA_NAME"
+)
+
+// commonCharsets come first in the panel's list, in this order.
+var commonCharsets = []string{"utf8mb4", "utf8mb3", "utf8", "latin1", "ascii", "binary", "cp1256"}
+
+// buildCharsetInfo assembles CharsetInfo from the rows of charsetsSQL,
+// collationsSQL (+ fullCollationsSQL) and serverCharsetSQL. Charsets
+// are ordered common-first then by name; each charset's collations put
+// its default first.
+func buildCharsetInfo(charsetRows, collationRows, serverRow [][]string) CharsetInfo {
+	byName := map[string]*Charset{}
+	var order []string
+	for _, r := range charsetRows {
+		if len(r) < 3 || !charsetNameRe.MatchString(r[0]) || byName[r[0]] != nil {
+			continue
+		}
+		byName[r[0]] = &Charset{Name: r[0], Description: r[1], DefaultCollation: r[2]}
+		order = append(order, r[0])
+	}
+	seen := map[string]bool{}
+	for _, r := range collationRows {
+		if len(r) < 2 || !charsetNameRe.MatchString(r[1]) {
+			continue
+		}
+		cs := byName[r[0]]
+		if cs == nil || seen[r[0]+"\x00"+r[1]] {
+			continue
+		}
+		seen[r[0]+"\x00"+r[1]] = true
+		cs.Collations = append(cs.Collations, r[1])
+	}
+	info := CharsetInfo{}
+	if len(serverRow) > 0 && len(serverRow[0]) >= 2 {
+		info.ServerCharset, info.ServerCollation = serverRow[0][0], serverRow[0][1]
+	}
+	rank := map[string]int{}
+	for i, n := range commonCharsets {
+		rank[n] = i + 1
+	}
+	sort.SliceStable(order, func(i, j int) bool {
+		ri, rj := rank[order[i]], rank[order[j]]
+		if ri == 0 {
+			ri = len(commonCharsets) + 1
+		}
+		if rj == 0 {
+			rj = len(commonCharsets) + 1
+		}
+		if ri != rj {
+			return ri < rj
+		}
+		return order[i] < order[j]
+	})
+	for _, n := range order {
+		cs := byName[n]
+		// The default (and, for the server's charset, the server's
+		// collation) must be choosable even if a list missed it.
+		ensure := func(c string) {
+			if c == "" || !charsetNameRe.MatchString(c) || seen[n+"\x00"+c] {
+				return
+			}
+			seen[n+"\x00"+c] = true
+			cs.Collations = append(cs.Collations, c)
+		}
+		ensure(cs.DefaultCollation)
+		if n == info.ServerCharset {
+			ensure(info.ServerCollation)
+		}
+		def := cs.DefaultCollation
+		sort.SliceStable(cs.Collations, func(i, j int) bool {
+			if (cs.Collations[i] == def) != (cs.Collations[j] == def) {
+				return cs.Collations[i] == def
+			}
+			return cs.Collations[i] < cs.Collations[j]
+		})
+		info.Charsets = append(info.Charsets, *cs)
+	}
+	return info
+}
+
+// Charsets asks the running server which character sets and collations
+// it offers.
+func Charsets(paths pmdir.Paths, version string) (CharsetInfo, error) {
+	cs, err := querySQL(paths, version, charsetsSQL)
+	if err != nil {
+		return CharsetInfo{}, fmt.Errorf("listing character sets: %w", err)
+	}
+	coll, err := querySQL(paths, version, collationsSQL)
+	if err != nil {
+		return CharsetInfo{}, fmt.Errorf("listing collations: %w", err)
+	}
+	collRows := tsvRows(coll)
+	if IsMaria(version) {
+		if full, err := querySQL(paths, version, fullCollationsSQL); err == nil {
+			collRows = append(collRows, tsvRows(full)...)
+		}
+	}
+	srv, _ := querySQL(paths, version, serverCharsetSQL)
+	return buildCharsetInfo(tsvRows(cs), collRows, tsvRows(srv)), nil
+}
+
+// Resolve checks a requested charset/collation against what the server
+// offers and fills in the missing half: a collation alone implies its
+// charset; a charset alone gets that charset's default collation; both
+// empty means DefaultCharset/DefaultCollation (or the server's own
+// default if it lacks utf8mb4_unicode_ci).
+func (info CharsetInfo) Resolve(charset, collation string) (string, string, error) {
+	charset, collation = strings.TrimSpace(charset), strings.TrimSpace(collation)
+	find := func(name string) *Charset {
+		for i := range info.Charsets {
+			if strings.EqualFold(info.Charsets[i].Name, name) {
+				return &info.Charsets[i]
+			}
+		}
+		return nil
+	}
+	has := func(cs *Charset, coll string) (string, bool) {
+		for _, c := range cs.Collations {
+			if strings.EqualFold(c, coll) {
+				return c, true
+			}
+		}
+		return "", false
+	}
+	if charset == "" && collation == "" {
+		if cs := find(DefaultCharset); cs != nil {
+			if c, ok := has(cs, DefaultCollation); ok {
+				return cs.Name, c, nil
+			}
+			return cs.Name, cs.DefaultCollation, nil
+		}
+		return info.ServerCharset, info.ServerCollation, nil
+	}
+	if charset == "" {
+		for i := range info.Charsets {
+			if c, ok := has(&info.Charsets[i], collation); ok {
+				return info.Charsets[i].Name, c, nil
+			}
+		}
+		return "", "", fmt.Errorf("the server has no collation %q", collation)
+	}
+	cs := find(charset)
+	if cs == nil {
+		return "", "", fmt.Errorf("the server has no character set %q", charset)
+	}
+	if collation == "" {
+		return cs.Name, cs.DefaultCollation, nil
+	}
+	c, ok := has(cs, collation)
+	if !ok {
+		return "", "", fmt.Errorf("collation %q does not belong to character set %s", collation, cs.Name)
+	}
+	return cs.Name, c, nil
+}
+
+// createDatabaseSQL renders CREATE DATABASE for an already-resolved
+// charset/collation (re-checked here so nothing unvalidated is quoted).
+func createDatabaseSQL(name, charset, collation string) (string, error) {
+	if !validDBName.MatchString(name) {
+		return "", fmt.Errorf("invalid database name %q (letters, digits, _ and - only)", name)
+	}
+	if !charsetNameRe.MatchString(charset) {
+		return "", fmt.Errorf("invalid character set %q", charset)
+	}
+	stmt := fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s CHARACTER SET %s", quoteIdent(name), charset)
+	if collation != "" {
+		if !charsetNameRe.MatchString(collation) {
+			return "", fmt.Errorf("invalid collation %q", collation)
+		}
+		stmt += " COLLATE " + collation
+	}
+	return stmt + ";", nil
+}
+
+// CreateDatabase creates a database (utf8mb4 / utf8mb4_unicode_ci).
 func CreateDatabase(paths pmdir.Paths, version, name string) error {
+	return CreateDatabaseWith(paths, version, name, "", "")
+}
+
+// CreateDatabaseWith creates a database with the given character set
+// and collation (either may be empty — see CharsetInfo.Resolve). Both
+// are checked against the server's own lists first.
+func CreateDatabaseWith(paths pmdir.Paths, version, name, charset, collation string) error {
 	if !validDBName.MatchString(name) {
 		return fmt.Errorf("invalid database name %q (letters, digits, _ and - only)", name)
 	}
-	return runSQL(paths, version,
-		fmt.Sprintf("CREATE DATABASE IF NOT EXISTS %s CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;", quoteIdent(name)))
+	if charset == "" && collation == "" {
+		stmt, _ := createDatabaseSQL(name, DefaultCharset, DefaultCollation)
+		return runSQL(paths, version, stmt)
+	}
+	info, err := Charsets(paths, version)
+	if err != nil {
+		return err
+	}
+	cs, coll, err := info.Resolve(charset, collation)
+	if err != nil {
+		return err
+	}
+	stmt, err := createDatabaseSQL(name, cs, coll)
+	if err != nil {
+		return err
+	}
+	return runSQL(paths, version, stmt)
+}
+
+// parseSchemata reads schemataSQL's rows, minus the system schemas.
+func parseSchemata(out string) []DatabaseInfo {
+	var dbs []DatabaseInfo
+	for _, r := range tsvRows(out) {
+		if systemSchemas[r[0]] {
+			continue
+		}
+		d := DatabaseInfo{Name: r[0]}
+		if len(r) >= 3 {
+			d.Charset, d.Collation = r[1], r[2]
+		}
+		dbs = append(dbs, d)
+	}
+	return dbs
+}
+
+// UserDatabaseDetails lists the user databases with their default
+// character set and collation (one query).
+func UserDatabaseDetails(paths pmdir.Paths, version string) ([]DatabaseInfo, error) {
+	out, err := querySQL(paths, version, schemataSQL)
+	if err != nil {
+		return nil, fmt.Errorf("listing databases: %w", err)
+	}
+	return parseSchemata(out), nil
 }
 
 // DropDatabase permanently deletes a database and everything in it.

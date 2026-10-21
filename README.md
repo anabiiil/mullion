@@ -75,6 +75,9 @@ workers, Git and a terminal for each project are all in one control panel.
 - **Packages**: search Packagist and npm, then install or remove
   packages.
 - **Git**: diff, stage, commit, pull, push, branches, history and stashes.
+- **Cache**: the project's own keys in Mullion's Redis (found from its
+  `.env` prefix), a value preview, delete, "flush this project's cache",
+  a live command monitor, and a one-click `.env` switch to Redis.
 - **Terminal**, **Domains** and **Settings** tabs.
 
 **Runtimes**
@@ -86,9 +89,10 @@ workers, Git and a terminal for each project are all in one control panel.
   between dev and build.
 
 **Databases**
-- MySQL/MariaDB, PostgreSQL and MongoDB, each installed, started and
-  stopped on its own.
-- phpMyAdmin, pgAdmin 4 and mongo-express, already connected.
+- MySQL/MariaDB, PostgreSQL, MongoDB, SQL Server and Redis, each
+  installed, started and stopped on its own.
+- phpMyAdmin, pgAdmin 4, mongo-express, Adminer and phpRedisAdmin,
+  already connected.
 - Backups and restore, with a backup offered before anything destructive.
 
 **Apps**
@@ -180,6 +184,27 @@ Don't want Scoop? Download `mullion.exe` from Releases, double-click it, and ans
 **Run setup now?** with Y. Windows SmartScreen may warn about the
 unsigned exe the first time: click **More info → Run anyway**.
 
+### Upgrading
+
+When a new release is out, the control panel puts a coral dot on
+**Settings** (it checks GitHub at most every 6 hours). **Settings → About &
+updates** shows your version, how Mullion was installed and the latest
+release, with an **Upgrade** button that shows the upgrade's output as it
+runs. From a terminal:
+
+```bash
+mullion upgrade           # asks first, then upgrades
+mullion upgrade --check   # only check: exit code 0 = up to date, 10 = update available
+```
+
+Mullion upgrades the way it was installed: `brew update` + `brew upgrade
+anabiiil/tap/mullion` for Homebrew, `scoop update` + `scoop update mullion`
+for Scoop, or, for a downloaded binary, it downloads the release, checks
+its SHA-256 and swaps the executable in place. Afterwards the background
+agent, the Windows tray icon and the open panel restart on the new version
+(Mullion.app quits and reopens by itself), so sites blip for a moment.
+If the upgrade fails, the panel shows the command to run by hand.
+
 ### What setup does
 
 `mullion setup` installs the following:
@@ -254,12 +279,57 @@ Click a project's name to open its page:
 | **Packages** | Search Packagist and the npm registry, then install (optionally as dev) or remove. |
 | **Git** | See [Git](#git). |
 | **Terminal** | A shell in the project folder with the project's PHP and Node. |
+| **Watch** | What the site does while you use it, live: requests, logs and exceptions, `dump()` output, and for Laravel queries (N+1, slow, duplicates), jobs, cache, events, views, HTTP calls and a per-request timeline. See [Watching a site](#watching-a-site). |
 | **Domains** | Add subdomain aliases and the `*` wildcard; frontend sites can also change their dev-server port here. |
 | **Settings** | PHP or Node version for this site, dev/build mode, HTTPS, rename, and unlink. |
 
 <p align="center">
   <img src="docs/assets/screenshots/project-commands.png" alt="A project's Commands tab running php artisan migrate:status" width="820">
 </p>
+
+### Watching a site
+
+The **Watch** tab (or `mullion watch <site> on`) shows what a PHP site
+does while you click through it. It is off until you turn it on, per
+project, and nothing leaves your computer. It has three levels:
+
+- **Requests & logs** need nothing from the project: requests come from
+  Caddy's access log for the site, logs from `storage/logs/*.log`
+  (`laravel.log` and the daily `laravel-YYYY-MM-DD.log`). Exceptions are
+  grouped, with their stack trace; click any `file:line` to open it in
+  your editor (VS Code, Cursor, PhpStorm, Zed or Sublime Text — pick one
+  in the tab's settings, or let Mullion find it).
+- **Dumps** sends `dump()` and `dd()` to the Dumps tab, instead of the
+  page or as well as it.
+- **Deep** (Laravel 10, 11 and 12) records queries, with N+1 (the same
+  query 5+ times from one line), duplicate and slow (100 ms+) flags, jobs,
+  cache, your app's events, views, `Http::` calls and log messages, and
+  links them into a timeline per request. Click a request to see it.
+
+Dumps and Deep work without a Composer package. Mullion loads a small
+PHP file before the site's code with `auto_prepend_file`, which Caddy
+passes as `PHP_VALUE` to PHP for this site only; php.ini doesn't change.
+The file hooks into Laravel once the app exists. If anything in it
+fails, it stays quiet rather than break the app. Queue workers on the
+Workers tab and commands on the Commands tab load it too (through
+`PHP_INI_SCAN_DIR`); running workers restart when you turn it on or off.
+The Terminal tab's shells don't. On Windows, php-cgi ignores per-site
+`PHP_VALUE`, so while any site is watched Mullion restarts php-cgi with
+an extra ini scan dir that loads the file for every site; for sites
+you're not watching it returns straight away. When the last site stops
+watching, php-cgi restarts without it.
+
+Events are written to `~/.mullion/watch/<site>/events.jsonl` (20 MB, then
+rotated once). Passwords, tokens, API keys, cookies and authorization
+headers are redacted. **Clear** empties the list; **Pause** stops it
+scrolling.
+
+```sh
+mullion watch blog on                       # requests, logs, dumps and deep
+mullion watch blog on --basic               # requests & logs only
+mullion watch blog tail --type queries,exceptions
+mullion watch blog off
+```
 
 ### Frontend dev servers
 
@@ -273,7 +343,10 @@ with HMR and websockets working.
   shows the real error and the end of the log.
 - **Idle sleep.** A site with no open tab sleeps after 2 minutes. A site
   with an idle open tab sleeps after 10 minutes; requests and code edits
-  reset that clock.
+  reset that clock. Change both (or turn sleeping off) in Settings →
+  Frontend dev servers or with `mullion dev idle --no-tab 5m --with-tab
+  30m` / `--never`; a site can have its own limits on its Settings tab
+  (`mullion dev idle --site <name> …`).
 - **Dev or build.** `mullion serve build` serves the last production
   build instead, and builds it if there isn't one yet.
 
@@ -338,6 +411,7 @@ starts and stops independently, and an engine you stopped stays stopped.
 | MySQL (or MariaDB) | 8.4 LTS on `127.0.0.1:3306`, user `root` | phpMyAdmin at `https://phpmyadmin.test` | `mullion mysql`, `mullion db`, `mullion mariadb` |
 | PostgreSQL | 17 on `127.0.0.1:5432`, user `postgres` | pgAdmin 4 (a server is registered already) | `mullion postgres` (`pg`) |
 | MongoDB | 8.0 on `127.0.0.1:27017` | mongo-express at `https://mongo.test` | `mullion mongo`, `mullion mongo-express` |
+| SQL Server | 2025 Developer on `127.0.0.1,1433`, user `sa` | Adminer at `https://adminer.test` | `mullion mssql`, `mullion adminer` |
 
 - **Backups.** The panel's **Back up now** button, or `mullion mysql
   backup`, `mullion postgres backup` and `mullion mongo backup`, write a
@@ -348,9 +422,126 @@ starts and stops independently, and an engine you stopped stays stopped.
 - **Uninstalling** an engine offers a backup first. Switching MySQL
   versions migrates your databases automatically.
 
+### SQL Server
+
+Mullion installs Microsoft SQL Server 2025, Developer edition, which is
+free for development and testing but not for production. Installing it
+means accepting Microsoft's license terms.
+
+- **macOS.** SQL Server has no Mac build, so Mullion runs Microsoft's
+  official Linux container (`mcr.microsoft.com/mssql/server:2025-latest`)
+  under [OrbStack](https://orbstack.dev). If OrbStack is missing, the SQL
+  Server tab (or `mullion mssql orbstack install`) offers to install it.
+  OrbStack's first launch opens its own setup window and may ask you to
+  approve its helper. The data lives in the Docker volume
+  `mullion-mssql`. On Apple Silicon the image runs through Rosetta, which
+  works but isn't officially supported by Microsoft.
+- **Windows.** A native named instance, `MULLION`, installed with
+  Microsoft's setup (about 1.5 GB, one administrator prompt, 10–20
+  minutes). It runs as the `MSSQL$MULLION` service on a fixed port.
+- **Connecting.** Use login `sa` with the generated password (the panel
+  has a copy button, or run `mullion mssql password --show`). The tab
+  shows a ready-to-paste Laravel `.env` block (`DB_CONNECTION=sqlsrv`).
+  PHP needs the SQL Server extension: use the tab's **Enable it now**
+  button, or PHP → Extensions.
+- **Backups** are `.bak` files, one per database. Use
+  `mullion mssql backup` / `restore <file.bak|folder> [database]`, or
+  the panel.
+
 <p align="center">
   <img src="docs/assets/screenshots/database-postgres.png" alt="The PostgreSQL tab: server status and databases" width="820">
 </p>
+
+## Redis
+
+The Database page's **Redis** tab (and `mullion redis`) runs a Redis
+server for cache, sessions and queues on `127.0.0.1:6379`, no password.
+
+- **Where it comes from.** On macOS `mullion redis install` downloads the
+  latest stable source from `download.redis.io`, checks it against the
+  SHA-256 published in [redis/redis-hashes](https://github.com/redis/redis-hashes),
+  and builds just `redis-server` and `redis-cli` with the Xcode Command
+  Line Tools (about a minute; no Homebrew, no TLS, no modules). If the
+  tools are missing you are told to run `xcode-select --install`. Redis
+  has no official Windows build, so on Windows Mullion downloads the
+  portable MSYS2 build from
+  [redis-windows/redis-windows](https://github.com/redis-windows/redis-windows)
+  (compiled from the official sources; a plain zip, no installer, no
+  service, no admin rights), checked against GitHub's SHA-256. Redis 8 is
+  licensed RSALv2 / SSPLv1 / AGPLv3 at your choice.
+- **Dev defaults** (`~/.mullion/redis/redis.conf`, rewritten on start):
+  loopback only, 16 databases, RDB snapshots to `~/.mullion/redis/data/dump.rdb`
+  within 5 minutes of a write and on every stop (no AOF), and
+  `maxmemory 512mb` with `noeviction` — past the cap writes fail loudly
+  instead of silently dropping queued jobs or sessions.
+- **The tab** shows status, memory, keys per database, ops/sec and the
+  hit rate, start/stop/restart, flush one database or all of them,
+  backup and restore (`dump.rdb`, kept in the backups folder), and the
+  Laravel `.env` block (`REDIS_CLIENT=phpredis`, `REDIS_HOST`,
+  `REDIS_PORT`, `REDIS_PASSWORD=null`, `CACHE_STORE=redis` —
+  `CACHE_DRIVER` on Laravel 10 and older — `SESSION_DRIVER=redis`,
+  `QUEUE_CONNECTION=redis`). It warns when the global PHP lacks the
+  `redis` extension (built into the macOS builds; on Windows one click
+  fetches it from PECL).
+- **phpRedisAdmin** at `https://redis.test` — a PHP web UI served by
+  Mullion's PHP like Adminer, with its Predis dependency installed
+  without Composer. Each database row's **Show** opens it there.
+- **A project's Cache tab** reads the project's `.env` — `REDIS_HOST`,
+  `REDIS_PORT`, `REDIS_DB`/`REDIS_CACHE_DB`, `REDIS_PREFIX`,
+  `CACHE_PREFIX` and `APP_NAME` (Laravel's default prefixes are
+  `<app_name>_database_` and `<app_name>_cache_`, or the dashed form a
+  Laravel 12 published config uses) — and lists only that project's keys
+  (SCAN with MATCH, never `KEYS *`) with type, TTL and size, a bounded
+  value preview, delete, and **Flush this project's cache** (SCAN +
+  UNLINK of the cache prefix only). **Live monitor** streams the
+  project's commands (Redis MONITOR, filtered to its prefix and
+  databases) and stops by itself after 1-30 minutes. **Use Redis in this
+  project** shows the `.env` diff, lets you pick the lines, and saves the
+  old file as `.env.mullion-backup` first.
+- `mullion redis install|uninstall [--keep-data]|start|stop|restart|status|cli|flush [--db N]|backup|restore <file>|env|open`.
+  Redis starts with the stack, stays stopped after `mullion redis stop`,
+  shows in `mullion status`, `mullion doctor` and on the Ports page
+  (`mullion port set redis <port>`).
+
+## Mail
+
+The **Mail** page runs [Mailpit](https://mailpit.axllent.org/) (MIT), a
+local SMTP server that catches every email your apps send and keeps it in
+an inbox instead of delivering it — a local Mailtrap. Install it from the
+page or with `mullion mail install` (a ~10 MB download from Mailpit's
+GitHub releases).
+
+- **Connect your app.** SMTP on `127.0.0.1:1025`, no TLS, any username
+  and password. `mullion mail env` (or the page's copy button) prints the
+  Laravel `.env` block — `MAIL_MAILER=smtp`, `MAIL_HOST=127.0.0.1`,
+  `MAIL_PORT=1025`, `MAIL_USERNAME=null`, `MAIL_PASSWORD=null`,
+  `MAIL_SCHEME=null` (Laravel 11+) and `MAIL_ENCRYPTION=null` (Laravel
+  10 and older). The page also has a nodemailer snippet and the plain
+  SMTP settings.
+- **Read mail** on the page (the newest 50 messages, refreshed every few
+  seconds, with an unread count on the sidebar) or in Mailpit's own UI at
+  `https://mail.test`. A message opens with its HTML (sandboxed), text,
+  headers and source, plus Mailpit's **HTML compatibility** and **link**
+  checks. Spam scoring needs a SpamAssassin server, which Mullion
+  doesn't run.
+- **Send a test email** from the page (HTML and/or text, attachments) or
+  with `mullion mail send --to you@example.test --subject Hi --html
+  mail.html --attach file.pdf`.
+- **Catch PHP `mail()`.** The toggle (or `mullion mail catch-php on`)
+  sets `sendmail_path` to Mailpit's `sendmail` in every installed PHP's
+  php.ini — on Windows `SMTP`/`smtp_port` — including versions installed
+  later. Turning it off restores the previous values.
+- **Release to a real inbox (optional).** Set up a relay on the page
+  (host, port, STARTTLS/TLS, login, an allowed-recipients pattern) and
+  each message gets a **Release…** button that delivers that one message
+  through it. Nothing ever goes out otherwise. The relay settings are
+  stored in `~/.mullion/mailpit` with owner-only permissions.
+- **Ports.** SMTP 1025 and inbox 8025 by default; move them on the Ports
+  page or with `mullion port set mail-smtp|mail-ui <port>`.
+- `mullion mail start|stop|restart|status|open|clear`, and `mullion mail
+  uninstall [--keep-mail]`. Mail starts with the stack, stays stopped
+  after `mullion mail stop`, and shows in `mullion status` and `mullion
+  doctor`. Mailpit keeps up to 1,000 messages and drops the oldest.
 
 ## PHP and Node
 
@@ -368,6 +559,17 @@ starts and stops independently, and an engine you stopped stays stopped.
     execution and input time, input vars, errors, timezone, and OPcache
     timestamps. Use it in the panel or with `mullion php ini set
     memory_limit 512M`.
+  - **OPcache** card per version (and `mullion php opcache [v] [--on|--off]
+    [--cli on|off] [--jit off|tracing|function] [--status] [--reset]`):
+    on/off for sites and the CLI, JIT mode and buffer, memory, max files,
+    timestamp validation and frequency, plus the live hit rate, memory
+    and cached scripts read from that version's running php-fpm/php-cgi
+    (not the CLI). New installs get OPcache on with
+    `validate_timestamps=1`, `revalidate_freq=0` (edits show on the next
+    reload) and JIT off. On Windows the `zend_extension=opcache` line is
+    managed for you (PHP 8.5+ has OPcache built in). On macOS the static
+    builds include extensions (swoole, opentelemetry) that make PHP turn
+    the JIT off; the card says so.
 - **Node:**
   - `mullion node install 22`, `mullion node use 22`, or
     `mullion node isolate 20`.
@@ -414,6 +616,7 @@ website has the full help text.
 | `mullion ui` | Open the control panel |
 | `mullion app` | Install Mullion.app into Applications (macOS) |
 | `mullion doctor` | Diagnose the whole stack (paste the output when reporting a problem) |
+| `mullion upgrade` | Upgrade to the latest release (`--check` only checks; exit code 10 = update available) |
 | `mullion link [name]` | Serve the current directory at `<name>.test` (`--secure`, `--php`, `--build`, `--dir`) |
 | `mullion unlink` / `links` / `rename [old] <new>` | Remove, list or rename sites |
 | `mullion secure` / `unsecure [name]` | HTTPS with a locally-trusted certificate / back to HTTP |
@@ -422,13 +625,16 @@ website has the full help text.
 | `mullion tld [tld]` | Show or change the domain suffix for all sites |
 | `mullion serve dev\|build [name]` | Choose what a frontend domain serves |
 | `mullion dev start\|stop\|restart [name]` | Control a site's managed dev server |
+| `mullion dev idle [--no-tab 5m] [--with-tab 30m] [--never] [--site name]` | When idle dev servers go to sleep |
 | `mullion run [site] -- <cmd…>` | Run a command in a site's folder with its PHP and Node |
 | `mullion worker add\|list\|start\|stop\|restart\|logs\|remove` | Manage a site's background workers |
+| `mullion watch <site> on\|off\|status\|tail\|clear` | The live watcher: requests, logs, dumps, queries… (`tail --type queries,logs`, `on --basic`) |
 | `mullion pkg search\|list\|add\|remove` | Composer/npm packages for a linked site |
 | `mullion php install\|list\|available\|uninstall` | Manage PHP versions |
 | `mullion use <v>` / `isolate <v>` / `unisolate` | Global PHP / pin one project / unpin |
 | `mullion php ext list\|enable\|disable\|get` | PHP extensions (PECL downloads on Windows) |
 | `mullion php ini [v]` / `php ini set <key> <value>` | Show or set curated php.ini settings |
+| `mullion php opcache [v] [--on\|--off] [--cli on\|off] [--jit off\|tracing\|function] [--status] [--reset]` | OPcache settings and live status for a PHP version |
 | `mullion composer install [v]` | Install or update Composer |
 | `mullion node install\|use\|list\|available\|uninstall` | Manage Node versions |
 | `mullion node isolate\|unisolate\|which` | Pin a project's Node / unpin / explain resolution |
@@ -440,7 +646,12 @@ website has the full help text.
 | `mullion postgres db list\|create\|drop` | PostgreSQL databases |
 | `mullion mongo install\|start\|stop\|status\|backup\|restore\|uninstall` | Manage MongoDB |
 | `mullion mongo db list\|create\|drop` | MongoDB databases |
+| `mullion mssql install\|start\|stop\|status\|password\|backup\|restore\|uninstall` | Manage SQL Server (`mssql orbstack install` on macOS) |
+| `mullion mssql db list\|create\|drop` | SQL Server databases |
+| `mullion adminer [install\|open\|uninstall]` | Adminer, SQL Server's web admin tool |
 | `mullion backups` | List database backups |
+| `mullion redis install\|start\|stop\|restart\|status\|cli\|flush\|backup\|restore\|env\|open\|uninstall` | Redis (and phpRedisAdmin at `https://redis.test`) |
+| `mullion mail install\|start\|stop\|restart\|status\|open\|clear\|env\|send\|catch-php\|uninstall` | Mail: the local mail catcher (Mailpit) at `https://mail.test` |
 | `mullion phpmyadmin [v]` / `pgadmin` / `mongo-express` | Install/open the admin tools (each has `uninstall`) |
 | `mullion heidisql` | HeidiSQL desktop client (Windows) |
 | `mullion ports` | Ports Mullion uses, who holds them, conflicts |

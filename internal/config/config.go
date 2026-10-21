@@ -53,6 +53,18 @@ type Config struct {
 	// MongoStopped records that the user stopped MongoDB on purpose —
 	// see MySQLStopped.
 	MongoStopped bool `json:"mongoStopped,omitempty"`
+	// MSSQL is the installed SQL Server release ("2025"; "" = not
+	// installed). On macOS it runs as a Linux container under OrbStack,
+	// on Windows as a native named instance (MULLION).
+	MSSQL string `json:"mssql,omitempty"`
+	// MSSQLPassword is the sa password, generated at install. Stored in
+	// plain text: a LOCAL dev server bound to 127.0.0.1. Kept across an
+	// uninstall that keeps the data, because the data (master database)
+	// remembers it.
+	MSSQLPassword string `json:"mssqlPassword,omitempty"`
+	// MSSQLStopped records that the user stopped SQL Server on purpose —
+	// see MySQLStopped.
+	MSSQLStopped bool `json:"mssqlStopped,omitempty"`
 	// GlobalNode is the full Node version the node/current junction points at.
 	GlobalNode string `json:"globalNode,omitempty"`
 	// BackupDir is where database backups are written ("" = the default
@@ -63,6 +75,33 @@ type Config struct {
 	MySQLPort    int `json:"mysqlPort,omitempty"`
 	PostgresPort int `json:"postgresPort,omitempty"`
 	MongoPort    int `json:"mongoPort,omitempty"`
+	// MSSQLPort overrides SQL Server's default port (1433).
+	MSSQLPort int `json:"mssqlPort,omitempty"`
+	// Mailpit is the installed Mailpit version — the local mail catcher
+	// on the Mail page ("" = not installed).
+	Mailpit string `json:"mailpit,omitempty"`
+	// MailStopped records that the user stopped Mail on purpose — see
+	// MySQLStopped.
+	MailStopped bool `json:"mailStopped,omitempty"`
+	// MailSMTPPort and MailUIPort override Mailpit's default ports (1025
+	// SMTP, 8025 inbox).
+	MailSMTPPort int `json:"mailSmtpPort,omitempty"`
+	MailUIPort   int `json:"mailUiPort,omitempty"`
+	// MailCatchPHP routes PHP's mail() into Mailpit: sendmail_path (or
+	// SMTP/smtp_port on Windows) in every installed version's php.ini.
+	MailCatchPHP bool `json:"mailCatchPhp,omitempty"`
+	// MailIniPrev remembers, per PHP version Mullion changed, the php.ini
+	// values MailCatchPHP replaced (directive -> raw value; a directive
+	// missing from the map was not set), so turning it off restores them.
+	MailIniPrev map[string]map[string]string `json:"mailIniPrev,omitempty"`
+	// Redis is the installed Redis version ("" = not installed) — built
+	// from source on macOS, the portable redis-windows build on Windows.
+	Redis string `json:"redis,omitempty"`
+	// RedisStopped records that the user stopped Redis on purpose — see
+	// MySQLStopped.
+	RedisStopped bool `json:"redisStopped,omitempty"`
+	// RedisPort overrides Redis's default port (6379).
+	RedisPort int `json:"redisPort,omitempty"`
 	// UI holds the control panel's preferences (terminal placement,
 	// remembered tabs, favorite commands…). They live here, not in the
 	// browser's storage, because the panel's origin (a random port)
@@ -71,6 +110,47 @@ type Config struct {
 	// WildcardDNS enables Mullion's local DNS resolver for *.<tld>, so
 	// sites' wildcard subdomains resolve without hosts-file entries.
 	WildcardDNS bool `json:"wildcardDns,omitempty"`
+	// DevIdleNoTabMin and DevIdleWithTabMin are how many idle minutes a
+	// frontend dev server gets before the agent puts it to sleep — with
+	// no browser tab open, and with one open (0 = the defaults, 2 and
+	// 10). DevNeverSleep keeps every dev server up. Sites can override
+	// all three (Site.DevIdle*).
+	DevIdleNoTabMin   int  `json:"devIdleNoTabMin,omitempty"`
+	DevIdleWithTabMin int  `json:"devIdleWithTabMin,omitempty"`
+	DevNeverSleep     bool `json:"devNeverSleep,omitempty"`
+}
+
+// Default idle limits for frontend dev servers.
+const (
+	DefaultDevIdleNoTab   = 2 * time.Minute
+	DefaultDevIdleWithTab = 10 * time.Minute
+	// MaxDevIdleMin bounds a configured limit (one day).
+	MaxDevIdleMin = 1440
+)
+
+// DevIdle resolves a dev server's idle limits: the site's own setting
+// when it has one (never, or custom minutes — a minute value left 0
+// falls back to the global one), else the global setting, else the
+// defaults. never means the site is not put to sleep at all.
+func (c Config) DevIdle(s Site) (noTab, withTab time.Duration, never bool) {
+	minutes := func(m int, def time.Duration) time.Duration {
+		if m <= 0 {
+			return def
+		}
+		if m > MaxDevIdleMin {
+			m = MaxDevIdleMin
+		}
+		return time.Duration(m) * time.Minute
+	}
+	noTab = minutes(c.DevIdleNoTabMin, DefaultDevIdleNoTab)
+	withTab = minutes(c.DevIdleWithTabMin, DefaultDevIdleWithTab)
+	switch {
+	case s.DevIdleNever:
+		return noTab, withTab, true
+	case s.DevIdleNoTabMin > 0 || s.DevIdleWithTabMin > 0:
+		return minutes(s.DevIdleNoTabMin, noTab), minutes(s.DevIdleWithTabMin, withTab), false
+	}
+	return noTab, withTab, c.DevNeverSleep
 }
 
 type Site struct {
@@ -94,7 +174,13 @@ type Site struct {
 	// DevPaused records that the user stopped this site's dev server on
 	// purpose — Mullion must not resurrect it until they start it again.
 	DevPaused bool `json:"devPaused,omitempty"`
-	Secure    bool `json:"secure"`
+	// DevIdleNever and DevIdleNoTabMin/DevIdleWithTabMin override the
+	// global idle-sleep setting for this site's dev server (all unset =
+	// follow Config's; see Config.DevIdle).
+	DevIdleNever      bool `json:"devIdleNever,omitempty"`
+	DevIdleNoTabMin   int  `json:"devIdleNoTabMin,omitempty"`
+	DevIdleWithTabMin int  `json:"devIdleWithTabMin,omitempty"`
+	Secure            bool `json:"secure"`
 	// Aliases are extra subdomain labels served by this site, e.g.
 	// "api" -> api.<name>.<tld>. A "*" entry serves every subdomain
 	// (resolution then needs WildcardDNS).
@@ -104,6 +190,38 @@ type Site struct {
 	// Workers are long-running background commands supervised for this
 	// site (queue workers, the Laravel scheduler, custom daemons).
 	Workers []Worker `json:"workers,omitempty"`
+	// Watch is the project page's live watcher (nil = off).
+	Watch *Watch `json:"watch,omitempty"`
+}
+
+// Watch configures a site's live watcher (the project page's Watch
+// tab). Requests and logs need nothing from the project; Dumps and Deep
+// load Mullion's PHP prepend (auto_prepend_file) for this site only.
+type Watch struct {
+	Enabled bool `json:"enabled"`
+	// Dumps routes dump()/dd() to Mullion.
+	Dumps bool `json:"dumps,omitempty"`
+	// DumpsInPage keeps dump() output in the page as well.
+	DumpsInPage bool `json:"dumpsInPage,omitempty"`
+	// Deep records queries, jobs, cache, events, views, HTTP calls and
+	// a per-request timeline (Laravel).
+	Deep bool `json:"deep,omitempty"`
+	// SlowRequestMs, SlowQueryMs and NPlusOne are thresholds (0 = the
+	// defaults: 500ms, 100ms, 5 repeats).
+	SlowRequestMs int `json:"slowRequestMs,omitempty"`
+	SlowQueryMs   int `json:"slowQueryMs,omitempty"`
+	NPlusOne      int `json:"nPlusOne,omitempty"`
+	// Editor opens path:line links ("" = auto-detect).
+	Editor string `json:"editor,omitempty"`
+}
+
+// WatchOn reports whether the site's watcher is enabled.
+func (s Site) WatchOn() bool { return s.Watch != nil && s.Watch.Enabled }
+
+// WatchPrepend reports whether the site needs Mullion's PHP prepend
+// (dumps or the deep watcher on).
+func (s Site) WatchPrepend() bool {
+	return s.WatchOn() && s.IsPHP() && (s.Watch.Dumps || s.Watch.Deep)
 }
 
 // Worker is one supervised background command of a site.

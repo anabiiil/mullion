@@ -5,16 +5,21 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"time"
 
+	"pm/internal/adminer"
 	"pm/internal/devserver"
 	"pm/internal/mongodb"
+	"pm/internal/mssql"
 	"pm/internal/mysql"
 	"pm/internal/pgadmin"
 	"pm/internal/pmdir"
 	"pm/internal/postgres"
+	"pm/internal/redis"
+	"pm/internal/redisadmin"
 )
 
 // phpMyAdminSite and mongoExpressSite are the fixed site names
@@ -59,7 +64,7 @@ type AdminToolInfo struct {
 // "<timestamp>-migrate-<version>" directories `mullion mysql install
 // <other-version>` leaves when it migrates databases across a version
 // switch, which are a different feature and not listed here).
-var engineBackupSuffixes = []string{"mysql", "postgres", "mongo"}
+var engineBackupSuffixes = []string{"mysql", "postgres", "mongo", "mssql", "redis"}
 
 // newBackupDir names a fresh backup directory: <timestamp>-<engine>,
 // sorted newest-first by plain string comparison.
@@ -135,8 +140,12 @@ func (a *App) BackupEngine(ctx context.Context, engine string) (string, error) {
 		return a.backupPostgres()
 	case "mongo":
 		return a.backupMongo(ctx)
+	case "mssql":
+		return a.backupMSSQL()
+	case "redis":
+		return a.backupRedis()
 	default:
-		return "", fmt.Errorf("unknown engine %q (want mysql, postgres, or mongo)", engine)
+		return "", fmt.Errorf("unknown engine %q (want mysql, postgres, mongo, mssql, or redis)", engine)
 	}
 }
 
@@ -288,7 +297,7 @@ func (a *App) RestoreBackup(ctx context.Context, dir, db string) error {
 	}
 	engine, ok := backupEngineFromName(filepath.Base(dir))
 	if !ok {
-		return fmt.Errorf("%s doesn't look like a mullion backup (expected a name ending in -mysql, -postgres, or -mongo)", filepath.Base(dir))
+		return fmt.Errorf("%s doesn't look like a mullion backup (expected a name ending in -mysql, -postgres, -mongo, -mssql, or -redis)", filepath.Base(dir))
 	}
 	switch engine {
 	case "mysql":
@@ -297,6 +306,12 @@ func (a *App) RestoreBackup(ctx context.Context, dir, db string) error {
 		return a.restorePostgresBackup(dir, db)
 	case "mongo":
 		return a.restoreMongoBackup(ctx, dir, db)
+	case "mssql":
+		return a.restoreMSSQLBackup(dir, db)
+	case "redis":
+		// A snapshot holds every database: db (a database name) doesn't
+		// apply.
+		return a.restoreRedisBackup(dir)
 	default:
 		return fmt.Errorf("unknown engine %q", engine)
 	}
@@ -465,6 +480,13 @@ func engineDataLocation(paths pmdir.Paths, engine string) string {
 		return postgres.BaseDir(paths) + " (data-* subdirectories)"
 	case "mongo":
 		return mongodb.DataDir(paths)
+	case "mssql":
+		if runtime.GOOS == "windows" {
+			return `the instance folder under C:\Program Files\Microsoft SQL Server (MSSQL*.` + mssql.InstanceName + `)`
+		}
+		return "the Docker volume " + mssql.VolumeName
+	case "redis":
+		return redis.DataDir(paths)
 	default:
 		return ""
 	}
@@ -480,6 +502,10 @@ func engineAdminTool(engine string) string {
 		return "pgadmin"
 	case "mongo":
 		return "mongo-express"
+	case "mssql":
+		return "adminer"
+	case "redis":
+		return "phpredisadmin"
 	default:
 		return ""
 	}
@@ -493,9 +519,9 @@ func engineAdminTool(engine string) string {
 // the backup directory ("" if backupFirst was false).
 func (a *App) UninstallEngine(ctx context.Context, engine string, backupFirst, deleteData bool) (string, error) {
 	switch engine {
-	case "mysql", "postgres", "mongo":
+	case "mysql", "postgres", "mongo", "mssql", "redis":
 	default:
-		return "", fmt.Errorf("unknown engine %q (want mysql, postgres, or mongo)", engine)
+		return "", fmt.Errorf("unknown engine %q (want mysql, postgres, mongo, mssql, or redis)", engine)
 	}
 
 	backupDir := ""
@@ -526,6 +552,12 @@ func (a *App) UninstallEngine(ctx context.Context, engine string, backupFirst, d
 				return backupDir, err
 			}
 		}
+	case "mssql":
+		// Removing the container/instance stops it.
+	case "redis":
+		if err := redis.Stop(a.Paths); err != nil {
+			return backupDir, err
+		}
 	}
 
 	var base string
@@ -537,7 +569,16 @@ func (a *App) UninstallEngine(ctx context.Context, engine string, backupFirst, d
 	case "mongo":
 		base = mongodb.BaseDir(a.Paths)
 	}
-	if err := removeEngineBinaries(base, deleteData); err != nil {
+	if engine == "mssql" {
+		// Container + (optionally) its volume, or the Windows instance.
+		if err := uninstallMSSQL(ctx, a.Paths, deleteData); err != nil {
+			return backupDir, err
+		}
+	} else if engine == "redis" {
+		if err := redis.Remove(a.Paths, !deleteData); err != nil {
+			return backupDir, err
+		}
+	} else if err := removeEngineBinaries(base, deleteData); err != nil {
 		return backupDir, err
 	}
 	if !deleteData {
@@ -558,6 +599,18 @@ func (a *App) UninstallEngine(ctx context.Context, engine string, backupFirst, d
 	case "mongo":
 		a.State.Config.Mongo = ""
 		a.State.Config.MongoStopped = false
+	case "mssql":
+		a.State.Config.MSSQL = ""
+		a.State.Config.MSSQLStopped = false
+		// Kept data still holds this sa password; a reinstall over it
+		// must log in with the same one.
+		if deleteData {
+			a.State.Config.MSSQLPassword = ""
+			mssql.Password = ""
+		}
+	case "redis":
+		a.State.Config.Redis = ""
+		a.State.Config.RedisStopped = false
 	}
 	if err := a.State.Save(); err != nil {
 		return backupDir, err
@@ -590,6 +643,19 @@ func (a *App) UninstallAdminTool(tool string) error {
 		if err := pgadmin.Remove(a.Paths); err != nil {
 			return err
 		}
+	case "adminer":
+		a.State.RemoveSite(adminer.SiteName)
+		if err := adminer.Remove(a.Paths); err != nil {
+			return err
+		}
+	case "phpredisadmin":
+		// Only Mullion's own redis.<tld>, never a user's site of that name.
+		if a.redisAdminLinked() {
+			a.State.RemoveSite(redisadmin.SiteName)
+		}
+		if err := redisadmin.Remove(a.Paths); err != nil {
+			return err
+		}
 	case "mongo-express":
 		if a.State.FindSite(mongoExpressSite) != nil {
 			devserver.Stop(a.Paths, mongoExpressSite)
@@ -599,7 +665,7 @@ func (a *App) UninstallAdminTool(tool string) error {
 			return err
 		}
 	default:
-		return fmt.Errorf("unknown admin tool %q (want phpmyadmin, pgadmin, or mongo-express)", tool)
+		return fmt.Errorf("unknown admin tool %q (want phpmyadmin, pgadmin, mongo-express, adminer, or phpredisadmin)", tool)
 	}
 	return a.applyIfEnabled()
 }
@@ -610,6 +676,7 @@ func (a *App) AdminTools() []AdminToolInfo {
 	tld := a.State.Config.TLD
 	phpInstalled := a.State.FindSite(phpMyAdminSite) != nil
 	meInstalled := a.State.FindSite(mongoExpressSite) != nil
+	adInstalled := a.State.FindSite(adminer.SiteName) != nil
 	return []AdminToolInfo{
 		{
 			Name:            "phpmyadmin",
@@ -634,7 +701,37 @@ func (a *App) AdminTools() []AdminToolInfo {
 			Kind:            "site",
 			URL:             adminSiteURL(meInstalled, mongoExpressSite, tld),
 		},
+		{
+			Name:            "adminer",
+			Label:           "Adminer",
+			Installed:       adInstalled,
+			EngineInstalled: a.State.Config.MSSQL != "",
+			Kind:            "site",
+			URL:             adminerURL(adInstalled, tld),
+		},
+		{
+			Name:            "phpredisadmin",
+			Label:           "phpRedisAdmin",
+			Installed:       a.redisAdminLinked(),
+			EngineInstalled: a.State.Config.Redis != "",
+			Kind:            "site",
+			URL:             a.RedisAdminURL(-1),
+		},
 	}
+}
+
+// adminerURL opens Adminer on SQL Server's login, prefilled.
+func adminerURL(installed bool, tld string) string {
+	if !installed {
+		return ""
+	}
+	return adminer.URL(tld, mssql.Port)
+}
+
+// uninstallMSSQL is a seam: tests must never run docker or Windows
+// setup.
+var uninstallMSSQL = func(ctx context.Context, paths pmdir.Paths, deleteData bool) error {
+	return mssql.Uninstall(ctx, paths, deleteData)
 }
 
 func adminSiteURL(installed bool, name, tld string) string {

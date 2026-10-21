@@ -61,6 +61,11 @@ func Install(ctx context.Context, paths pmdir.Paths, rel Release) (string, error
 		if err := EnsureLdap(ctx, paths, rel.Version); err != nil {
 			fmt.Printf("note: LDAP was not added: %v\n", err)
 		}
+		// SQL Server (pdo_dblib + FreeTDS, see sqlsrv_darwin.go): same
+		// best-effort rules as LDAP.
+		if err := EnsureSQLServer(ctx, paths, rel.Version); err != nil {
+			fmt.Printf("note: SQL Server support (pdo_dblib) was not added: %v\n", err)
+		}
 	}
 	return destDir, nil
 }
@@ -78,7 +83,8 @@ func writeIni(phpDir string) error {
 	b.WriteString("display_errors=On\n")
 	b.WriteString("display_startup_errors=On\n")
 	b.WriteString("error_reporting=E_ALL\n")
-	b.WriteString("opcache.enable=1\n")
+	// OPcache with dev-friendly settings (see DevOpcacheIni).
+	b.WriteString(DevOpcacheIni())
 	b.WriteString("cgi.fix_pathinfo=1\n")
 	b.WriteString("memory_limit=512M\n")
 	b.WriteString("upload_max_filesize=100M\n")
