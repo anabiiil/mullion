@@ -15,7 +15,7 @@ import (
 // Off Windows, PHP comes from static-php.dev: fully static, dependency-free
 // cli and fpm binaries with a large set of extensions compiled in — the
 // same "no dependencies" philosophy as the Windows builds, without Homebrew.
-const bulkBase = "https://dl.static-php.dev/static-php-cli/bulk/"
+var bulkBase = "https://dl.static-php.dev/static-php-cli/bulk/" // a var so tests can point it at a fake listing
 
 // Source names where installable builds come from (used in CLI output).
 const Source = "dl.static-php.dev"

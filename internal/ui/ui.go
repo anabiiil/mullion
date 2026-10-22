@@ -248,6 +248,7 @@ func newMux(token string) *http.ServeMux {
 	registerMail(api)
 	registerRedis(api)
 	registerOpcache(api)
+	registerPHPUpdate(api)
 	registerRedisMonitor(mux, token)
 	registerWatch(api)
 	registerWatchStream(mux, token)

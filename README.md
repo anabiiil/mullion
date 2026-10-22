@@ -549,6 +549,23 @@ GitHub releases).
   - `mullion php install 8.3`, `mullion use 8.4` for the global version,
     or `mullion isolate 7.4` for one project.
   - Each version runs its own FastCGI worker on its own port (8.3 → 9083).
+  - **Patch updates** (security fixes): `mullion php install 8.4` always
+    takes the newest 8.4.x. To move an installed version to the newest
+    patch of its branch, run `mullion php update 8.4` (or `mullion php
+    update` for every outdated version; `--keep-old` keeps the old patch;
+    `--check` exits 10 when updates exist). `mullion php list` and the
+    PHP page show `update: 8.4.x` (tagged *security* when php.net marked
+    a release in between as one), and the sidebar's PHP item gets a dot.
+    An update installs the new patch, copies the old php.ini over —
+    extensions, OPcache, limits, Mail's `sendmail_path` — re-pointing the
+    lines that reference the old version's folder (on macOS the LDAP and
+    SQL Server modules are rebuilt for the new patch; on Windows PECL
+    DLLs are carried over), checks the new PHP starts cleanly, then moves
+    the global version, the sites pinned to the old patch and their
+    workers over and removes the old patch. If anything fails before the
+    switch, the old version is left exactly as it was. Typing a branch
+    you already have at an older patch into the install box offers the
+    update instead of a second install.
   - Extensions: Windows toggles any extension and downloads PECL ones
     (`mullion php ext get redis`). The macOS builds are static, from
     [static-php.dev](https://static-php.dev), with the common extensions
@@ -631,6 +648,7 @@ website has the full help text.
 | `mullion watch <site> on\|off\|status\|tail\|clear` | The live watcher: requests, logs, dumps, queries… (`tail --type queries,logs`, `on --basic`) |
 | `mullion pkg search\|list\|add\|remove` | Composer/npm packages for a linked site |
 | `mullion php install\|list\|available\|uninstall` | Manage PHP versions |
+| `mullion php update [<branch\|version>] [--keep-old] [--check]` | Update installed PHP to the newest patch of its branch, moving sites and settings over |
 | `mullion use <v>` / `isolate <v>` / `unisolate` | Global PHP / pin one project / unpin |
 | `mullion php ext list\|enable\|disable\|get` | PHP extensions (PECL downloads on Windows) |
 | `mullion php ini [v]` / `php ini set <key> <value>` | Show or set curated php.ini settings |

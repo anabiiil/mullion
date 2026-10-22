@@ -18,7 +18,8 @@ const Source = "windows.php.net"
 
 const buildLabel = "Windows x64"
 
-const (
+// Vars (not consts) so tests can point them at a fake listing.
+var (
 	releasesBase = "https://windows.php.net/downloads/releases/"
 	archivesBase = "https://windows.php.net/downloads/releases/archives/"
 )

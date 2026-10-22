@@ -587,7 +587,7 @@
   .nav a .upd-dot { margin-left: auto; width: 8px; height: 8px; border-radius: 50%; flex: none;
                     background: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
   .nav a .upd-dot[hidden] { display: none; }
-  #upgrade-log { white-space: pre-wrap; word-break: break-word; background: var(--inset); border: 1px solid var(--border);
+  #upgrade-log, #php-upd-log { white-space: pre-wrap; word-break: break-word; background: var(--inset); border: 1px solid var(--border);
                  border-radius: 8px; padding: 8px 10px; margin: 12px 0 0; font-size: 11.5px; max-height: 260px; overflow: auto; }
   #upgrade-error { margin-top: 12px; }
   .mterm-status .badge { font-size: 10.5px; }
@@ -773,7 +773,7 @@
       <div class="nav-label">Runtimes</div>
       <a href="#php" data-page="php" title="PHP">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-        PHP
+        PHP <span class="upd-dot" id="nav-php-dot" title="PHP patch updates are available" hidden></span>
       </a>
       <a href="#node" data-page="node" title="Node">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l9 5v10l-9 5-9-5V7z"/><path d="M12 22V12"/><path d="M21 7l-9 5-9-5"/></svg>
@@ -972,6 +972,14 @@
               <thead><tr><th>Installed</th><th style="text-align:right"></th></tr></thead>
               <tbody id="php-versions-body"></tbody>
             </table>
+            <div class="row" id="php-upd-row" style="margin-top:12px">
+              <span class="muted" id="php-upd-summary" style="font-size:12px"></span>
+              <a href="#" id="php-upd-check" style="font-size:12px">Check for updates</a>
+              <span class="spacer"></span>
+              <button id="btn-php-update-all" class="primary sm" style="display:none">Update all</button>
+            </div>
+            <div class="muted" id="php-upd-status" style="display:none;margin-top:10px;font-size:12.5px"></div>
+            <pre class="mono" id="php-upd-log" style="display:none"></pre>
           </div>
         </section>
         <section class="card">
@@ -2918,18 +2926,26 @@ wireToolUninstall('btn-redisadmin-uninstall', 'phpredisadmin');
 function renderPhpVersions(s) {
   const tb = $('php-versions-body');
   tb.innerHTML = '';
+  const ups = phpUpdates();
   s.phpInstalled.forEach(v => {
     const isGlobal = v === s.globalPhp;
+    const up = ups[v];
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td class="mono" style="font-weight:600">${v}${isGlobal ? ' <span class="badge on">active</span>' : ''}</td>
+      <td class="mono" style="font-weight:600">${v}${isGlobal ? ' <span class="badge on">active</span>' : ''}${up
+        ? ` <span class="badge fw" title="A newer ${esc(phpBranch(v))} patch release is out">${esc(up.to)} available</span>` +
+          (up.security ? ' <span class="badge bad" title="php.net marks a release since ' + esc(v) + ' as a security release">security</span>' : '')
+        : ''}</td>
       <td style="text-align:right">
+        ${up ? `<button class="primary sm" data-php-update="${v}"${phpUpdating ? ' disabled' : ''}>Update to ${esc(up.to)}</button> ` : ''}
         ${isGlobal
           ? '<span class="muted" style="font-size:11.5px">switch to another version first to uninstall</span>'
           : `<button class="danger sm" data-php-uninstall="${v}">Uninstall</button>`}
       </td>`;
     tb.appendChild(tr);
   });
+  tb.querySelectorAll('[data-php-update]').forEach(el => el.onclick = () => updatePhp([el.dataset.phpUpdate]));
+  renderPhpUpdSummary(s);
   tb.querySelectorAll('[data-php-uninstall]').forEach(el => el.onclick = async () => {
     const v = el.dataset.phpUninstall;
     const ok = await confirmModal({
@@ -2942,6 +2958,125 @@ function renderPhpVersions(s) {
     act('Uninstalling PHP ' + v + '…', '/api/php/uninstall', { version: v }, 'Removed PHP ' + v);
   });
 }
+
+/* ── PHP patch updates (8.4.23 → 8.4.27) ──────────────────────── */
+// phpUpd is /api/php/updates' answer: {updates: {"8.4.23": {from, to,
+// security}}, error, checkedAt}. The backend caches the release
+// listing for 6 h, so asking on every panel load is cheap.
+let phpUpd = null, phpUpdating = false, phpAvail = [];
+const phpBranch = v => String(v).split('.').slice(0, 2).join('.');
+function phpUpdates() {
+  const ups = (phpUpd && phpUpd.updates) || {};
+  const out = {};
+  for (const v of Object.keys(ups)) if (!state || state.phpInstalled.includes(v)) out[v] = ups[v];
+  return out;
+}
+function renderPhpUpdDot() { $('nav-php-dot').hidden = !Object.keys(phpUpdates()).length; }
+function renderPhpUpdSummary(s) {
+  const n = Object.keys(phpUpdates()).length;
+  const sum = $('php-upd-summary');
+  if (!s.phpInstalled.length) sum.textContent = '';
+  else if (!phpUpd) sum.textContent = 'Checking for patch updates…';
+  else if (phpUpd.error && !n) sum.textContent = 'Could not check for updates (offline?)';
+  else if (n) sum.textContent = n + ' version' + (n === 1 ? ' has' : 's have') + ' a newer patch release';
+  else sum.textContent = 'Every installed version is the newest patch of its branch' +
+    (phpUpd.checkedAt ? ' · checked ' + new Date(phpUpd.checkedAt).toLocaleString() : '');
+  $('php-upd-row').style.display = s.phpInstalled.length ? '' : 'none';
+  const all = $('btn-php-update-all');
+  all.style.display = n ? '' : 'none';
+  all.textContent = n > 1 ? 'Update all (' + n + ')' : 'Update all';
+  all.disabled = phpUpdating;
+  $('php-upd-check').style.pointerEvents = phpUpdating ? 'none' : '';
+  renderPhpUpdDot();
+}
+async function checkPhpUpdates(force) {
+  try {
+    phpUpd = await api('/api/php/updates', { force: !!force }, 45000);
+    if (force) {
+      const n = Object.keys(phpUpdates()).length;
+      if (phpUpd.error) toast('Could not check for PHP updates: ' + phpUpd.error);
+      else toast(n ? n + ' PHP update' + (n === 1 ? '' : 's') + ' available' : 'PHP is up to date');
+    }
+  } catch (e) {
+    if (force) toast('Error: ' + e.message);
+  }
+  if (state) renderPhpVersions(state);
+  renderPhpUpdDot();
+}
+// updatePhp confirms what switching touches, then runs the update job
+// with its live log under the versions table.
+async function updatePhp(versions) {
+  if (phpUpdating || !versions.length) return;
+  let plans;
+  try {
+    plans = await api('/api/php/update/plan', { versions }, 45000);
+  } catch (e) {
+    toast('Error: ' + e.message);
+    return;
+  }
+  const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+  const detail = plans.map(p => {
+    const bits = [];
+    if (p.global) bits.push(`the global PHP (php &amp; composer on PATH, ${plural(p.following, 'site')} following it)`);
+    if (p.sites.length) bits.push(`${plural(p.sites.length, 'pinned site')}: ${p.sites.map(esc).join(', ')}`);
+    if (p.workers) bits.push(plural(p.workers, 'worker') + ' (restarted)');
+    return `<div style="margin:4px 0"><span class="mono" style="font-weight:650">${esc(p.from)} → ${esc(p.to)}</span>` +
+      (p.security ? ' <span class="badge bad">security</span>' : '') +
+      `<br>${bits.length ? 'Switches ' + bits.join(', ') : 'Nothing runs on it right now'}` +
+      (p.targetInstalled ? `<br>${esc(p.to)} is already installed — its own php.ini is kept` : '') + '</div>';
+  }).join('');
+  const one = plans.length === 1 ? plans[0] : null;
+  const r = await modal({
+    title: one ? `Update PHP ${esc(one.from)} to ${esc(one.to)}?` : `Update ${plans.length} PHP versions?`,
+    message: 'Mullion installs the new patch, carries php.ini over (extensions, OPcache, limits, Mail), checks it starts, then moves everything to it. ' +
+      'If anything fails before the switch, the current version is left exactly as it is.' +
+      (state && state.windows ? '' : ' On macOS the LDAP and SQL Server modules are rebuilt for the new patch — a few minutes.'),
+    detail,
+    checkboxes: [{ id: 'remove', checked: true,
+      label: one ? `Remove ${esc(one.from)} after updating` : 'Remove the old versions after updating',
+      hint: 'Off keeps it installed next to the new one (nothing uses it after the switch).' }],
+    confirmText: 'Update',
+  });
+  if (!r) return;
+  phpUpdating = true;
+  if (state) renderPhpVersions(state);
+  const log = $('php-upd-log'), st = $('php-upd-status');
+  log.textContent = '';
+  log.style.display = '';
+  st.style.display = '';
+  st.textContent = 'Starting…';
+  try {
+    const { job } = await api('/api/php/update', { versions: plans.map(p => p.from), keepOld: !r.checks.remove });
+    let res;
+    for (;;) {
+      await new Promise(wake => setTimeout(wake, 700));
+      const s = await api('/api/job', { id: job });
+      if (s.status) st.textContent = s.status;
+      if (typeof s.log === 'string' && log.textContent !== s.log) {
+        log.textContent = s.log;
+        log.scrollTop = log.scrollHeight;
+      }
+      if (s.done) {
+        if (s.error) throw new Error(s.error);
+        res = s.result || [];
+        break;
+      }
+    }
+    const done = res.map(x => x.from + ' → ' + x.to).join(', ');
+    const warns = res.reduce((n, x) => n + ((x.warnings || []).length), 0);
+    st.textContent = done ? 'Updated ' + done + (warns ? ' — with ' + plural(warns, 'warning') + ', see the log' : '') : 'Nothing to update';
+    toast(done ? 'PHP updated: ' + done : 'PHP is up to date');
+  } catch (e) {
+    st.textContent = 'The update did not finish: ' + e.message;
+    toast('Error: ' + e.message);
+  } finally {
+    phpUpdating = false;
+    await refresh();
+    checkPhpUpdates(false);
+  }
+}
+$('btn-php-update-all').onclick = () => updatePhp(Object.keys(phpUpdates()));
+$('php-upd-check').onclick = (e) => { e.preventDefault(); checkPhpUpdates(true); };
 $('btn-composer-install').onclick = () =>
   runJob(state && state.composer ? 'Updating Composer…' : 'Installing Composer…',
       '/api/composer/install', { version: '' }, r => 'Composer ' + r + ' installed');
@@ -5213,9 +5348,27 @@ $('btn-toggle').onclick = () =>
       state && state.caddy ? '/api/stop' : '/api/start');
 $('php-global').onchange = () =>
   act('Switching global PHP…', '/api/php/use', { version: $('php-global').value }, 'Switched');
-$('btn-php-install').onclick = () => {
+$('btn-php-install').onclick = async () => {
   const v = $('php-new').value.trim();
   if (!v) return toast('Type a version first, e.g. 8.3');
+  // A branch ("8.4") already installed at an older patch is an update,
+  // not a second 8.4 side by side (an exact patch still installs).
+  if (/^\d+\.\d+$/.test(v) && state) {
+    const latest = phpAvail.find(x => phpBranch(x) === v);
+    const have = state.phpInstalled.filter(x => phpBranch(x) === v)
+      .reduce((best, x) => (!best || verNewer(x, best) ? x : best), '');
+    if (have && latest && have === latest) return toast(`PHP ${latest} — the newest ${v} — is already installed`);
+    if (have && latest && verNewer(latest, have)) {
+      const ok = await confirmModal({
+        title: `PHP ${esc(have)} is already installed`,
+        message: `<span class="mono">${esc(latest)}</span> is the newest ${esc(v)}. Update ${esc(have)} to it instead? ` +
+          `Its settings and sites move over. To install ${esc(latest)} side by side, type the exact version.`,
+        confirmText: 'Update instead',
+      });
+      if (ok) updatePhp([have]);
+      return;
+    }
+  }
   act('Downloading PHP ' + v + '… (this can take a minute)', '/api/php/install', { version: v }, 'Installed');
 };
 $('btn-ext').onclick = () => {
@@ -6210,12 +6363,16 @@ $('btn-upd-upgrade').onclick = startUpgrade;
   if (!document.body.classList.contains('projwin')) {
     restoreTabs();
     maybeCheckUpdates();
+    checkPhpUpdates(false);
     MullionExtTerm.load(false).then(maybeAskTerminal);
   } else MullionExtTerm.load(false);
   if ((location.hash.slice(1) || 'overview') === 'php') loadIni();
   try {
     const avail = await api('/api/php/available');
-    $('php-avail').innerHTML = avail.map(v => `<option value="${v}">`).join('');
+    phpAvail = avail;
+    // Branches, each with the patch it installs: "8.4" → 8.4.27.
+    $('php-avail').innerHTML = avail.slice().reverse().map(v =>
+      `<option value="${esc(phpBranch(v))}" label="${esc(phpBranch(v))} → ${esc(v)} (latest)">`).join('');
   } catch {}
   try {
     const avail = await api('/api/pg/series');

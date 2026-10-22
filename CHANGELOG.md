@@ -2,6 +2,33 @@
 
 All notable changes to Mullion. Versions follow [semantic versioning](https://semver.org).
 
+## 2.3.0 — 2026-10-22
+
+### Added
+
+- **PHP patch updates.** `mullion php update [8.4] [--keep-old]
+  [--check]` and an **Update to 8.4.x** button per version on the PHP
+  page (plus **Update all**, **Check for updates**, and a dot on the
+  sidebar's PHP item) move an installed version to the newest patch of
+  its branch — e.g. for a security release, which is tagged as such when
+  php.net marks one. The new patch is installed the normal way (on
+  macOS LDAP and pdo_dblib are rebuilt for it), the old php.ini is
+  carried over with every path into the old version's folder re-pointed
+  (shared modules, the CA bundle), Windows PECL DLLs are carried over,
+  and the new PHP must start cleanly before the global version, pinned
+  sites, their workers and the `current` link switch to it. The old
+  patch is removed afterwards unless kept. A failure before the switch
+  leaves the old version untouched. Checks are cached for 6 hours and
+  are skipped quietly when offline.
+- `mullion php list` shows `(update: 8.4.x)` next to outdated versions.
+
+### Changed
+
+- The PHP page's install picker lists branches with the patch they
+  install ("8.4 → 8.4.27"), and installing a branch you already have at
+  an older patch offers the update instead of a second, parallel
+  install. `mullion php install 8.4` asks the same in a terminal.
+
 ## 2.2.0 — 2026-10-21
 
 ### Added
