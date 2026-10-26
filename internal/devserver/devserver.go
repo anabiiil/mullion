@@ -109,7 +109,10 @@ func Ensure(paths pmdir.Paths, site config.Site, host, nodeDir string) (int, err
 	cmd.Env = env
 	cmd.Stdout = logFile
 	cmd.Stderr = logFile
-	proc.Detach(cmd)
+	// An invisible console, not none: under DETACHED_PROCESS (proc.Detach)
+	// npm's cmd.exe and every console program it starts (vite, ncp…)
+	// would each pop a NEW visible console window on Windows.
+	proc.DetachHiddenConsole(cmd)
 	if err := cmd.Start(); err != nil {
 		return 0, fmt.Errorf("starting `%s run %s` for %s: %w", pm, script, site.Name, err)
 	}

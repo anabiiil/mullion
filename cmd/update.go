@@ -9,6 +9,7 @@ import (
 
 	"pm/internal/app"
 	"pm/internal/autostart"
+	"pm/internal/composer"
 	"pm/internal/pmdir"
 	"pm/internal/shortcut"
 	"pm/internal/version"
@@ -45,6 +46,18 @@ func selfUpdateIfNeeded(a *app.App) {
 	if err := installSelf(a, exe); err != nil {
 		fmt.Println("note: could not update the installed copy -", err)
 		return
+	}
+
+	// Shims written by an older release may carry its bugs (the Windows
+	// node/npm shims once looked for mullion.exe in the CURRENT folder) —
+	// rewrite them; the node ones only where Mullion manages Node.
+	if a.State.Config.GlobalNode != "" {
+		if err := app.WriteNodeShims(a.Paths.BinDir()); err != nil {
+			fmt.Println("note: could not refresh the node shims -", err)
+		}
+	}
+	if err := composer.RefreshShim(a.Paths); err != nil {
+		fmt.Println("note: could not refresh the composer shim -", err)
 	}
 
 	// The autostart script and shortcut may point at old behavior —

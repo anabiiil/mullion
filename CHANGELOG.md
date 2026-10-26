@@ -2,6 +2,20 @@
 
 All notable changes to Mullion. Versions follow [semantic versioning](https://semver.org).
 
+## 2.3.1 — 2026-10-26
+
+### Fixed
+
+- **Windows: `npm run dev` from your own terminal failed** with
+  "`<project>\mullion.exe` is not recognized" whenever a script ran a
+  package binary (ncp, vite…). The node/npm/npx/corepack shims found
+  `mullion.exe` through `%~dp0`, which cmd.exe expands to the current
+  folder when npm runs them; they (and the composer shim) now use
+  absolute paths, and upgrading rewrites existing shims.
+- **Windows: opening a frontend site no longer pops a console window**
+  running `npm run dev`. The dev server now runs in an invisible
+  console, so npm and everything it starts stay in the background.
+
 ## 2.3.0 — 2026-10-22
 
 ### Added

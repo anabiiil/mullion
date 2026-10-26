@@ -26,6 +26,16 @@ func Ensure(ctx context.Context, paths pmdir.Paths) error {
 	return Install(ctx, paths, "")
 }
 
+// RefreshShim rewrites the `composer` entry point when Composer is
+// installed — after an upgrade, so a fix to the shim reaches existing
+// installs. Nothing happens when Composer isn't there.
+func RefreshShim(paths pmdir.Paths) error {
+	if _, err := os.Stat(PharPath(paths)); err != nil {
+		return nil
+	}
+	return writeShim(paths)
+}
+
 // Install downloads the given Composer version ("" = latest stable)
 // over whatever is currently installed.
 func Install(ctx context.Context, paths pmdir.Paths, version string) error {
@@ -45,7 +55,10 @@ func Install(ctx context.Context, paths pmdir.Paths, version string) error {
 // works even in terminals opened before setup.
 func writeShim(paths pmdir.Paths) error {
 	if runtime.GOOS == "windows" {
-		shim := "@echo off\r\n\"%~dp0..\\php\\current\\php.exe\" \"%~dp0composer.phar\" %*\r\n"
+		// Absolute paths, not %~dp0, which cmd.exe resolves to the
+		// current directory when the shim is run as a quoted bare name.
+		bin := paths.BinDir()
+		shim := "@echo off\r\n\"" + filepath.Join(bin, "..", "php", "current", "php.exe") + "\" \"" + filepath.Join(bin, "composer.phar") + "\" %*\r\n"
 		return os.WriteFile(filepath.Join(paths.BinDir(), "composer.bat"), []byte(shim), 0o755)
 	}
 	shim := `#!/bin/sh
