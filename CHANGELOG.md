@@ -2,6 +2,58 @@
 
 All notable changes to Mullion. Versions follow [semantic versioning](https://semver.org).
 
+## Unreleased
+
+### Added
+
+- **PHP profiler: flame graphs for a site's requests (macOS).** The
+  project page's Performance → Profiler tab (and `mullion profile <site>
+  on|off|status|list|show|clear`) records where PHP requests spend their
+  time with [SPX](https://github.com/NoiseByNorthwest/php-spx) 0.4.22
+  (GPLv3 — built on your Mac from source, never shipped by Mullion; about
+  a minute the first time per PHP version, with the Xcode Command Line
+  Tools). spx.so is loaded disabled, which costs nothing; turning a site
+  on passes its SPX settings through Caddy for that site only (other
+  sites on the same php-fpm are explicitly kept off). Profile only when
+  asked (SPX's control panel for your browser session, or
+  `?SPX_ENABLED=1&SPX_KEY=…` on any URL), the next N requests, requests
+  matching a path (`/api`, `/orders/*`), or every request. Each profile
+  shows its request, wall time, memory and call count, a zoomable,
+  searchable flame graph and the top functions by self and inclusive
+  time, with a link to SPX's own viewer; the newest 100 profiles (at most
+  256 MB) per site are kept. `mullion php update` rebuilds SPX for the new
+  patch when the old one had it. Not available on Windows yet: SPX has no
+  Windows build.
+
+- **Performance tab on the project page** (and `mullion perf <site>
+  routes|check|load|prod|workers`). **Routes**: per-route count,
+  average, p50/p95/p99, queries, query time, peak memory, error rate and
+  N+1 from the Watch data (Laravel's route names with Deep on), with
+  per-site budgets, saved baselines and a regressions-first comparison.
+  **Readiness**: a production-readiness audit — debug/env/log settings,
+  config and route cache readiness, dev packages in `require`, Composer
+  autoloader, strict models, OPcache, PHP end of life, database indexes
+  and primary keys (read-only, through the `.env` connection), the N+1
+  and slow queries Watch saw, and the frontend build — each finding with
+  the why, the exact fix, Run fix/Simulate and Ignore. **Load test**: a
+  built-in load tester against the site's own hosts with live RPS,
+  percentiles, status codes and a latency histogram, results kept and
+  compared with the previous run. **Production-like mode**: APP_ENV and
+  APP_DEBUG passed by Caddy (the .env stays as it is), OPcache
+  timestamps frozen for the site, optional `artisan optimize`, long
+  cache headers for fingerprinted assets; frontend sites serve their
+  build. **Workers**: memory/CPU of each worker sampled every 10 s, leak
+  detection, restarts, and per-job timings and repeated failures from
+  queue workers' logs.
+- Watch: the request event now carries its query count and total query
+  time (kept even past the 3,000-events-per-request cap).
+
+### Fixed
+
+- Explain: SQL Server on Windows failed with "An unsupported attribute
+  was designated on the PDO object" (pdo_sqlsrv rejects
+  `PDO::ATTR_TIMEOUT`).
+
 ## 2.4.0 — 2026-10-28
 
 ### Added

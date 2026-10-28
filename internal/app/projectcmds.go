@@ -276,6 +276,12 @@ func (a *App) RunProjectCommand(ctx context.Context, siteName, command string, o
 	if err != nil {
 		return -1, err
 	}
+	return runProjectCmd(ctx, cmd, command, onOutput)
+}
+
+// runProjectCmd is RunProjectCommand for a command already built (the
+// Performance tab adjusts its environment first).
+func runProjectCmd(ctx context.Context, cmd *exec.Cmd, command string, onOutput func([]byte)) (int, error) {
 	ctx, cancel := context.WithTimeout(ctx, projectCmdTimeout)
 	defer cancel()
 	w := outputFunc(onOutput)
@@ -284,7 +290,8 @@ func (a *App) RunProjectCommand(ctx context.Context, siteName, command string, o
 	// A background grandchild holding the pipe open must not hang us
 	// after the command itself exits.
 	cmd.WaitDelay = 5 * time.Second
-	if err := cmd.Start(); err != nil {
+	var err error
+	if err = cmd.Start(); err != nil {
 		return -1, fmt.Errorf("starting `%s`: %w", command, err)
 	}
 	done := make(chan error, 1)

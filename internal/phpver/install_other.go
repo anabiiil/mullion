@@ -66,6 +66,14 @@ func Install(ctx context.Context, paths pmdir.Paths, rel Release) (string, error
 		if err := EnsureSQLServer(ctx, paths, rel.Version); err != nil {
 			fmt.Printf("note: SQL Server support (pdo_dblib) was not added: %v\n", err)
 		}
+		// The SPX profiler is built on demand (`mullion profile`); a new
+		// patch of a branch that had it (`mullion php update`) gets it
+		// rebuilt here so the carried-over php.ini line finds spx.so.
+		if spxWanted(paths, rel.Version) {
+			if err := EnsureSpx(ctx, paths, rel.Version); err != nil {
+				fmt.Printf("note: the SPX profiler was not rebuilt: %v\n", err)
+			}
+		}
 	}
 	return destDir, nil
 }

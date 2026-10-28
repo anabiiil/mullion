@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -41,6 +42,41 @@ type SiteConf struct {
 	// PHP_VALUE for later requests its worker serves, so another site
 	// may run the prepend too, and must find it a no-op).
 	Watch *WatchConf
+	// Prod is production-like mode (the project page's Performance tab):
+	// FastCGI params for PHP sites, long cache headers for fingerprinted
+	// assets. nil = off.
+	Prod *ProdConf
+	// ValidateTimestamps, when "0" or "1", passes
+	// opcache.validate_timestamps in PHP_VALUE (php sites). Production-
+	// like mode freezes it ("0"); while any site does, every other PHP
+	// site states its own value ("1"), because php-fpm keeps a
+	// PHP_VALUE for the later requests its worker serves — another
+	// site's "0" must not stick to this one.
+	ValidateTimestamps string
+	// FastCGIEnv are extra php_fastcgi env lines (name, value), e.g. the
+	// profiler's PHP_ADMIN_VALUE. Values can contain newlines.
+	FastCGIEnv [][2]string
+}
+
+// ProdConf is production-like mode as the Caddyfile needs it.
+type ProdConf struct {
+	// Env are FastCGI params for PHP (APP_ENV=production,
+	// APP_DEBUG=false…): Laravel's env() reads $_SERVER before .env and
+	// never lets .env overwrite them, so the project's files stay as
+	// they are.
+	Env map[string]string
+}
+
+// hashedAssets matches fingerprinted build files under the usual build
+// folders (Vite's /build/assets/app-BkL3x9Qa.js and /assets/…,
+// Next.js's /_next/static/…, Create React App's /static/js/main.3f2a9c1b.js):
+// they never change under the same name, so they can be cached for a year.
+const hashedAssets = `^/(?:build/assets|assets|_next/static|static/(?:js|css|media))/.*[.-][A-Za-z0-9_-]{8,}\.(?:js|mjs|css|woff2?|ttf|otf|png|jpe?g|gif|svg|webp|avif|ico|wasm)$`
+
+// writeHashedCache renders the long-cache header for fingerprinted assets.
+func writeHashedCache(b *strings.Builder) {
+	b.WriteString("\t@hashed path_regexp " + quote(hashedAssets) + "\n")
+	b.WriteString("\theader @hashed Cache-Control \"public, max-age=31536000, immutable\"\n")
 }
 
 // WatchConf is a site's watcher settings as the Caddyfile needs them.
@@ -112,6 +148,9 @@ func Generate(sites []SiteConf, logsDir string) string {
 		case "static":
 			b.WriteString("\troot * " + quote(s.Root) + "\n")
 			b.WriteString("\tencode zstd gzip\n")
+			if s.Prod != nil {
+				writeHashedCache(&b)
+			}
 			// Single-page apps route in the browser: unknown paths fall
 			// back to index.html.
 			b.WriteString("\ttry_files {path} /index.html\n")
@@ -119,20 +158,53 @@ func Generate(sites []SiteConf, logsDir string) string {
 		default: // php
 			b.WriteString("\troot * " + quote(s.Root) + "\n")
 			b.WriteString("\tencode zstd gzip\n")
+			if s.Prod != nil {
+				writeHashedCache(&b)
+			}
+			// PHP_VALUE is ini syntax, one directive per line (php-fpm
+			// splits it on newlines); a path is quoted inside it.
+			var ini []string
 			if w := s.Watch; w != nil {
+				ini = append(ini, `auto_prepend_file="`+w.Prepend+`"`)
+			}
+			if v := s.ValidateTimestamps; v == "0" || v == "1" {
+				ini = append(ini, "opcache.validate_timestamps="+v)
+			}
+			var env []string
+			if p := s.Prod; p != nil {
+				keys := make([]string, 0, len(p.Env))
+				for k := range p.Env {
+					keys = append(keys, k)
+				}
+				sort.Strings(keys)
+				for _, k := range keys {
+					env = append(env, "\t\tenv "+k+" "+quote(p.Env[k])+"\n")
+				}
+			}
+			w := s.Watch
+			for _, e := range s.FastCGIEnv {
+				env = append(env, "\t\tenv "+e[0]+" "+quote(e[1])+"\n")
+			}
+			if len(ini) == 0 && len(env) == 0 && w == nil {
+				b.WriteString(fmt.Sprintf("\tphp_fastcgi 127.0.0.1:%d\n", s.FcgiPort))
+			} else {
 				b.WriteString(fmt.Sprintf("\tphp_fastcgi 127.0.0.1:%d {\n", s.FcgiPort))
-				// PHP_VALUE is ini syntax: the path is quoted inside it.
-				b.WriteString("\t\tenv PHP_VALUE " + quote(`auto_prepend_file="`+w.Prepend+`"`) + "\n")
-				b.WriteString("\t\tenv MULLION_WATCH " + quote(w.Dir) + "\n")
-				if w.RequestID {
-					b.WriteString("\t\tenv MULLION_RID {http.request.uuid}\n")
+				if len(ini) > 0 {
+					b.WriteString("\t\tenv PHP_VALUE " + quote(strings.Join(ini, "\n")) + "\n")
+				}
+				if w != nil {
+					b.WriteString("\t\tenv MULLION_WATCH " + quote(w.Dir) + "\n")
+					if w.RequestID {
+						b.WriteString("\t\tenv MULLION_RID {http.request.uuid}\n")
+					}
+				}
+				for _, e := range env {
+					b.WriteString(e)
 				}
 				b.WriteString("\t}\n")
-				if w.RequestID {
+				if w != nil && w.RequestID {
 					b.WriteString("\tlog_append mullion_rid {http.request.uuid}\n")
 				}
-			} else {
-				b.WriteString(fmt.Sprintf("\tphp_fastcgi 127.0.0.1:%d\n", s.FcgiPort))
 			}
 			b.WriteString("\tfile_server\n")
 		}

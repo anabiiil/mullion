@@ -138,6 +138,7 @@ func (a *App) WriteCaddyfile(devPorts map[string]int) error {
 			if s.Mode == "build" {
 				conf.Kind = "static"
 				conf.Root = filepath.Join(s.Path, s.BuildDir)
+				conf.Prod = a.prodCaddyConf(s)
 				break
 			}
 			conf.ProxyPort = devPorts[s.Name]
@@ -145,6 +146,7 @@ func (a *App) WriteCaddyfile(devPorts map[string]int) error {
 			conf.AgentPort = agent.Port
 		case "static":
 			conf.Root = filepath.Join(s.Path, s.BuildDir)
+			conf.Prod = a.prodCaddyConf(s)
 		default: // php
 			version := a.SiteVersion(s)
 			if version == "" {
@@ -157,9 +159,14 @@ func (a *App) WriteCaddyfile(devPorts map[string]int) error {
 			conf.Root = caddy.DocRoot(s.Path)
 			conf.FcgiPort = port
 			conf.Watch = a.watchCaddyConf(s)
+			conf.Prod = a.prodCaddyConf(s)
+			conf.FastCGIEnv = a.ProfilerFastCGIEnv(s, version)
 		}
 		confs = append(confs, conf)
 	}
+	// Production-like mode's OPcache setting must not leak to the other
+	// sites the same php-fpm serves (see caddy.SiteConf.ValidateTimestamps).
+	a.pinValidateTimestamps(confs)
 	if a.mailSiteActive() {
 		confs = append(confs, a.mailSiteConf())
 	}

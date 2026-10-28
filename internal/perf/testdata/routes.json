@@ -1,0 +1,5 @@
+Deprecated: something in vendor
+[{"domain":null,"method":"GET|HEAD","uri":"\/","name":null,"action":"Closure","middleware":["web"]},
+ {"domain":null,"method":"GET|HEAD","uri":"posts","name":"posts.index","action":"App\\Http\\Controllers\\PostController@index","middleware":["web"]},
+ {"domain":null,"method":"GET|HEAD","uri":"articles","name":"posts.index","action":"App\\Http\\Controllers\\ArticleController@index","middleware":["web"]},
+ {"domain":null,"method":"POST","uri":"posts","name":"posts.store","action":"App\\Http\\Controllers\\PostController@store","middleware":["web"]}]

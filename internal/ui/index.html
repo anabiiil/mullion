@@ -5,6 +5,7 @@
 <title>Mullion — Local Dev Server</title>
 <link rel="icon" type="image/png" href="/favicon.png">
 <link rel="stylesheet" href="/project.css">
+<link rel="stylesheet" href="/profiler.css">
 <style>
   /* Palette "Midnight + coral". Coral is the brand/primary colour only —
      danger is a separate, deeper red. Text on coral uses the midnight ink
@@ -1843,6 +1844,7 @@
      MullionProject); everything below guards for its absence. -->
 <script src="/terminal.js"></script>
 <script src="/project.js"></script>
+<script src="/profiler.js"></script>
 <script>
 const token = new URLSearchParams(location.search).get('t') || '';
 const $ = id => document.getElementById(id);

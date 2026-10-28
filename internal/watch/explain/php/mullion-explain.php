@@ -402,6 +402,74 @@ function mx_tables(MxDb $db, array $tables): object
     return (object) $out;
 }
 
+/**
+ * The schema audit (the Performance tab's readiness check): every table
+ * with its row estimate, columns, indexes and foreign keys. Catalog
+ * reads only.
+ */
+function mx_schema(MxDb $db): array
+{
+    switch ($db->driver) {
+        case 'mysql':
+        case 'mariadb':
+            $names = $db->rows("SELECT TABLE_NAME AS n FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_TYPE = 'BASE TABLE' ORDER BY TABLE_NAME");
+            $fkq = 'SELECT TABLE_NAME AS t, CONSTRAINT_NAME AS name, COLUMN_NAME AS col, REFERENCED_TABLE_NAME AS ref FROM information_schema.KEY_COLUMN_USAGE'
+                . ' WHERE TABLE_SCHEMA = DATABASE() AND REFERENCED_TABLE_NAME IS NOT NULL ORDER BY TABLE_NAME, CONSTRAINT_NAME, ORDINAL_POSITION';
+            break;
+        case 'pgsql':
+            $names = $db->rows('SELECT tablename AS n FROM pg_tables WHERE schemaname = current_schema() ORDER BY tablename');
+            $fkq = 'SELECT c.conrelid::regclass::text AS t, c.conname AS name, a.attname AS col, c.confrelid::regclass::text AS ref'
+                . ' FROM pg_constraint c CROSS JOIN LATERAL unnest(c.conkey) WITH ORDINALITY AS k(attnum, n)'
+                . ' JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = k.attnum'
+                . " WHERE c.contype = 'f' AND c.connamespace = current_schema()::regnamespace ORDER BY 1, 2, k.n";
+            break;
+        case 'sqlite':
+            $names = $db->rows("SELECT name AS n FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name");
+            $fkq = null;
+            break;
+        case 'sqlsrv':
+            $names = $db->rows('SELECT t.name AS n FROM sys.tables t WHERE t.is_ms_shipped = 0 AND t.schema_id = SCHEMA_ID() ORDER BY t.name');
+            $fkq = 'SELECT OBJECT_NAME(fk.parent_object_id) AS t, fk.name AS name, c.name AS col, OBJECT_NAME(fk.referenced_object_id) AS ref'
+                . ' FROM sys.foreign_keys fk JOIN sys.foreign_key_columns fkc ON fkc.constraint_object_id = fk.object_id'
+                . ' JOIN sys.columns c ON c.object_id = fkc.parent_object_id AND c.column_id = fkc.parent_column_id'
+                . ' WHERE OBJECTPROPERTY(fk.parent_object_id, \'SchemaId\') = SCHEMA_ID() ORDER BY 1, 2, fkc.constraint_column_id';
+            break;
+        default:
+            throw new RuntimeException('unsupported driver ' . $db->driver);
+    }
+    $list = [];
+    foreach (array_slice($names, 0, 400) as $r) {
+        $list[] = (string) ($r['n'] ?? reset($r));
+    }
+    $fks = [];
+    if ($fkq !== null) {
+        foreach ($db->rows($fkq) as $r) {
+            $t = preg_replace('/^"?public"?\./', '', trim((string) $r['t'], '"'));
+            $k = $t . "\0" . $r['name'];
+            $fks[$k] = $fks[$k] ?? ['table' => $t, 'name' => (string) $r['name'], 'ref' => trim((string) $r['ref'], '"'), 'columns' => []];
+            $fks[$k]['columns'][] = (string) $r['col'];
+        }
+    } else {
+        foreach ($list as $t) {
+            foreach ($db->rows('PRAGMA foreign_key_list(' . $db->ident($t) . ')') as $r) {
+                $k = $t . "\0" . $r['id'];
+                $fks[$k] = $fks[$k] ?? ['table' => $t, 'name' => 'fk_' . $t . '_' . $r['id'], 'ref' => (string) $r['table'], 'columns' => []];
+                $fks[$k]['columns'][(int) $r['seq']] = (string) $r['from'];
+            }
+        }
+    }
+    return ['tables' => mx_tables($db, $list), 'foreignKeys' => array_values($fks), 'truncated' => count($names) > 400];
+}
+
+if (($req['mode'] ?? '') === 'schema') {
+    try {
+        $db = new MxDb($conn);
+        mx_out(['ok' => true, 'driver' => $db->driver, 'via' => $db->via] + mx_schema($db));
+    } catch (Throwable $e) {
+        mx_out(['ok' => false, 'error' => mx_scrub($e->getMessage(), $secret)]);
+    }
+}
+
 try {
     $db = new MxDb($conn);
     $sql = rtrim(trim((string) ($req['sql'] ?? '')), ';');

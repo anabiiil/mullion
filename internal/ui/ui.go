@@ -252,6 +252,9 @@ func newMux(token string) *http.ServeMux {
 	registerRedisMonitor(mux, token)
 	registerWatch(api)
 	registerWatchStream(mux, token)
+	// The project page's Performance tab (perf.go).
+	registerPerf(api, mux, token)
+	registerProfiler(api, mux)
 
 	api("/api/state", getState)
 	api("/api/start", func(a *app.App, r *http.Request) (any, error) {

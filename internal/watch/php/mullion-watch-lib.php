@@ -45,6 +45,9 @@ final class Watcher
     private static $jobStart = 0.0;
     private static $inside = false;
     private static $status = null;
+    private static $queries = 0;
+    private static $queryMs = 0.0;
+    private static $outerQueries = null; // a sync job runs inside a request: its totals are set aside
 
     public static function start($dir, array $cfg)
     {
@@ -174,6 +177,9 @@ final class Watcher
         };
 
         $on('Illuminate\\Database\\Events\\QueryExecuted', static function ($e) {
+            // Totals survive MAX_EVENTS (the Performance tab reads them).
+            self::$queries++;
+            self::$queryMs += (float) $e->time;
             $src = self::source();
             self::add('query', [
                 'sql' => self::str($e->sql, 10000),
@@ -219,6 +225,9 @@ final class Watcher
             self::$rid = 'job-' . ($id !== '' ? $id : bin2hex(random_bytes(6)));
             self::$jobStart = microtime(true);
             self::$count = 0;
+            self::$outerQueries = [self::$queries, self::$queryMs];
+            self::$queries = 0;
+            self::$queryMs = 0.0;
             self::add('job', ['op' => 'processing', 'name' => self::jobName($e->job), 'conn' => (string) $e->connectionName,
                 'queue' => (string) $e->job->getQueue(), 'attempts' => (int) $e->job->attempts(), 'id' => $id]);
         });
@@ -227,12 +236,20 @@ final class Watcher
                 $d = ['op' => $op, 'name' => self::jobName($e->job), 'conn' => (string) $e->connectionName,
                     'queue' => (string) $e->job->getQueue(), 'ms' => round((microtime(true) - self::$jobStart) * 1000, 2),
                     'id' => method_exists($e->job, 'uuid') ? (string) $e->job->uuid() : ''];
+                $d['queries'] = self::$queries;
+                $d['queryMs'] = round(self::$queryMs, 2);
+                $d['memory'] = memory_get_usage(true);
                 if ($op === 'failed' && isset($e->exception)) {
                     $d['error'] = get_class($e->exception) . ': ' . self::str($e->exception->getMessage(), 500);
                 }
                 self::add('job', $d);
                 self::flush();
                 self::$rid = self::$baseRid;
+                // What it ran in (a request on the sync queue, a command) counts the job's queries too.
+                $outer = self::$outerQueries ?? [0, 0.0];
+                self::$queries += $outer[0];
+                self::$queryMs += $outer[1];
+                self::$outerQueries = null;
             };
         };
         $on('Illuminate\\Queue\\Events\\JobProcessed', $jobDone('processed'));
@@ -439,13 +456,17 @@ final class Watcher
                 self::$rid = self::$baseRid;
                 self::$count = 0;
                 self::add('command', ['command' => self::str(implode(' ', array_slice($argv, 1)), 500), 'ms' => $ms,
-                    'memory' => memory_get_peak_usage(true)]);
+                    'memory' => memory_get_peak_usage(true), 'queries' => self::$queries, 'queryMs' => round(self::$queryMs, 2)]);
             } else {
                 $err = error_get_last();
                 $d = ['method' => $_SERVER['REQUEST_METHOD'] ?? 'GET', 'uri' => self::str($_SERVER['REQUEST_URI'] ?? '/', 2000),
                     'status' => self::$status ?? (http_response_code() ?: 200), 'ms' => $ms, 'memory' => memory_get_peak_usage(true)];
                 if (self::$route) {
                     $d['route'] = self::$route;
+                }
+                if (!empty(self::$cfg['deep'])) {
+                    $d['queries'] = self::$queries;
+                    $d['queryMs'] = round(self::$queryMs, 2);
                 }
                 if ($err && in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
                     $d['fatal'] = self::str($err['message'], 1000) . ' in ' . self::rel($err['file']) . ':' . $err['line'];

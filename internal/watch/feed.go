@@ -310,3 +310,23 @@ func (f *Feed) analysis(rid string, t float64) (Item, bool) {
 	return Item{"type": "analysis", "src": "php", "t": t, "rid": rid, "queries": a.Queries, "ms": a.Ms,
 		"slow": a.Slow, "duplicates": a.Duplicates, "issues": a.Issues}, true
 }
+
+// Recent returns the request-side history only — Caddy's access log and
+// the PHP side's events (with their analysis items), not storage/logs —
+// about n requests deep, oldest first, with the clear marks applied.
+// The Performance tab aggregates it per route.
+func (f *Feed) Recent(n int) []Item {
+	var out []Item
+	for _, l := range f.caddy.Backlog(n, 8<<20) {
+		if it, ok := ParseCaddyLine(l); ok {
+			out = append(out, it)
+		}
+	}
+	cur := f.events.Backlog(n*20, 24<<20)
+	if len(cur) < n*20 {
+		old := NewTailer(f.rotated)
+		cur = append(old.Backlog(n*20-len(cur), 24<<20), cur...)
+	}
+	out = append(out, f.eventItems(cur)...)
+	return f.finish(out)
+}

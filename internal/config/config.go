@@ -192,7 +192,37 @@ type Site struct {
 	Workers []Worker `json:"workers,omitempty"`
 	// Watch is the project page's live watcher (nil = off).
 	Watch *Watch `json:"watch,omitempty"`
+	// Perf is the project page's Performance tab: budgets, ignored
+	// readiness findings and production-like mode (nil = defaults, off).
+	Perf *Perf `json:"perf,omitempty"`
 }
+
+// Perf configures a site's Performance tab.
+type Perf struct {
+	// Budgets per route (0 = the defaults: 300 ms p95, 30 queries,
+	// 64 MB peak memory).
+	MaxMs       int `json:"maxMs,omitempty"`
+	MaxQueries  int `json:"maxQueries,omitempty"`
+	MaxMemoryMB int `json:"maxMemoryMB,omitempty"`
+	// Ignored lists readiness finding ids the user dismissed.
+	Ignored []string `json:"ignored,omitempty"`
+	// Prod is production-like mode: PHP sites get APP_ENV=production /
+	// APP_DEBUG=false as FastCGI params (the .env is left alone) and
+	// OPcache stops checking file timestamps; node sites serve their
+	// build with compression and long cache headers.
+	Prod bool `json:"prod,omitempty"`
+	// ProdOptimized: turning the mode on also ran `php artisan
+	// optimize`; turning it off runs `optimize:clear`.
+	ProdOptimized bool `json:"prodOptimized,omitempty"`
+	// ProdPrevMode is a node site's Mode before the mode switched it to
+	// "build" (restored when it is turned off).
+	ProdPrevMode string `json:"prodPrevMode,omitempty"`
+	// ProdSince is when the mode was turned on (unix seconds).
+	ProdSince int64 `json:"prodSince,omitempty"`
+}
+
+// ProdMode reports whether the site runs in production-like mode.
+func (s Site) ProdMode() bool { return s.Perf != nil && s.Perf.Prod }
 
 // Watch configures a site's live watcher (the project page's Watch
 // tab). Requests and logs need nothing from the project; Dumps and Deep

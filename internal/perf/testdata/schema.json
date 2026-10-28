@@ -1,0 +1,8 @@
+{"engine":"sqlite","conn":"sqlite db","tables":{
+ "users":{"rows":5000,"indexes":[{"name":"PRIMARY","unique":true,"primary":true,"columns":["id"]},{"name":"users_email_unique","unique":true,"primary":false,"columns":["email"]}],"columns":{"id":"INTEGER","email":"TEXT","team_id":"INTEGER"}},
+ "posts":{"rows":20000,"indexes":[{"name":"PRIMARY","unique":true,"primary":true,"columns":["id"]}],"columns":{"id":"INTEGER","user_id":"INTEGER","title":"TEXT"}},
+ "comments":{"rows":300,"indexes":[{"name":"PRIMARY","unique":true,"primary":true,"columns":["id"]},{"name":"comments_post_id_created_at_index","unique":false,"primary":false,"columns":["post_id","created_at"]}],"columns":{"id":"INTEGER","post_id":"INTEGER"}},
+ "logs":{"rows":50,"indexes":[],"columns":{"message":"TEXT"}},
+ "sessions":{"rows":50,"indexes":[],"columns":{"id":"TEXT"}}
+},
+"foreignKeys":[{"table":"posts","name":"fk1","ref":"users","columns":["user_id"]},{"table":"comments","name":"fk2","ref":"posts","columns":["post_id"]}]}

@@ -1,6 +1,7 @@
 /* The project page — "Manage" one linked site: an overview strip and
  * tabs that adapt to the project (Commands, Workers, Packages, Git,
- * Cache, Watch, Terminal, Domains, Settings), backed by /api/project/* (project.go).
+ * Cache, Watch, Performance, Terminal, Domains, Settings), backed by
+ * /api/project/* (project.go, perf.go).
  *
  * Usage from the panel page:
  *
@@ -223,6 +224,7 @@
     cloud: I('<path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>'),
     commit: I('<circle cx="12" cy="12" r="3.5"/><path d="M2 12h6.5M15.5 12H22"/>'),
     file: I('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/>'),
+    gauge: I('<path d="M12 14l4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/>'),
     eye: I('<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>'),
     tag: I('<path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><circle cx="7" cy="7" r="1.2"/>'),
   };
@@ -263,7 +265,7 @@
   let wasVisible = false;
   let pendingTab = null; // showTab() before the page loaded
   // per-site caches
-  let cmdState = null, wkState = null, pkgState = null, gitState = null, cacheState = null, watchState = null;
+  let cmdState = null, wkState = null, pkgState = null, gitState = null, cacheState = null, watchState = null, perfState = null;
 
   const live = g => g === gen && !destroyed;
   // visible: the container is laid out (not display:none, e.g. a hidden
@@ -292,6 +294,7 @@
     if (tab === 'git') loadGitStatus(true);
     if (tab === 'terminal') fitTerminal();
     if (tab === 'watch' && watchState) { wPaintSubs(); wPaintBody(); if (watchState.sub === 'exceptions') wSeen(); }
+    if (tab === 'perf' && perfState && perfState.sub === 'workers') pfLoadWorkers();
   }
   function checkVisible() {
     const v = visible();
@@ -326,6 +329,8 @@
     cacheState = cacheFresh();
     stopWatchStream();
     watchState = watchFresh();
+    stopPerf();
+    perfState = perfFresh();
     closeBranchPop();
     gitState = gitFresh();
     root.innerHTML = `<div class="mp"><section class="card"><div class="mp-loading"><div class="spin"></div>Loading ${esc(cur)}…</div></section></div>`;
@@ -351,6 +356,7 @@
     destroyTerminal();
     stopMonitor();
     stopWatchStream();
+    stopPerf();
     if (watchState && watchState.unseen) window.dispatchEvent(new CustomEvent('mullion:watch-seen', { detail: { site: cur } }));
     document.removeEventListener('visibilitychange', onVisibility);
     window.removeEventListener('mullion:mterm-status', syncMterm);
@@ -386,6 +392,7 @@
     if (info.detect.language === 'PHP' || info.hasPackage || info.workers > 0) t.push(['workers', 'Workers', ICON.workers]);
     if (isPHP() || isLaravel()) t.push(['cache', 'Cache', ICON.cache]);
     if (isPHP()) t.push(['watch', 'Watch', ICON.eye]);
+    if (isPHP() || isNode() || info.kind === 'static') t.push(['perf', 'Performance', ICON.gauge]);
     t.push(['terminal', 'Terminal', ICON.term]);
     t.push(['domains', 'Domains', ICON.globe]);
     if (info.hasComposer || info.hasPackage) t.push(['packages', 'Packages', ICON.pkg]);
@@ -474,7 +481,8 @@
       ? `<span class="mp-host" title="every subdomain">${esc(h)}</span>`
       : `<a class="mp-host${i === 0 ? ' apex' : ''}" href="${info.secure ? 'https' : 'http'}://${esc(h)}" target="_blank">${esc(h)}</a>`).join('');
     const reveal = info.windows ? 'Show in Explorer' : 'Show in Finder';
-    els.hero.innerHTML = `
+    els.hero.innerHTML = `${info.prodMode ? `<div class="mp-prod-banner">${ICON.bolt}<span><b>Production-like mode</b> — code changes won't show until you turn it off${isPHP() ? ' or reset OPcache' : ''}.</span><span class="spacer"></span>
+        ${isPHP() && info.php ? '<button class="sm" data-hero="opreset">Reset OPcache</button>' : ''}<button class="sm" data-hero="prodoff">Turn off</button></div>` : ''}
       <div class="mp-hero-top">
         ${markHTML(d.icon)}
         <div class="mp-title">
@@ -506,6 +514,8 @@
     q('copy').onclick = async () => say(await copyText(info.path) ? 'Path copied' : 'Could not copy — ' + info.path);
     q('reveal').onclick = () => call('/api/open-path', { path: info.path }).catch(e => say('Error: ' + e.message));
     q('secure').onchange = e => setSecure(e.target.checked);
+    if (q('prodoff')) q('prodoff').onclick = () => { showTab('perf'); perfState.sub = 'prod'; prefSet('perf.sub', 'prod'); pfSetProd(false, false); };
+    if (q('opreset')) q('opreset').onclick = () => action('Resetting OPcache…', '/api/php/opcache/reset', { version: info.php }, 'OPcache reset — the next requests compile your current code');
     const ver = q('php') || q('node');
     if (ver) ver.onclick = () => (isPHP() ? changePHP() : changeNode());
   }
@@ -617,6 +627,7 @@
     if (termBox) termBox.hidden = name !== 'terminal';
     els.panel.hidden = name === 'terminal';
     if (name !== 'cache') stopMonitor();
+    if (name !== 'perf') stopProfiler();
     if (name === 'terminal') { showTerminal(); return; }
     if (name === 'commands') renderCommands();
     else if (name === 'workers') renderWorkers();
@@ -625,6 +636,7 @@
     else if (name === 'domains') renderDomains();
     else if (name === 'cache') renderCache();
     else if (name === 'watch') renderWatch();
+    else if (name === 'perf') renderPerf();
     else renderSettings();
   }
 
@@ -998,6 +1010,24 @@
     }
     updateWorkerCount(wkState.list.length);
     if (tab === 'workers') paintWorkers();
+    // Memory/CPU per worker (the Performance tab's sampler), every ~10 s.
+    if (tab === 'workers' && wkState.list.some(w => w.status && w.status.running) && Date.now() - (wkState.healthAt || 0) > 9000) {
+      wkState.healthAt = Date.now();
+      try {
+        const h = await call('/api/project/perf/workers', { site: cur });
+        if (!live(g)) return;
+        wkState.health = new Map((h.workers || []).map(w => [w.id, w]));
+      } catch {}
+      if (tab === 'workers') paintWorkerHealth();
+    }
+  }
+  function paintWorkerHealth() {
+    const box = els.panel && els.panel.querySelector('[data-id="mp-wk-list"]');
+    if (!box || !wkState.health) return;
+    box.querySelectorAll('[data-wh]').forEach(el => {
+      const h = wkState.health.get(el.dataset.wh);
+      el.innerHTML = h && h.status && h.status.running ? pfWorkerHTML(h, false) : '';
+    });
   }
 
   function paintWorkers() {
@@ -1038,6 +1068,7 @@
           <div class="w-name">${esc(w.name)} <span class="mp-state ${state}">${STATE_LABEL[state] || esc(state)}</span>${w.kind && w.kind !== 'custom' ? `<span class="badge">${esc(KIND_LABEL[w.kind] || w.kind)}</span>` : ''}</div>
           <div class="w-cmd" title="${esc(w.command)}">${esc(w.command)}</div>
           ${meta.length ? `<div class="w-meta">${meta.join('')}</div>` : ''}
+          <div class="w-health" data-wh="${esc(w.id)}"></div>
           ${state === 'crash-looping' ? '<div class="mp-warn" style="margin-top:10px">It crashed 5 times in 2 minutes, so Mullion stopped restarting it. Check the logs, fix the cause, then Start it again.</div>' : ''}
         </div>
         <div class="w-actions">
@@ -1051,6 +1082,7 @@
         </div>
       </div>`;
     }).join('');
+    paintWorkerHealth();
     const byId = new Map(list.map(w => [w.id, w]));
     box.querySelectorAll('[data-wact]').forEach(el => {
       const w = byId.get(el.closest('[data-wid]').dataset.wid);
@@ -4076,6 +4108,612 @@
         .then(r => say('Opened in ' + ({ vscode: 'VS Code', cursor: 'Cursor', phpstorm: 'PhpStorm', zed: 'Zed', sublime: 'Sublime Text', default: 'the default app' }[r.editor] || r.editor)))
         .catch(err => say('Error: ' + err.message));
     });
+  }
+
+  /* ════════════════════════════════════════════════════════════════
+     PERFORMANCE — routes (from the Watch data), the profiler (its own
+     script, profiler.js), the production-readiness check, load tests,
+     production-like mode and worker health. Backed by
+     /api/project/perf/* (perf.go).
+     ════════════════════════════════════════════════════════════════ */
+  const PF_SUBS = [
+    ['routes', 'Routes', 'php'], ['profiler', 'Profiler', 'php'], ['readiness', 'Readiness', 'any'],
+    ['load', 'Load test', 'any'], ['prod', 'Production-like', 'any'], ['workers', 'Workers', 'workers'],
+  ];
+  function perfFresh() {
+    return {
+      sub: prefGet('perf.sub', 'routes'), info: null, err: '',
+      routes: null, routesErr: '', loadingRoutes: false, sort: prefGet('perf.sort', { k: 'totalMs', d: -1 }), q: '',
+      compare: null, editBudgets: false,
+      readiness: null, checking: false, showIgnored: false, cat: '',
+      hist: null, run: null, es: null, form: null, viewing: null,
+      workers: null, prodBusy: false, prodLog: '',
+    };
+  }
+  function perfSubs() {
+    return PF_SUBS.filter(([, , need]) => need === 'any' || (need === 'php' && isPHP()) || (need === 'workers' && (info.workers > 0 || isPHP())));
+  }
+  function stopProfiler() {
+    const p = perfState && perfState.prof;
+    if (!p) return;
+    perfState.prof = null;
+    try { if (typeof p.unmount === 'function') p.unmount(); } catch {}
+  }
+  function stopPerf() {
+    if (!perfState) return;
+    stopProfiler();
+    if (perfState.es) { try { perfState.es.close(); } catch {} perfState.es = null; }
+  }
+
+  async function renderPerf() {
+    const ps = perfState, g = gen;
+    if (!perfSubs().some(s => s[0] === ps.sub)) ps.sub = perfSubs()[0][0];
+    if (!ps.info) els.panel.innerHTML = `<section class="card"><div class="mp-loading"><div class="spin"></div>Loading…</div></section>`;
+    try { ps.info = await call('/api/project/perf/info', { site: cur }); ps.err = ''; } catch (e) { ps.err = e.message; }
+    if (!live(g) || tab !== 'perf') return;
+    if (ps.info && !ps.readiness) ps.readiness = ps.info.readiness || null;
+    pfPaint();
+  }
+
+  function pfPaint() {
+    const ps = perfState;
+    if (ps.err && !ps.info) {
+      els.panel.innerHTML = `<section class="card"><div class="card-body"><div class="mp-empty"><b>Couldn't open the Performance tab</b>${esc(ps.err)}</div></div></section>`;
+      return;
+    }
+    const subs = perfSubs();
+    stopProfiler();
+    els.panel.innerHTML = `
+      <div class="mp-w-subs mp-pf-subs" role="tablist">${subs.map(([k, label]) =>
+        `<button data-pfsub="${k}" class="${ps.sub === k ? 'active' : ''}">${label}${k === 'prod' && info.prodMode ? '<span class="n bad">on</span>' : ''}</button>`).join('')}</div>
+      <div data-id="mp-pf-body"></div>`;
+    els.panel.querySelectorAll('[data-pfsub]').forEach(b => b.onclick = () => {
+      ps.sub = b.dataset.pfsub;
+      prefSet('perf.sub', ps.sub);
+      pfPaint();
+    });
+    clearInterval(pollTimer);
+    pollTimer = 0;
+    const body = els.panel.querySelector('[data-id="mp-pf-body"]');
+    if (ps.sub === 'routes') pfRoutes(body);
+    else if (ps.sub === 'profiler') pfProfiler(body);
+    else if (ps.sub === 'readiness') pfReadiness(body);
+    else if (ps.sub === 'load') pfLoad(body);
+    else if (ps.sub === 'prod') pfProd(body);
+    else pfWorkers(body);
+  }
+  const pfBody = () => els.panel && els.panel.querySelector('[data-id="mp-pf-body"]');
+  const pfOn = sub => tab === 'perf' && perfState && perfState.sub === sub && !!pfBody();
+  const fmtMs = v => v == null ? '—' : v >= 1000 ? (v / 1000).toFixed(2) + ' s' : (v >= 100 ? Math.round(v) : (+v).toFixed(1)) + ' ms';
+  const fmtMB = n => !n ? '—' : (n / 1048576).toFixed(n >= 104857600 ? 0 : 1) + ' MB';
+  const fmtPct = p => (p > 0 ? '+' : '') + (+p).toFixed(Math.abs(p) >= 10 ? 0 : 1) + '%';
+
+  // spark draws a tiny line of values (an SVG polyline).
+  function spark(vals, w, h, cls) {
+    if (!vals || vals.length < 2) return '';
+    w = w || 90; h = h || 22;
+    const max = Math.max(...vals), min = Math.min(...vals), span = max - min || 1;
+    const pts = vals.map((v, i) => `${(i / (vals.length - 1) * (w - 2) + 1).toFixed(1)},${(h - 2 - (v - min) / span * (h - 4)).toFixed(1)}`).join(' ');
+    return `<svg class="mp-pf-spark ${cls || ''}" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><polyline points="${pts}" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+  }
+
+  /* ── routes ── */
+  function pfRoutes(body) {
+    const ps = perfState;
+    if (!ps.routes && !ps.loadingRoutes) { pfLoadRoutes(); }
+    pfPaintRoutes(body);
+    pollTimer = setInterval(() => { if (pfOn('routes') && visible() && !ps.compare) pfLoadRoutes(true); }, 15000);
+  }
+  async function pfLoadRoutes(quiet) {
+    const ps = perfState, g = gen;
+    ps.loadingRoutes = true;
+    if (!quiet && pfOn('routes')) pfPaintRoutes(pfBody());
+    try { const d = await call('/api/project/perf/routes', { site: cur }); ps.routes = d.routes; ps.baselines = d.baselines; ps.routesErr = ''; }
+    catch (e) { ps.routesErr = e.message; }
+    ps.loadingRoutes = false;
+    if (live(g) && pfOn('routes')) pfPaintRoutes(pfBody());
+  }
+  const PF_COLS = [
+    ['key', 'Route'], ['count', 'Count'], ['avgMs', 'Avg'], ['p50Ms', 'p50'], ['p95Ms', 'p95'], ['p99Ms', 'p99'],
+    ['avgQueries', 'Queries'], ['avgQueryMs', 'Query time'], ['peakMemory', 'Peak mem'], ['errorRate', 'Errors'], ['nPlusOne', 'N+1'], ['totalMs', 'Total'],
+  ];
+  function pfPaintRoutes(body) {
+    if (!body) return;
+    const ps = perfState, d = ps.routes;
+    if (!d) {
+      body.innerHTML = ps.routesErr ? `<section class="card"><div class="card-body"><div class="mp-warn">${esc(ps.routesErr)}</div></div></section>`
+        : `<section class="card"><div class="mp-loading"><div class="spin"></div>Reading the Watch data…</div></section>`;
+      return;
+    }
+    const b = d.budgets;
+    let hint = '';
+    if (!d.watchOn) hint = `<div class="mp-note">The route table is built from what the <b>Watch</b> tab records. Turn Watch on (Requests &amp; logs at least; <b>Deep</b> adds queries and memory), then use the site.<div style="margin-top:8px"><button class="sm" data-pf="go-watch">Open Watch</button></div></div>`;
+    else if (!d.watchDeep) hint = `<div class="mp-note">Timings come from Caddy's access log. Turn on <b>Deep</b> in the Watch tab for query counts, query time, peak memory, N+1 detection and Laravel's route names.</div>`;
+    const sel = (ps.baselines || []).map(x => `<option value="${esc(x.name)}" ${ps.compare && ps.compare.baseline.name === x.name ? 'selected' : ''}>${esc(x.name)} · ${esc(new Date(x.savedAt).toLocaleString())}${x.note ? ' · ' + esc(x.note) : ''}</option>`).join('');
+    body.innerHTML = `
+      <section class="card">
+        <div class="card-head">${ICON.bolt}<h2>Routes</h2><span class="hint">${fmtNum(d.requests)} request${d.requests === 1 ? '' : 's'}${d.since ? ' since ' + esc(new Date(d.since * 1000).toLocaleString()) : ''}${d.deep ? ` · ${fmtNum(d.deep)} with queries` : ''}${d.prod ? ' · <span class="badge warnb">production-like</span>' : ''}</span>
+          <span class="spacer"></span>
+          <button class="sm" data-pf="refresh">${ps.loadingRoutes ? '<span class="mp-spin"></span>' : ''}Refresh</button>
+          <button class="sm" data-pf="reset" title="start the stats over from now (the Watch tab keeps its history)">Reset stats</button></div>
+        <div class="card-body">
+          ${hint}
+          <div class="mp-pf-bar">
+            <span class="mp-pf-budgets">Budgets: p95 <b>${b.maxMs} ms</b> · <b>${b.maxQueries}</b> queries · <b>${b.maxMemoryMB} MB</b> <button class="mp-link" data-pf="budgets">${ps.editBudgets ? 'close' : 'edit'}</button></span>
+            <span class="spacer"></span>
+            <div class="mp-search mp-pf-q">${ICON.search}<input type="text" data-pf="q" placeholder="Filter routes…" value="${esc(ps.q)}"></div>
+            <button class="sm" data-pf="save">Save baseline</button>
+            ${(ps.baselines || []).length ? `<select data-pf="cmp" class="sm"><option value="">Compare with baseline…</option>${sel}</select>` : ''}
+            ${ps.compare ? '<button class="sm" data-pf="cmp-off">Back to the table</button>' : ''}
+          </div>
+          ${ps.editBudgets ? `<div class="mp-w-settings mp-pf-budget-form">
+            <label>p95 budget <span class="mp-sub">ms</span><input type="number" min="0" max="600000" data-pfb="maxMs" value="${b.maxMs}"></label>
+            <label>Queries <span class="mp-sub">per request</span><input type="number" min="0" max="100000" data-pfb="maxQueries" value="${b.maxQueries}"></label>
+            <label>Peak memory <span class="mp-sub">MB</span><input type="number" min="0" max="100000" data-pfb="maxMemoryMB" value="${b.maxMemoryMB}"></label>
+            <button class="sm primary" data-pf="budgets-save">Save</button></div>` : ''}
+          <div data-id="mp-pf-table"></div>
+        </div>
+      </section>`;
+    const q = s => body.querySelector(`[data-pf="${s}"]`);
+    q('refresh').onclick = () => pfLoadRoutes();
+    q('reset').onclick = async () => {
+      if (!await confirmBox({ title: 'Reset the route stats?', message: 'The table starts over from now. The Watch tab keeps its own history; saved baselines stay.', confirmText: 'Reset' })) return;
+      try { await call('/api/project/perf/reset', { site: cur }); ps.compare = null; say('Route stats reset'); pfLoadRoutes(); } catch (e) { say('Error: ' + e.message); }
+    };
+    if (q('go-watch')) q('go-watch').onclick = () => showTab('watch');
+    q('budgets').onclick = () => { ps.editBudgets = !ps.editBudgets; pfPaintRoutes(body); };
+    if (q('budgets-save')) q('budgets-save').onclick = async () => {
+      const v = {};
+      body.querySelectorAll('[data-pfb]').forEach(i => { v[i.dataset.pfb] = parseInt(i.value, 10) || 0; });
+      try { await call('/api/project/perf/budgets', { site: cur, budgets: v }); ps.editBudgets = false; say('Budgets saved'); pfLoadRoutes(); } catch (e) { say('Error: ' + e.message); }
+    };
+    const qi = q('q');
+    qi.oninput = () => { ps.q = qi.value; pfPaintTable(); };
+    q('save').onclick = async () => {
+      const name = await promptBox({ title: 'Save baseline', message: 'A snapshot of this table to compare with later (after a refactor, an upgrade, in production-like mode…).', placeholder: 'e.g. before-cache', value: new Date().toISOString().slice(0, 10), confirmText: 'Save' });
+      if (!name) return;
+      try { const r = await call('/api/project/perf/baseline/save', { site: cur, name }); ps.baselines = r.baselines; say('Baseline “' + r.name + '” saved'); pfPaintRoutes(body); } catch (e) { say('Error: ' + e.message); }
+    };
+    if (q('cmp')) q('cmp').onchange = async e => {
+      const name = e.target.value;
+      if (!name) { ps.compare = null; pfPaintRoutes(body); return; }
+      try { ps.compare = await call('/api/project/perf/baseline/compare', { site: cur, name }); } catch (err) { say('Error: ' + err.message); ps.compare = null; }
+      if (pfOn('routes')) pfPaintRoutes(pfBody());
+    };
+    if (q('cmp-off')) q('cmp-off').onclick = () => { ps.compare = null; pfPaintRoutes(body); };
+    pfPaintTable();
+  }
+  function pfPaintTable() {
+    const ps = perfState, box = pfBody() && pfBody().querySelector('[data-id="mp-pf-table"]');
+    if (!box) return;
+    const filt = ps.q.trim().toLowerCase();
+    const match = k => !filt || k.toLowerCase().includes(filt);
+    if (ps.compare) {
+      const ds = ps.compare.deltas.filter(x => match(x.key));
+      const cell = (now, base, p, fmt, worse) => {
+        if (!base && !now) return '<td class="v">—</td>';
+        const cls = !p ? '' : (worse ? p > 0 : p < 0) ? (Math.abs(p) >= 20 ? 'bad' : 'meh') : (Math.abs(p) >= 20 ? 'good' : '');
+        return `<td class="v"><span class="mp-pf-was">${fmt(base)} →</span> ${fmt(now)}${p ? ` <span class="mp-pf-d ${cls}">${fmtPct(p)}</span>` : ''}</td>`;
+      };
+      const B = ps.compare.baseline;
+      box.innerHTML = `<div class="mp-sub" style="margin:4px 0 10px">Compared with <b>${esc(B.name)}</b> (${esc(new Date(B.savedAt).toLocaleString())}${B.note ? ', ' + esc(B.note) : ''}) — regressions first.</div>
+        ${ds.length ? `<div class="mp-pf-scroll"><table class="mp-pf-table"><thead><tr><th>Route</th><th>Requests</th><th>p95</th><th>Avg</th><th>Queries</th><th>Peak memory</th><th></th></tr></thead><tbody>${ds.map(x => {
+        if (x.status === 'gone') return `<tr class="gone"><td class="nm">${esc(x.key)}</td><td class="v">${x.baseCount} → 0</td><td colspan="5" class="v">not requested since</td></tr>`;
+        if (x.status === 'new') return `<tr><td class="nm">${esc(x.key)}</td><td class="v">${x.count}</td><td class="v">${fmtMs(x.p95Ms)}</td><td class="v">${fmtMs(x.avgMs)}</td><td class="v">${x.avgQueries ? x.avgQueries.toFixed(1) : '—'}</td><td class="v">${fmtMB(x.peakMemory)}</td><td><span class="mp-w-badge q">new</span></td></tr>`;
+        return `<tr class="${x.regression ? 'over' : ''}"><td class="nm">${esc(x.key)}</td><td class="v">${x.baseCount} → ${x.count}</td>
+          ${cell(x.p95Ms, x.baseP95Ms, x.p95Pct, fmtMs, true)}${cell(x.avgMs, x.baseAvgMs, x.avgPct, fmtMs, true)}
+          ${cell(x.avgQueries, x.baseAvgQueries, x.queriesPct, v => v ? (+v).toFixed(1) : '0', true)}${cell(x.peakMemory, x.basePeakMemory, x.memoryPct, fmtMB, true)}
+          <td>${x.regression ? '<span class="mp-w-badge n1">regression</span>' : x.improvement ? '<span class="mp-w-badge ok">faster</span>' : ''}</td></tr>`;
+      }).join('')}</tbody></table></div>` : '<div class="mp-empty"><b>Nothing to compare</b>No routes match.</div>'}`;
+      return;
+    }
+    const d = ps.routes;
+    let rows = d.routes.filter(r => match(r.key) || (r.name && match(r.name)));
+    if (!d.routes.length) {
+      box.innerHTML = `<div class="mp-empty"><b>No requests yet</b>${d.watchOn ? 'Use the site (or run a load test) — every page you open lands here, grouped by route.' : 'Turn on the Watch tab first.'}</div>`;
+      return;
+    }
+    const { k, d: dir } = ps.sort;
+    rows = rows.slice().sort((a, b) => {
+      const va = a[k], vb = b[k];
+      if (typeof va === 'string') return dir * va.localeCompare(vb);
+      return dir * ((va || 0) - (vb || 0));
+    });
+    const deep = d.watchDeep || d.deep > 0;
+    box.innerHTML = `<div class="mp-pf-scroll"><table class="mp-pf-table"><thead><tr>${PF_COLS.filter(([c]) => deep || !['avgQueries', 'avgQueryMs', 'peakMemory', 'nPlusOne'].includes(c)).map(([c, l]) =>
+      `<th data-sort="${c}" class="${k === c ? 'sorted' : ''}">${l}${k === c ? (dir < 0 ? ' ↓' : ' ↑') : ''}</th>`).join('')}<th>Recent</th></tr></thead>
+      <tbody>${rows.map(r => {
+        const over = r.over && r.over.length;
+        const pfx = r.method === 'GET' ? '' : `<span class="mp-pf-m">${esc(r.method)}</span>`;
+        return `<tr class="${over ? 'over' : ''}" title="${esc(over ? 'Over budget: ' + r.over.join('; ') : r.lastPath || '')}">
+          <td class="nm">${pfx}${esc(r.pattern)}${r.name ? `<span class="mp-pf-rn">${esc(r.name)}</span>` : ''}${over ? `<div class="mp-pf-over">${esc(r.over.join(' · '))}</div>` : ''}</td>
+          <td class="v">${fmtNum(r.count)}</td><td class="v">${fmtMs(r.avgMs)}</td><td class="v">${fmtMs(r.p50Ms)}</td>
+          <td class="v ${r.p95Ms > d.budgets.maxMs ? 'bad' : ''}">${fmtMs(r.p95Ms)}</td><td class="v">${fmtMs(r.p99Ms)}</td>
+          ${deep ? `<td class="v ${r.maxQueries > d.budgets.maxQueries ? 'bad' : ''}" title="max ${r.maxQueries}">${r.deepCount ? r.avgQueries.toFixed(1) : '—'}</td>
+          <td class="v">${r.deepCount ? fmtMs(r.avgQueryMs) : '—'}</td>
+          <td class="v ${r.peakMemory > d.budgets.maxMemoryMB * 1048576 ? 'bad' : ''}">${fmtMB(r.peakMemory)}</td>` : ''}
+          <td class="v ${r.errors ? 'bad' : ''}">${r.errors ? (r.errorRate * 100).toFixed(r.errorRate < 0.1 ? 1 : 0) + '%' : '0'}</td>
+          ${deep ? `<td class="v">${r.nPlusOne ? `<span class="mp-w-badge n1">${r.nPlusOne}</span>` : ''}</td>` : ''}
+          <td class="v">${fmtMs(r.totalMs)}</td>
+          <td>${spark(r.recent, 90, 22, over ? 'bad' : '')}</td></tr>`;
+      }).join('')}</tbody></table></div>
+      ${rows.length !== d.routes.length ? `<div class="mp-sub" style="margin-top:8px">${rows.length} of ${d.routes.length} routes</div>` : ''}
+      <div class="mp-pf-actions"><span class="mp-sub">Load-test a route:</span> ${rows.slice(0, 6).filter(r => r.method === 'GET').map(r => `<button class="sm" data-loadpath="${esc(r.lastPath || r.pattern)}">${esc(r.lastPath || r.pattern)}</button>`).join('')}</div>`;
+    box.querySelectorAll('[data-sort]').forEach(th => th.onclick = () => {
+      const c = th.dataset.sort;
+      ps.sort = { k: c, d: ps.sort.k === c ? -ps.sort.d : (c === 'key' ? 1 : -1) };
+      prefSet('perf.sort', ps.sort);
+      pfPaintTable();
+    });
+    box.querySelectorAll('[data-loadpath]').forEach(b => b.onclick = () => { pfLoadForm().path = b.dataset.loadpath; ps.sub = 'load'; prefSet('perf.sub', 'load'); pfPaint(); });
+  }
+
+  /* ── profiler (profiler.js) ── */
+  function pfProfiler(body) {
+    body.innerHTML = '<div data-id="mp-pf-prof"></div>';
+    const host = body.firstChild;
+    if (typeof window.MullionProfilerPanel === 'function') {
+      try { perfState.prof = window.MullionProfilerPanel(host, cur) || null; } catch (e) { host.innerHTML = `<section class="card"><div class="card-body"><div class="mp-warn">${esc(e.message)}</div></div></section>`; }
+    } else {
+      host.innerHTML = `<section class="card"><div class="card-body"><div class="mp-empty"><b>The profiler is coming soon</b>Flame graphs of where a request spends its time will show here.</div></div></section>`;
+    }
+  }
+
+  /* ── readiness ── */
+  const PF_CAT = { laravel: 'Laravel', php: 'PHP & Composer', database: 'Database', queries: 'Queries seen by Watch', frontend: 'Frontend' };
+  function pfReadiness(body) {
+    const ps = perfState, r = ps.readiness;
+    const list = r ? r.findings.filter(f => (ps.showIgnored || !f.ignored) && (!ps.cat || f.category === ps.cat)) : [];
+    const counts = {};
+    if (r) for (const f of r.findings) if (!f.ignored) counts[f.severity] = (counts[f.severity] || 0) + 1;
+    const ignored = r ? r.findings.filter(f => f.ignored).length : 0;
+    const cats = r ? [...new Set(r.findings.map(f => f.category))] : [];
+    body.innerHTML = `
+      <section class="card">
+        <div class="card-head">${ICON.check}<h2>Production readiness</h2><span class="hint">${r ? 'checked ' + esc(new Date(r.at).toLocaleString()) + ' · ' + (r.ms < 1000 ? r.ms + ' ms' : (r.ms / 1000).toFixed(1) + ' s') : 'settings, caches, packages, OPcache, database indexes, the frontend build'}</span>
+          <span class="spacer"></span><button class="primary sm" data-pf="check" ${ps.checking ? 'disabled' : ''}>${ps.checking ? '<span class="mp-spin"></span>Checking…' : r ? 'Check again' : 'Check'}</button></div>
+        <div class="card-body">
+          ${!r ? `<div class="mp-empty"><b>${ps.checking ? 'Checking the project…' : 'Is this ready for production?'}</b>Mullion reads the project's .env files and composer.json, boots it with <span class="mono">artisan route:list</span>, reads the database schema (read-only), and looks at the build output — then lists what to change, why, and how. Nothing is changed.</div>` : `
+          <div class="mp-pf-sum">${['high', 'medium', 'low', 'info'].map(s => `<span class="mp-pf-sev ${s}">${counts[s] || 0} ${W_SEV[s].toLowerCase()}</span>`).join('')}
+            <span class="spacer"></span>
+            <select data-pf="cat" class="sm"><option value="">All areas</option>${cats.map(c => `<option value="${c}" ${ps.cat === c ? 'selected' : ''}>${esc(PF_CAT[c] || c)}</option>`).join('')}</select>
+            ${ignored ? `<label class="toggle"><span class="switch"><input type="checkbox" data-pf="ign" ${ps.showIgnored ? 'checked' : ''}><i></i></span>Show ${ignored} ignored</label>` : ''}</div>
+          ${r.schema ? `<div class="mp-sub" style="margin-bottom:10px">Database: ${esc(r.schema.conn)} — ${r.schema.tables} tables, ${r.schema.foreignKeys} foreign keys.</div>` : ''}
+          ${(r.notes || []).map(n => `<div class="mp-note">${esc(n)}</div>`).join('')}
+          ${r.build && r.build.dir ? `<div class="mp-pf-build"><b>Build</b> <span class="mono">${esc(r.build.dir)}/</span> — JS ${fmtBytes(r.build.jsSize)} (${fmtBytes(r.build.jsGzip)} gzip) · CSS ${fmtBytes(r.build.cssSize)} (${fmtBytes(r.build.cssGzip)} gzip) · ${r.build.files} files${r.build.maps ? ' · ' + r.build.maps + ' source maps' : ''}
+            ${(r.build.largest || []).length ? `<details><summary>Largest files</summary><table class="mp-pf-table">${r.build.largest.map(a => `<tr><td class="nm">${esc(a.path)}${a.unminified ? ' <span class="mp-w-badge slow">unminified</span>' : ''}</td><td class="v">${fmtBytes(a.size)}</td><td class="v">${fmtBytes(a.gzip)} gzip</td></tr>`).join('')}</table></details>` : ''}</div>` : ''}
+          <div class="mp-pf-findings">${list.length ? list.map((f, i) => pfFindingHTML(f, i)).join('') : '<div class="mp-empty"><b>Nothing to fix here</b>No findings' + (ps.cat ? ' in this area' : '') + '.</div>'}</div>`}
+        </div>
+      </section>`;
+    const q = s => body.querySelector(`[data-pf="${s}"]`);
+    q('check').onclick = () => pfCheck();
+    if (q('cat')) q('cat').onchange = e => { ps.cat = e.target.value; pfReadiness(body); };
+    if (q('ign')) q('ign').onchange = e => { ps.showIgnored = e.target.checked; pfReadiness(body); };
+    body.querySelectorAll('[data-fact]').forEach(b => b.onclick = () => pfFindingAction(b.dataset.fact, list[+b.closest('[data-fi]').dataset.fi], b));
+  }
+  function pfFindingHTML(f, i) {
+    return `<div class="mp-pf-f ${f.severity}${f.ignored ? ' ignored' : ''}" data-fi="${i}">
+      <div class="mp-pf-fh"><span class="mp-pf-sev ${f.severity}">${W_SEV[f.severity] || esc(f.severity)}</span><b>${esc(f.title)}</b><span class="mp-pf-cat">${esc(PF_CAT[f.category] || f.category)}</span></div>
+      <div class="mp-pf-why">${wMd(f.why)}</div>
+      ${(f.where || []).length ? `<ul class="mp-pf-where">${f.where.map(w => `<li class="mono">${esc(w)}</li>`).join('')}</ul>` : ''}
+      ${f.fix ? `<pre class="mp-pf-fix">${esc(f.fix)}</pre>` : ''}
+      <div class="mp-pf-fa">
+        ${f.fix ? '<button class="sm" data-fact="copy">Copy fix</button>' : ''}
+        ${f.command ? `<button class="sm" data-fact="run" title="${esc(f.command)}">${ICON.play}Run fix</button>` : ''}
+        ${f.command && f.caution ? '<button class="sm" data-fact="simulate" title="only explains what it would change">Simulate</button>' : ''}
+        ${f.explain && f.explain.sql ? '<button class="sm" data-fact="explain">Explain the query</button>' : ''}
+        <span class="spacer"></span>
+        <button class="sm" data-fact="ignore">${f.ignored ? 'Un-ignore' : 'Ignore'}</button>
+      </div></div>`;
+  }
+  async function pfCheck() {
+    const ps = perfState, g = gen;
+    ps.checking = true;
+    if (pfOn('readiness')) pfReadiness(pfBody());
+    try { ps.readiness = await call('/api/project/perf/check', { site: cur }); }
+    catch (e) { say('Error: ' + e.message); }
+    ps.checking = false;
+    if (live(g) && pfOn('readiness')) pfReadiness(pfBody());
+  }
+  async function pfFindingAction(act, f, btn) {
+    const ps = perfState;
+    if (!f) return;
+    if (act === 'copy') { say(await copyText(f.fix) ? 'Copied' : 'Could not copy'); return; }
+    if (act === 'explain') { wExplainOpen({ sql: f.explain.sql, bindings: f.explain.bindings || [], conn: f.explain.conn || '', norm: '' }); return; }
+    if (act === 'simulate') {
+      alertBox({ title: 'What “' + esc(f.command) + '” would do', message: esc(f.caution) + '<br><br>Nothing was run. In production, run it as part of every deploy.' });
+      return;
+    }
+    if (act === 'run') {
+      if (f.caution && !await confirmBox({ title: 'Run ' + esc(f.command) + '?', message: esc(f.caution), confirmText: 'Run it' })) return;
+      runInCommands(f.command);
+      return;
+    }
+    if (act === 'ignore') {
+      btn.disabled = true;
+      try {
+        await call('/api/project/perf/ignore', { site: cur, id: f.id, on: !f.ignored });
+        f.ignored = !f.ignored;
+        say(f.ignored ? 'Ignored — it stays hidden in later checks' : 'Shown again');
+      } catch (e) { say('Error: ' + e.message); }
+      if (pfOn('readiness')) pfReadiness(pfBody());
+    }
+  }
+  // runInCommands opens the Commands tab and runs a command there.
+  function runInCommands(command) {
+    if (!tabs.some(t => t[0] === 'commands')) { openTerminal(command); return; }
+    showTab('commands');
+    selectCommand({ command, name: command, group: 'quick' }, true);
+  }
+
+  /* ── load test ── */
+  function pfLoadForm() {
+    const ps = perfState;
+    if (!ps.form) ps.form = Object.assign({ path: '/', method: 'GET', concurrency: 10, durationS: 15, requests: 0, byCount: false, warmUpS: isNode() ? 3 : 2, cookie: '', headers: '' }, prefGet('perf.load', {}) || {});
+    return ps.form;
+  }
+  async function pfLoad(body) {
+    const ps = perfState, g = gen;
+    pfPaintLoad(body);
+    try {
+      const d = await call('/api/project/perf/load/history', { site: cur });
+      ps.hist = d.results || [];
+      if (d.running && !ps.run) pfFollowLoad(d.running);
+    } catch (e) { ps.hist = []; }
+    if (live(g) && pfOn('load')) pfPaintLoad(pfBody());
+  }
+  function pfPaintLoad(body) {
+    if (!body) return;
+    const ps = perfState, f = pfLoadForm(), run = ps.run;
+    const running = run && !run.done;
+    const base = (info.secure ? 'https://' : 'http://') + info.host;
+    body.innerHTML = `
+      <section class="card">
+        <div class="card-head">${ICON.bolt}<h2>Load test</h2><span class="hint">Built in — requests go to this site only, on this computer</span></div>
+        <div class="card-body">
+          <div class="mp-pf-form">
+            <label class="wide">URL<div class="mp-pf-url"><span class="mono muted">${esc(base)}</span><input type="text" data-lf="path" value="${esc(f.path)}" spellcheck="false" ${running ? 'disabled' : ''}></div></label>
+            <label>Method<select data-lf="method" ${running ? 'disabled' : ''}>${['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD'].map(m => `<option ${f.method === m ? 'selected' : ''}>${m}</option>`).join('')}</select></label>
+            <label>Concurrency<input type="number" min="1" max="200" data-lf="concurrency" value="${f.concurrency}" ${running ? 'disabled' : ''}></label>
+            <label><span>${f.byCount ? 'Requests' : 'Duration <span class="mp-sub">s</span>'}</span><input type="number" min="${f.byCount ? 1 : 5}" max="${f.byCount ? 100000 : 120}" data-lf="${f.byCount ? 'requests' : 'durationS'}" value="${f.byCount ? (f.requests || 500) : f.durationS}" ${running ? 'disabled' : ''}></label>
+            <label class="toggle"><span class="switch"><input type="checkbox" data-lf="byCount" ${f.byCount ? 'checked' : ''} ${running ? 'disabled' : ''}><i></i></span>By count</label>
+            <label><span>Warm-up <span class="mp-sub">s</span></span><input type="number" min="0" max="30" data-lf="warmUpS" value="${f.warmUpS}" ${running ? 'disabled' : ''}></label>
+            <label class="wide"><span>Cookie <span class="mp-sub">optional — e.g. a logged-in session copied from the browser's dev tools</span></span><input type="text" data-lf="cookie" value="${esc(f.cookie)}" spellcheck="false" placeholder="laravel_session=…" ${running ? 'disabled' : ''}></label>
+            <label class="wide"><span>Headers <span class="mp-sub">optional, one per line: Name: value</span></span><textarea data-lf="headers" rows="2" spellcheck="false" ${running ? 'disabled' : ''}>${esc(f.headers)}</textarea></label>
+          </div>
+          <div class="mp-run-bar">
+            ${running ? '<button class="danger sm" data-pf="stop">Stop</button>' : `<button class="primary sm mp-btn-ic" data-pf="start">${ICON.play}Start</button>`}
+            <span class="mp-sub">It runs against your local database (writes included).${isNode() && info.mode !== 'build' ? ' The dev server is kept awake while it runs.' : ''}</span>
+          </div>
+          <div data-id="mp-pf-live">${run ? pfRunHTML(run) : ''}</div>
+          ${!info.prodMode ? '<div class="mp-note" style="margin-top:12px">Compare modes: run a test now, turn on <b>Production-like</b> mode, run the same test again — each result shows the change from the previous one.</div>' : ''}
+        </div>
+      </section>
+      <section class="card">
+        <div class="card-head">${ICON.stash}<h2>History</h2><span class="hint">${ps.hist ? ps.hist.length + ' saved' : ''}</span></div>
+        <div class="card-body">${pfHistHTML()}</div>
+      </section>`;
+    body.querySelectorAll('[data-lf]').forEach(inp => {
+      const k = inp.dataset.lf;
+      const save = () => {
+        f[k] = inp.type === 'checkbox' ? inp.checked : inp.type === 'number' ? (parseInt(inp.value, 10) || 0) : inp.value;
+        prefSet('perf.load', { path: f.path, method: f.method, concurrency: f.concurrency, durationS: f.durationS, requests: f.requests, byCount: f.byCount, warmUpS: f.warmUpS, headers: f.headers });
+        if (k === 'byCount') pfPaintLoad(body);
+      };
+      inp.onchange = save;
+      if (inp.tagName !== 'SELECT' && inp.type !== 'checkbox') inp.oninput = save;
+    });
+    const q = s => body.querySelector(`[data-pf="${s}"]`);
+    if (q('start')) q('start').onclick = () => pfStartLoad();
+    if (q('stop')) q('stop').onclick = () => call('/api/project/perf/load/stop', { id: run.id }).catch(e => say('Error: ' + e.message));
+    body.querySelectorAll('[data-hist]').forEach(el => el.onclick = e => {
+      if (e.target.closest('[data-hdel]')) return;
+      pfShowResult(el.dataset.hist);
+    });
+    body.querySelectorAll('[data-hdel]').forEach(b => b.onclick = async e => {
+      e.stopPropagation();
+      try { await call('/api/project/perf/load/delete', { site: cur, id: b.dataset.hdel }); ps.hist = ps.hist.filter(h => h.id !== b.dataset.hdel); pfPaintLoad(body); } catch (err) { say('Error: ' + err.message); }
+    });
+  }
+  function pfRunHTML(run) {
+    const s = run.snapshot || {};
+    const st = Object.entries(s.status || {}).sort();
+    const hist = (s.histogram || []).filter(b => b.count > 0);
+    const hmax = Math.max(1, ...hist.map(b => b.count));
+    const tl = (s.timeline || []).map(p => p.rps);
+    const cmp = run.compare;
+    const phase = run.error ? 'failed' : s.phase || 'starting';
+    return `<div class="mp-pf-live">
+      <div class="mp-pf-phase">${run.done ? '' : '<span class="mp-spin"></span>'}<b>${esc(phase)}</b>${s.elapsed ? ` · ${s.elapsed.toFixed(1)} s` : ''}${run.error ? ` — <span class="bad">${esc(run.error)}</span>` : ''}</div>
+      <div class="mp-pf-stats">
+        <div><span>Requests</span><b>${fmtNum(s.requests || 0)}</b></div>
+        <div><span>Req/s</span><b>${(s.rps || 0).toFixed(1)}</b>${cmp ? `<em class="${cmp.rpsPct >= 0 ? 'good' : 'bad'}">${fmtPct(cmp.rpsPct)}</em>` : ''}</div>
+        <div><span>p50</span><b>${fmtMs(s.p50)}</b>${cmp ? `<em class="${cmp.p50Pct <= 0 ? 'good' : 'bad'}">${fmtPct(cmp.p50Pct)}</em>` : ''}</div>
+        <div><span>p95</span><b>${fmtMs(s.p95)}</b>${cmp ? `<em class="${cmp.p95Pct <= 0 ? 'good' : 'bad'}">${fmtPct(cmp.p95Pct)}</em>` : ''}</div>
+        <div><span>p99</span><b>${fmtMs(s.p99)}</b></div>
+        <div><span>min / max</span><b>${fmtMs(s.min)} / ${fmtMs(s.max)}</b></div>
+        <div><span>Errors</span><b class="${s.errors ? 'bad' : ''}">${s.errors || 0}</b></div>
+      </div>
+      ${cmp ? `<div class="mp-sub">Compared with the previous test on this URL (${esc(cmp.againstMode === 'prod' ? 'production-like' : 'dev')} mode).</div>` : ''}
+      <div class="mp-pf-codes">${st.map(([c, n]) => `<span class="mp-w-badge ${c === 'error' || +c >= 500 ? 'n1' : +c >= 400 ? 'slow' : 'ok'}">${esc(c)} × ${fmtNum(n)}</span>`).join('')}</div>
+      ${(s.errorSamples || []).map(e => `<div class="mp-warn mono" style="margin-top:6px">${esc(e)}</div>`).join('')}
+      <div class="mp-pf-charts">
+        ${tl.length > 1 ? `<div><div class="mp-sub">Requests per second</div>${spark(tl, 260, 54)}</div>` : ''}
+        ${hist.length ? `<div class="mp-pf-hist"><div class="mp-sub">Latency</div>${hist.map(b => `<div class="r"><span>${b.le < 0 ? '> 10 s' : '≤ ' + fmtMs(b.le)}</span><i style="width:${(b.count / hmax * 100).toFixed(1)}%"></i><em>${fmtNum(b.count)}</em></div>`).join('')}</div>` : ''}
+      </div></div>`;
+  }
+  function pfHistHTML() {
+    const ps = perfState;
+    if (!ps.hist) return '<div class="mp-loading"><div class="spin"></div>Loading…</div>';
+    if (!ps.hist.length) return '<div class="mp-empty"><b>No load tests yet</b>Results are kept here, each compared with the one before it on the same URL.</div>';
+    return `<div class="mp-pf-scroll"><table class="mp-pf-table"><thead><tr><th>When</th><th>URL</th><th>Mode</th><th>Conc.</th><th>Requests</th><th>Req/s</th><th>p50</th><th>p95</th><th>Errors</th><th>vs previous</th><th></th></tr></thead><tbody>${ps.hist.map(h => {
+      const r = h.result, c = h.compare;
+      return `<tr data-hist="${esc(h.id)}" class="click"><td class="v">${esc(new Date(h.at).toLocaleString())}</td><td class="nm">${esc(h.method)} ${esc(h.url.replace(/^https?:\/\/[^/]+/, ''))}</td>
+        <td>${h.mode === 'prod' ? '<span class="badge warnb">prod-like</span>' : '<span class="badge">dev</span>'}</td><td class="v">${h.concurrency}</td><td class="v">${fmtNum(r.requests)}</td>
+        <td class="v">${r.rps.toFixed(1)}</td><td class="v">${fmtMs(r.p50)}</td><td class="v">${fmtMs(r.p95)}</td><td class="v ${r.errors ? 'bad' : ''}">${r.errors}</td>
+        <td class="v">${c ? `<span class="mp-pf-d ${c.rpsPct >= 0 ? 'good' : 'bad'}">${fmtPct(c.rpsPct)} rps</span> <span class="mp-pf-d ${c.p95Pct <= 0 ? 'good' : 'bad'}">${fmtPct(c.p95Pct)} p95</span>` : '—'}</td>
+        <td class="act"><button class="mp-icon-btn" data-hdel="${esc(h.id)}" title="delete">${ICON.trash}</button></td></tr>`;
+    }).join('')}</tbody></table></div>`;
+  }
+  async function pfShowResult(id) {
+    let r;
+    try { r = await call('/api/project/perf/load/get', { site: cur, id }); } catch (e) { say('Error: ' + e.message); return; }
+    const h = (perfState.hist || []).find(x => x.id === id);
+    mpModal({ title: esc(r.method + ' ' + r.url), wide: true }, (body, close) => {
+      body.innerHTML = `<div class="mp-sub">${esc(new Date(r.at).toLocaleString())} · ${r.concurrency} concurrent · ${r.durationS ? r.durationS + ' s' : r.requestsWanted + ' requests'} · ${r.mode === 'prod' ? 'production-like mode' : 'dev mode'}</div>
+        ${pfRunHTML({ done: true, snapshot: r.result, compare: h && h.compare })}
+        <div class="modal-actions"><button class="primary" data-x="close">Close</button></div>`;
+      body.querySelector('[data-x="close"]').onclick = () => close(null);
+    });
+  }
+  async function pfStartLoad() {
+    const ps = perfState, f = pfLoadForm();
+    const headers = {};
+    for (const line of (f.headers || '').split('\n')) {
+      const i = line.indexOf(':');
+      if (i > 0) headers[line.slice(0, i).trim()] = line.slice(i + 1).trim();
+    }
+    if (f.cookie && f.cookie.trim()) headers.Cookie = f.cookie.trim();
+    const body = { site: cur, url: (f.path || '/').trim(), method: f.method, headers, concurrency: f.concurrency, warmUpS: f.warmUpS };
+    if (f.byCount) body.requests = f.requests || 500; else body.durationS = f.durationS;
+    if (f.method !== 'GET' && f.method !== 'HEAD' && !await confirmBox({ title: 'Send ' + esc(f.method) + ' requests?', message: 'Each request runs against your local database — a form or API endpoint may create (or delete) a record every time.', confirmText: 'Start' })) return;
+    let id;
+    try { ({ id } = await call('/api/project/perf/load/start', body)); } catch (e) { say('Error: ' + e.message); return; }
+    pfFollowLoad(id);
+  }
+  function pfFollowLoad(id) {
+    const ps = perfState;
+    stopPerf();
+    ps.run = { id, done: false, snapshot: { phase: 'starting' } };
+    if (pfOn('load')) pfPaintLoad(pfBody());
+    const es = new EventSource('/api/perf/load/stream?t=' + encodeURIComponent(TOKEN) + '&id=' + encodeURIComponent(id));
+    ps.es = es;
+    let last = 0;
+    const update = (ev, done) => {
+      if (ps.es !== es) return;
+      try { ps.run = JSON.parse(ev.data); } catch { return; }
+      if (done) {
+        es.close();
+        ps.es = null;
+        if (ps.run.result) { ps.hist = [Object.assign({}, ps.run.result, { compare: ps.run.compare })].concat((ps.hist || []).filter(h => h.id !== ps.run.result.id)); }
+      }
+      // Repaint at most ~3×/s (the form keeps its focus otherwise).
+      const now = Date.now();
+      if (!done && now - last < 300) return;
+      last = now;
+      if (!pfOn('load')) return;
+      const box = pfBody().querySelector('[data-id="mp-pf-live"]');
+      if (done || !box) pfPaintLoad(pfBody()); else box.innerHTML = pfRunHTML(ps.run);
+    };
+    es.addEventListener('progress', ev => update(ev, false));
+    es.addEventListener('done', ev => update(ev, true));
+    es.onerror = () => {
+      if (ps.es !== es) return;
+      // The stream ends with "done"; an error before it: ask once.
+      es.close();
+      ps.es = null;
+      call('/api/project/perf/load/status', { id }).then(st => { ps.run = st; if (!st.done) setTimeout(() => pfFollowLoad(id), 1000); else if (pfOn('load')) pfPaintLoad(pfBody()); }).catch(() => {});
+    };
+  }
+
+  /* ── production-like mode ── */
+  function pfProd(body) {
+    const ps = perfState, st = ps.info && ps.info.prod;
+    if (!st) { body.innerHTML = ''; return; }
+    const php = st.kind === 'php';
+    const items = php ? [
+      `PHP gets <span class="mono">${Object.entries(st.env || {}).map(([k, v]) => esc(k + '=' + v)).join(' ')}</span> from Caddy — your .env stays as it is (Laravel's env() reads these first and .env never overrides them).`,
+      st.opcacheFrozen ? 'OPcache stops checking file timestamps for this site (other sites keep their setting), as production servers run.' : 'OPcache keeps its settings (see below).',
+      st.laravel ? 'Optionally <span class="mono">php artisan optimize</span> caches config, routes, views and events — undone with <span class="mono">optimize:clear</span> when you turn the mode off.' : '',
+      'Fingerprinted build assets (/build/assets/…) get a year-long Cache-Control.',
+    ] : [
+      'The domain serves the production build (built first if there is none) instead of the dev server.',
+      'Responses are compressed (zstd/gzip) and fingerprinted assets get a year-long Cache-Control.',
+    ];
+    body.innerHTML = `
+      <section class="card">
+        <div class="card-head">${ICON.bolt}<h2>Run like production</h2><span class="hint">${st.on ? 'on since ' + esc(new Date(st.since * 1000).toLocaleString()) : 'measure the site the way production serves it'}</span><span class="spacer"></span>
+          <label class="toggle"><span class="switch"><input type="checkbox" data-pf="prod" ${st.on ? 'checked' : ''} ${ps.prodBusy ? 'disabled' : ''}><i></i></span>${st.on ? 'On' : 'Off'}</label></div>
+        <div class="card-body">
+          <ul class="mp-pf-list">${items.filter(Boolean).map(i => `<li>${i}</li>`).join('')}</ul>
+          ${php && st.laravel ? `<label class="toggle" style="margin:6px 0 12px"><span class="switch"><input type="checkbox" data-pf="opt" ${st.optimized || prefGet('perf.prodOptimize', true) ? 'checked' : ''} ${st.on || ps.prodBusy ? 'disabled' : ''}><i></i></span><span>Also cache config, routes, views and events (<span class="mono">php artisan optimize</span>)</span></label>` : ''}
+          ${st.on ? `<div class="mp-warn">Code changes won't show while this is on${php ? ' — turn it off, or reset OPcache' : ' — rebuild, or turn it off'}.${php && st.optimized ? ' Config and routes are cached too: .env changes need the mode off.' : ''}</div>` : ''}
+          ${(st.notes || []).map(n => `<div class="mp-note">${esc(n)}</div>`).join('')}
+          <div class="mp-note">Measure it: run a <a href="#" data-pf="go-load">load test</a> in both modes — each result shows the change from the previous one on the same URL.</div>
+          ${ps.prodLog ? `<pre class="mp-term mp-pf-log">${ansiToHtml(ps.prodLog)}</pre>` : ''}
+        </div>
+      </section>`;
+    const q = s => body.querySelector(`[data-pf="${s}"]`);
+    q('prod').onchange = e => pfSetProd(e.target.checked, q('opt') ? q('opt').checked : false);
+    if (q('opt')) q('opt').onchange = e => prefSet('perf.prodOptimize', e.target.checked);
+    q('go-load').onclick = e => { e.preventDefault(); ps.sub = 'load'; prefSet('perf.sub', 'load'); pfPaint(); };
+  }
+  async function pfSetProd(on, optimize) {
+    const ps = perfState, g = gen;
+    ps.prodBusy = true;
+    ps.prodLog = '';
+    if (pfOn('prod')) pfProd(pfBody());
+    let id;
+    try { ({ job: id } = await call('/api/project/perf/prod/set', { site: cur, on, optimize })); }
+    catch (e) { ps.prodBusy = false; say('Error: ' + e.message); if (pfOn('prod')) pfProd(pfBody()); return; }
+    const st = await follow(id, s => {
+      ps.prodLog = s.log || '';
+      const pre = pfOn('prod') && pfBody().querySelector('.mp-pf-log');
+      if (pre) pre.innerHTML = ansiToHtml(ps.prodLog);
+      else if (pfOn('prod')) pfProd(pfBody());
+    });
+    if (!live(g)) return;
+    ps.prodBusy = false;
+    if (st && st.error) say('Error: ' + st.error);
+    else say(on ? 'Production-like mode on' : 'Production-like mode off — back to development');
+    if (st && st.result) ps.info.prod = st.result;
+    try { ps.info = await call('/api/project/perf/info', { site: cur }); } catch {}
+    refreshPanel();
+    await reloadInfo();
+    if (live(g) && tab === 'perf') pfPaint();
+  }
+
+  /* ── workers ── */
+  function pfWorkers(body) {
+    const ps = perfState;
+    pfPaintWorkers(body);
+    pfLoadWorkers();
+    pollTimer = setInterval(() => { if (pfOn('workers') && visible()) pfLoadWorkers(); }, 10000);
+  }
+  async function pfLoadWorkers() {
+    const ps = perfState, g = gen;
+    try { ps.workers = await call('/api/project/perf/workers', { site: cur }); } catch (e) { ps.workers = { workers: [], error: e.message }; }
+    if (live(g) && pfOn('workers')) pfPaintWorkers(pfBody());
+  }
+  function pfPaintWorkers(body) {
+    if (!body) return;
+    const d = perfState.workers;
+    if (!d) { body.innerHTML = `<section class="card"><div class="mp-loading"><div class="spin"></div>Measuring the workers…</div></section>`; return; }
+    body.innerHTML = `<section class="card">
+      <div class="card-head">${ICON.workers}<h2>Worker health</h2><span class="hint">memory and CPU every ${d.intervalS || 10} s while the panel is open · the last hour is kept</span></div>
+      <div class="card-body">${d.error ? `<div class="mp-warn">${esc(d.error)}</div>` : ''}${!d.workers.length ? '<div class="mp-empty"><b>No workers</b>Add queue workers or the scheduler in the Workers tab — their health shows here.</div>' : d.workers.map(w => pfWorkerHTML(w, true)).join('')}</div></section>`;
+    body.querySelectorAll('[data-wq]').forEach(b => b.onclick = () => runInCommands(b.dataset.wq));
+  }
+  // pfWorkerHTML renders one worker's health (full: the Performance tab;
+  // otherwise the compact line in a Workers tab row).
+  function pfWorkerHTML(w, full) {
+    const s = w.samples || [], last = s[s.length - 1], st = w.status || {};
+    const mem = s.map(x => x.rss);
+    const leak = w.leak || {};
+    const head = `<div class="mp-pf-wh">${last ? `<span>memory <b>${fmtMB(last.rss)}</b></span><span>cpu <b>${last.cpu.toFixed(1)}%</b></span><span>${last.procs} process${last.procs === 1 ? '' : 'es'}</span>` : `<span class="mp-sub">${st.running ? 'no samples yet' : 'not running'}</span>`}
+      ${spark(mem.slice(-120), full ? 180 : 110, full ? 30 : 20, leak.suspected ? 'bad' : '')}
+      ${leak.suspected ? `<span class="mp-w-badge n1" title="${esc(leak.reason)}">possible leak +${leak.slopeMBPerHour.toFixed(0)} MB/h</span>` : ''}
+      ${st.restarts ? `<span class="${st.restarts > 2 ? 'bad' : ''}">restarts <b>${st.restarts}</b></span>` : ''}${st.lastExit ? `<span class="mp-sub">last exit: ${esc(st.lastExit)}</span>` : ''}</div>`;
+    if (!full) return head;
+    const qs = w.queue;
+    return `<div class="mp-pf-w"><div class="w-name">${esc(w.name)} <span class="mp-state ${esc(st.state || '')}">${esc(st.state || '')}</span></div>
+      <div class="w-cmd mono">${esc(w.command)}</div>${head}
+      <div class="mp-sub">${esc(leak.reason || '')}</div>
+      ${qs ? `<div class="mp-pf-jobs">${qs.jobs && qs.jobs.length ? `<table class="mp-pf-table"><thead><tr><th>Job</th><th>Done</th><th>Failed</th><th>Avg</th><th>Max</th><th>Last</th></tr></thead><tbody>${qs.jobs.map(j =>
+        `<tr class="${j.repeatedFailures ? 'over' : ''}"><td class="nm">${esc(j.class)}${j.repeatedFailures ? ' <span class="mp-w-badge n1">failing repeatedly</span>' : ''}</td><td class="v">${j.done}</td><td class="v ${j.failed ? 'bad' : ''}">${j.failed}</td><td class="v">${fmtMs(j.avgMs)}</td><td class="v">${fmtMs(j.maxMs)}</td><td class="v">${esc(j.lastAt || '')}</td></tr>`).join('')}</tbody></table>`
+        : '<div class="mp-sub">No jobs in its log yet.</div>'}${qs.running ? `<div class="mp-sub">Running now: <span class="mono">${esc(qs.running)}</span></div>` : ''}
+        ${isLaravel() ? `<div class="mp-pf-fa"><button class="sm" data-wq="php artisan queue:failed">queue:failed</button><button class="sm" data-wq="php artisan queue:retry all">Retry all failed</button></div>` : ''}</div>` : ''}
+    </div>`;
   }
 
   /* ════════════════════════════════════════════════════════════════

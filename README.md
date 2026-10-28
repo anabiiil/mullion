@@ -78,6 +78,10 @@ workers, Git and a terminal for each project are all in one control panel.
 - **Cache**: the project's own keys in Mullion's Redis (found from its
   `.env` prefix), a value preview, delete, "flush this project's cache",
   a live command monitor, and a one-click `.env` switch to Redis.
+- **Performance**: per-route timings and budgets from the Watch data,
+  saved baselines, a production-readiness check, a built-in load test,
+  production-like mode, worker memory and leak detection, and (macOS) a
+  PHP profiler with flame graphs.
 - **Terminal**, **Domains** and **Settings** tabs.
 
 **Runtimes**
@@ -376,6 +380,90 @@ wrong.
 mullion watch blog explain "select * from posts where user_id = ?" --bindings '[42]'
 mullion watch blog explain "select * from users order by created_at desc limit 20" --analyze
 mullion watch blog explain "…" --json      # the whole result, for scripts
+```
+
+### Performance
+
+The **Performance** tab (or `mullion perf <site> …`) answers "is this
+fast, and is it ready for production?" Everything runs on your computer
+against your local copy.
+
+- **Routes.** Every request the Watch tab saw, grouped by route —
+  Laravel's own route (`/posts/{post}`, with its name) when Deep is on,
+  else the path with ids and UUIDs folded into `{id}`. Per route: count,
+  average, p50/p95/p99, queries (average and max), query time, peak
+  memory, error rate and N+1 requests, plus a sparkline of the recent
+  durations; sort by any column. It covers about the last 5,000 requests.
+  **Budgets** (p95 300 ms, 30 queries, 64 MB by default; change them per
+  site) highlight the routes over them and say why. **Save baseline**
+  keeps a snapshot; **Compare with baseline** shows what changed, with
+  regressions (+20% or more) first. **Reset stats** starts the table
+  over without touching the Watch tab's history. Needs Watch on (Deep
+  for queries, memory and route names).
+- **Profiler (macOS).** `mullion profile <site> on` (or Performance →
+  Profiler) builds SPX for the site's PHP once and profiles that site's
+  requests: on request, the next N, matching paths, or all. You get flame
+  graphs and the slowest functions; `mullion profile <site> show latest`
+  prints them in the terminal. Off by default and free when off. Not
+  available on Windows yet.
+- **Readiness.** **Check** audits the project and lists what to change,
+  most serious first, each with why and the exact fix (a snippet, the
+  ini lines or a command — **Run fix** runs safe ones in the Commands
+  tab; **Simulate** only explains what a command like `artisan optimize`
+  would freeze in development). It looks at `APP_DEBUG`, `APP_ENV`,
+  `LOG_LEVEL`, `APP_KEY`, `QUEUE_CONNECTION=sync` and file/database/array
+  session and cache drivers (judged from `.env.production` when the
+  project has one — Mullion can't see your server — else as reminders
+  from `.env`); whether `config:cache`/`route:cache` would work (`env()`
+  outside `config/`, two routes with one name, closures, an app that
+  doesn't boot); dev packages in `require` (Debugbar, Telescope
+  without a gate…); Composer's autoloader settings; `Model::shouldBeStrict()`;
+  OPcache (on, memory, `max_accelerated_files` versus the project's PHP
+  file count, production settings); PHP end of life; the database schema
+  through the `.env` connection, read-only (foreign keys and `*_id`
+  columns without an index, tables without a primary key, big tables
+  without a secondary index); the N+1 and slow queries Watch saw (with
+  **Explain**); and an existing frontend build (JS/CSS size and gzip
+  size, the largest chunks, unminified files, shipped source maps,
+  images over 300 KB). **Ignore** hides a finding for this site.
+- **Load test.** Built in — no tool to install. Pick the URL (or a route
+  from the table), method, concurrency (1–200), a duration (5 s–2 min)
+  or a request count, a warm-up, and optional headers or a session
+  cookie copied from the browser. It streams requests per second,
+  p50/p95/p99, min/max, status codes, errors and a latency histogram,
+  and keeps every result, each compared with the previous one on the
+  same URL. It only targets the site's own hosts (or its dev server on
+  localhost), trusts Mullion's local certificate authority, keeps a
+  sleeping dev server awake, and runs against your local database.
+- **Production-like mode.** For PHP sites Caddy passes
+  `APP_ENV=production` and `APP_DEBUG=false` to PHP (Laravel reads them
+  before `.env`, which stays untouched; when the project has a
+  `.env.production`, `APP_ENV` is left alone, since Laravel would load
+  that file — production's settings — instead), OPcache stops checking
+  file timestamps for the site (other sites on the same php-fpm keep
+  theirs; on Windows, where one php-cgi serves all sites, OPcache is left
+  as configured), fingerprinted `/build/assets` get a year-long
+  `Cache-Control`, and optionally `php artisan optimize` caches config,
+  routes, views and events. Frontend sites serve their production build,
+  compressed, with long cache headers. A banner says it's on: code
+  changes don't show until you turn it off (which undoes everything,
+  `optimize:clear` included) or reset OPcache. Run a load test in both
+  modes to see the difference.
+- **Workers.** Memory and CPU of each running worker's process tree,
+  measured every 10 seconds while the panel is open (the last hour is
+  kept), with a sparkline on the Workers tab too, restarts, the last
+  exit, and a **possible leak** warning when memory has climbed steadily
+  for 10+ minutes without dropping. For Laravel queue workers it reads
+  the worker's log: per job class, runs, failures, average and slowest
+  time, and jobs that keep failing, with `queue:failed` and **Retry all
+  failed** buttons.
+
+```sh
+mullion perf blog routes                 # the route table (--save <name>, --compare <name>)
+mullion perf blog check                  # the readiness audit (--json, --all)
+mullion perf blog load /posts -c 20 -d 30s -H "Cookie: laravel_session=…"
+mullion perf blog prod on --optimize     # production-like mode; prod off undoes it
+mullion perf blog workers                # worker memory, leaks, queue jobs
 ```
 
 ### Frontend dev servers
@@ -693,6 +781,7 @@ website has the full help text.
 | `mullion run [site] -- <cmd…>` | Run a command in a site's folder with its PHP and Node |
 | `mullion worker add\|list\|start\|stop\|restart\|logs\|remove` | Manage a site's background workers |
 | `mullion watch <site> on\|off\|status\|tail\|clear` | The live watcher: requests, logs, dumps, queries… (`tail --type queries,logs`, `on --basic`) |
+| `mullion perf <site> routes\|check\|load <path>\|prod on\|off\|workers` | Performance: route timings, readiness check, load test, production-like mode, worker health |
 | `mullion pkg search\|list\|add\|remove` | Composer/npm packages for a linked site |
 | `mullion php install\|list\|available\|uninstall` | Manage PHP versions |
 | `mullion php update [<branch\|version>] [--keep-old] [--check]` | Update installed PHP to the newest patch of its branch, moving sites and settings over |

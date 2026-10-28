@@ -185,6 +185,9 @@ func InstallPeclExtension(ctx context.Context, paths pmdir.Paths, version, name 
 	if IsSQLServerExtension(name) {
 		return EnsureSQLServer(ctx, paths, version)
 	}
+	if normalizeExtName(name) == "spx" {
+		return EnsureSpx(ctx, paths, version)
+	}
 	exts, err := ListExtensions(paths, version)
 	if err == nil {
 		for _, e := range exts {

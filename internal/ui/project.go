@@ -171,6 +171,9 @@ func projectInfo(a *app.App, s config.Site) map[string]any {
 		"windows":       runtime.GOOS == "windows",
 		"caddy":         caddy.Running(),
 		"wildcardDNS":   map[string]any{"enabled": a.State.Config.WildcardDNS},
+		// prodMode: the Performance tab's production-like mode is on
+		// (the page shows a banner while it is).
+		"prodMode": s.ProdMode(),
 	}
 	if kind == "php" {
 		out["php"] = a.SiteVersion(s)

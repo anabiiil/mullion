@@ -1,0 +1,90 @@
+/* The project page's Performance → Profiler sub-tab (profiler.js).
+ * Everything is scoped under .mpf-* and builds on the panel's tokens
+ * (index.html :root / [data-theme=dark]). */
+
+.mpf { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.mpf [hidden] { display: none !important; }
+.mpf-loading { color: var(--muted); font-size: 13px; padding: 8px 0; }
+.mpf .card-head { flex-wrap: wrap; }
+.mpf-head-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.mpf .card-head .hint + .mpf-head-actions { margin-left: 12px; }
+.mpf code { font-family: var(--mono); font-size: 11.5px; background: var(--inset);
+            border: 1px solid var(--border); border-radius: 6px; padding: 1px 6px; word-break: break-all; }
+.mpf a.button { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border-strong);
+                background: var(--card); color: var(--text); border-radius: 8px; padding: 5px 12px;
+                font-size: 12px; font-weight: 600; line-height: 1.35; text-decoration: none; }
+.mpf a.button:hover { border-color: var(--accent); color: var(--accent-text); text-decoration: none; }
+.mpf-note { margin: 0 0 8px; font-size: 13px; }
+.mpf-warn, .mpf-ok { margin: 0 0 14px; font-size: 12.5px; padding: 10px 12px; border-radius: 10px; }
+.mpf-warn { color: var(--warn-text); background: var(--warn-bg); border: 1px solid var(--warn-line); }
+.mpf-ok { color: var(--ok); background: var(--ok-bg); }
+
+/* settings */
+.mpf-modes { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; border-radius: 12px;
+             background: var(--inset); border: 1px solid var(--border); }
+.mpf-modes button { border: none; background: transparent; box-shadow: none; border-radius: 9px;
+                    padding: 6px 14px; font-size: 12.5px; color: var(--muted); }
+.mpf-modes button:hover { color: var(--text); border: none; background: var(--card); }
+.mpf-modes button.active { background: var(--seg-active); color: var(--seg-active-text); }
+.mpf-mode-hint { margin: 10px 0 12px; max-width: 70ch; }
+.mpf-opts { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin-bottom: 14px; }
+.mpf-opts label { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+.mpf-opts input[type=number] { width: 90px; }
+.mpf-opts input[type=text] { width: 220px; font-family: var(--mono); font-size: 12px; }
+.mpf-check { cursor: pointer; }
+.mpf-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.mpf-links { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 16px;
+             padding-top: 14px; border-top: 1px solid var(--row); }
+.mpf-links .muted { flex-basis: 100%; }
+
+/* tables */
+.mpf-list { padding-top: 6px; }
+.mpf-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.mpf-table th { white-space: nowrap; }
+.mpf-table td { padding: 9px 12px; }
+.mpf-table .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.mpf-table tbody tr { cursor: pointer; }
+.mpf-table tbody tr:hover td { background: var(--row-hover); }
+.mpf-table tbody tr.sel td { background: var(--accent-soft); }
+.mpf-table th.sortable { cursor: pointer; user-select: none; }
+.mpf-table th.sorted { color: var(--text); }
+.mpf-table th.sorted::after { content: " ↓"; }
+.mpf-req { font-family: var(--mono); font-size: 12px; word-break: break-all; min-width: 200px; }
+.mpf-method { font-weight: 700; color: var(--accent-text); margin-right: 4px; }
+.mpf-fn { font-family: var(--mono); font-size: 11.5px; word-break: break-all; min-width: 240px; }
+.mpf-bar { display: inline-block; width: 54px; height: 6px; margin-right: 8px; vertical-align: middle;
+           border-radius: 3px; background: var(--inset); overflow: hidden; }
+.mpf-bar i { display: block; height: 100%; background: var(--accent); border-radius: 3px; }
+.mpf-rowact { width: 1%; text-align: right; }
+.mpf-rowact button { padding: 3px 8px; font-size: 11px; border-radius: 7px; color: var(--muted); }
+.mpf-rowact button:hover { color: var(--bad); border-color: var(--bad); background: var(--bad-bg); }
+
+/* one profile */
+.mpf-title { font-family: var(--mono); font-size: 13.5px !important; min-width: 0; max-width: 100%;
+             overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mpf-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px; }
+.mpf-stats div { background: var(--inset); border: 1px solid var(--border); border-radius: 12px; padding: 10px 14px;
+                 display: flex; flex-direction: column; gap: 2px; }
+.mpf-stats b { font-size: 17px; letter-spacing: -.3px; font-variant-numeric: tabular-nums; }
+.mpf-stats span { font-size: 11.5px; color: var(--muted); }
+.mpf-tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+.mpf-tools input[type=search] { flex: 0 1 320px; min-width: 180px; border: 1px solid var(--border); background: var(--input);
+                                color: var(--text); border-radius: 10px; padding: 7px 12px; font: inherit; font-size: 12.5px; outline: none; }
+.mpf-tools input[type=search]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ring); }
+.mpf-crumbs { font-family: var(--mono); font-size: 11.5px; color: var(--muted); min-width: 0; overflow-wrap: anywhere; }
+.mpf-crumbs a { color: var(--accent-text); }
+.mpf-flame { position: relative; width: 100%; max-height: 560px; overflow-y: auto; overflow-x: hidden;
+             border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
+.mpf-flame canvas { display: block; }
+.mpf-tip { position: absolute; z-index: 5; pointer-events: none; max-width: min(520px, 90%);
+           background: var(--toast); color: #fff; border-radius: 10px; padding: 8px 11px;
+           font-size: 11.5px; line-height: 1.5; box-shadow: var(--shadow-lg); }
+.mpf-tip b { display: block; font-family: var(--mono); font-weight: 600; word-break: break-all; margin-bottom: 2px; }
+.mpf-legend { margin: 8px 0 18px; }
+.mpf-sub { font-size: 13.5px; margin: 0 0 6px; }
+.mpf-top { max-height: 520px; overflow: auto; }
+
+@container (max-width: 640px) {
+  .mpf-opts input[type=text] { width: 100%; }
+  .mpf-table .mpf-bar { display: none; }
+}
