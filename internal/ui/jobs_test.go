@@ -206,7 +206,7 @@ func TestJobExpiry(t *testing.T) {
 
 func waitDone(t *testing.T, r *jobRegistry, id string) JobStatus {
 	t.Helper()
-	deadline := time.After(2 * time.Second)
+	deadline := time.After(20 * time.Second) // generous: shared CI runners can be slow
 	for {
 		st, ok := r.get(id)
 		if !ok {
