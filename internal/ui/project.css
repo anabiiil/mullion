@@ -48,10 +48,13 @@ a.mp-host:hover { color: var(--accent-text); border-color: var(--accent); text-d
 .mp-path bdi { direction: ltr; unicode-bidi: isolate; }
 
 /* ── tabs ───────────────────────────────────────────────────── */
-.mp-tabs { display: inline-flex; gap: 4px; align-self: flex-start; flex-wrap: wrap;
+.mp-tabs { display: inline-flex; gap: 4px; align-self: flex-start; flex-wrap: nowrap;
+           max-width: 100%; overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
+           overscroll-behavior-x: contain; scroll-behavior: smooth;
            background: var(--card); border: 1px solid var(--border);
            border-radius: 999px; padding: 5px; box-shadow: var(--shadow); }
-.mp-tabs button { border: none; background: transparent; box-shadow: none;
+.mp-tabs::-webkit-scrollbar { display: none; }
+.mp-tabs button { flex: none; white-space: nowrap; border: none; background: transparent; box-shadow: none;
                   border-radius: 999px; padding: 7.5px 18px; font-size: 13px;
                   font-weight: 600; color: var(--muted); display: inline-flex; align-items: center; gap: 8px; }
 .mp-tabs button:hover { color: var(--text); border: none; background: var(--inset); }

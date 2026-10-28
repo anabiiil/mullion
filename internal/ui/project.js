@@ -407,6 +407,13 @@
     els.panel = root.querySelector('[data-id="mp-panel"]');
     els.termPanel = root.querySelector('[data-id="mp-term-panel"]');
     root.querySelectorAll('[data-mptab]').forEach(b => b.onclick = () => showTab(b.dataset.mptab));
+    // The tab bar is one scrolling row: a mouse wheel scrolls it sideways.
+    const strip = root.querySelector('.mp-tabs');
+    if (strip) strip.addEventListener('wheel', e => {
+      if (strip.scrollWidth <= strip.clientWidth || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      e.preventDefault();
+      strip.scrollLeft += e.deltaY;
+    }, { passive: false });
     if (pendingTab && tabs.some(t => t[0] === pendingTab)) {
       const t = pendingTab;
       pendingTab = null;
@@ -586,12 +593,24 @@
     say(ok ? 'Terminal opened — command copied, paste it to run' : 'Terminal opened');
   }
 
+  // revealTab scrolls the tab bar sideways (never the page) so the
+  // active tab is fully visible.
+  function revealTab(name) {
+    const strip = root.querySelector('.mp-tabs');
+    const b = strip && strip.querySelector(`[data-mptab="${name}"]`);
+    if (!b) return;
+    const left = b.offsetLeft - strip.offsetLeft, right = left + b.offsetWidth;
+    if (left < strip.scrollLeft) strip.scrollLeft = left - 8;
+    else if (right > strip.scrollLeft + strip.clientWidth) strip.scrollLeft = right - strip.clientWidth + 8;
+  }
+
   function showTab(name, remember) {
     if (destroyed || !info) return;
     if (!tabs.some(t => t[0] === name)) return;
     tab = name;
     if (remember !== false) prefSet('project.tab', name);
     root.querySelectorAll('[data-mptab]').forEach(b => b.classList.toggle('active', b.dataset.mptab === name));
+    revealTab(name);
     clearInterval(pollTimer);
     pollTimer = 0;
     // The embedded terminal stays alive while other tabs show.
