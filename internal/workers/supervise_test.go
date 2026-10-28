@@ -55,7 +55,23 @@ func newFakeSupervisor(paths pmdir.Paths, fw *fakeWorld) *supervisor {
 
 func testPaths(t *testing.T) pmdir.Paths {
 	t.Helper()
-	p := pmdir.Paths{Home: t.TempDir()}
+	// Not t.TempDir: Start's wait goroutine records the exit status in
+	// pids/ just after Stop kills the tree, which can race t.TempDir's
+	// one-shot RemoveAll ("directory not empty") on a busy runner.
+	home, err := os.MkdirTemp("", "mullion-workers-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		for i := 0; i < 50; i++ {
+			if os.RemoveAll(home) == nil {
+				return
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+		t.Errorf("could not remove %s", home)
+	})
+	p := pmdir.Paths{Home: home}
 	for _, d := range []string{p.PidsDir(), p.LogsDir()} {
 		if err := os.MkdirAll(d, 0o755); err != nil {
 			t.Fatal(err)
