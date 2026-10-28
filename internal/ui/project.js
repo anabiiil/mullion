@@ -384,12 +384,12 @@
     const hasProject = info.hasComposer || info.hasPackage || isLaravel() || info.detect.icon === 'symfony';
     if (hasProject) t.push(['commands', 'Commands', ICON.cmd]);
     if (info.detect.language === 'PHP' || info.hasPackage || info.workers > 0) t.push(['workers', 'Workers', ICON.workers]);
-    if (info.hasComposer || info.hasPackage) t.push(['packages', 'Packages', ICON.pkg]);
     if (isPHP() || isLaravel()) t.push(['cache', 'Cache', ICON.cache]);
     if (isPHP()) t.push(['watch', 'Watch', ICON.eye]);
-    t.push(['git', 'Git', ICON.branch]);
     t.push(['terminal', 'Terminal', ICON.term]);
     t.push(['domains', 'Domains', ICON.globe]);
+    if (info.hasComposer || info.hasPackage) t.push(['packages', 'Packages', ICON.pkg]);
+    t.push(['git', 'Git', ICON.branch]);
     t.push(['settings', 'Settings', ICON.gear]);
     return t;
   }
