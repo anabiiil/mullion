@@ -1,0 +1,52 @@
+{
+ "ok": true,
+ "driver": "mysql",
+ "via": "pdo_mysql",
+ "sql": "select * from `posts` where `posts`.`user_id` = 42 and `posts`.`user_id` is not null",
+ "explain": {
+  "tabular": [
+   {
+    "id": 1,
+    "select_type": "SIMPLE",
+    "table": "posts",
+    "partitions": null,
+    "type": "ALL",
+    "possible_keys": null,
+    "key": null,
+    "key_len": null,
+    "ref": null,
+    "rows": 196977,
+    "filtered": 10,
+    "Extra": "Using where"
+   }
+  ],
+  "warnings": [],
+  "json": "{\n  \"query_block\": {\n    \"select_id\": 1,\n    \"cost_info\": {\n      \"query_cost\": \"20475.20\"\n    },\n    \"table\": {\n      \"table_name\": \"posts\",\n      \"access_type\": \"ALL\",\n      \"rows_examined_per_scan\": 196977,\n      \"rows_produced_per_join\": 19697,\n      \"filtered\": \"10.00\",\n      \"cost_info\": {\n        \"read_cost\": \"18505.43\",\n        \"eval_cost\": \"1969.77\",\n        \"prefix_cost\": \"20475.20\",\n        \"data_read_per_join\": \"19M\"\n      },\n      \"used_columns\": [\n        \"id\",\n        \"user_id\",\n        \"title\",\n        \"body\",\n        \"published\",\n        \"created_at\",\n        \"updated_at\"\n      ],\n      \"attached_condition\": \"(`app`.`posts`.`user_id` = 42)\"\n    }\n  }\n}"
+ },
+ "server": "8.4.11",
+ "tables": {
+  "posts": {
+   "rows": 196977,
+   "indexes": [
+    {
+     "name": "PRIMARY",
+     "unique": true,
+     "primary": true,
+     "columns": [
+      "id"
+     ],
+     "cardinality": 196977
+    }
+   ],
+   "columns": {
+    "id": "bigint",
+    "user_id": "bigint",
+    "title": "varchar",
+    "body": "text",
+    "published": "tinyint",
+    "created_at": "timestamp",
+    "updated_at": "timestamp"
+   }
+  }
+ }
+}

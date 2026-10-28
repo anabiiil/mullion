@@ -1,0 +1,35 @@
+{
+ "ok": true,
+ "driver": "pgsql",
+ "via": "pgsql",
+ "sql": "select * from \"posts\" where \"published\" = true order by \"created_at\" desc limit 20",
+ "explain": {
+  "json": "[\n  {\n    \"Plan\": {\n      \"Node Type\": \"Limit\",\n      \"Parallel Aware\": false,\n      \"Async Capable\": false,\n      \"Startup Cost\": 9200.43,\n      \"Total Cost\": 9202.76,\n      \"Plan Rows\": 20,\n      \"Plan Width\": 228,\n      \"Plans\": [\n        {\n          \"Node Type\": \"Gather Merge\",\n          \"Parent Relationship\": \"Outer\",\n          \"Parallel Aware\": false,\n          \"Async Capable\": false,\n          \"Startup Cost\": 9200.43,\n          \"Total Cost\": 18996.45,\n          \"Plan Rows\": 83960,\n          \"Plan Width\": 228,\n          \"Workers Planned\": 2,\n          \"Plans\": [\n            {\n              \"Node Type\": \"Sort\",\n              \"Parent Relationship\": \"Outer\",\n              \"Parallel Aware\": false,\n              \"Async Capable\": false,\n              \"Startup Cost\": 8200.41,\n              \"Total Cost\": 8305.36,\n              \"Plan Rows\": 41980,\n              \"Plan Width\": 228,\n              \"Sort Key\": [\"created_at DESC\"],\n              \"Plans\": [\n                {\n                  \"Node Type\": \"Seq Scan\",\n                  \"Parent Relationship\": \"Outer\",\n                  \"Parallel Aware\": true,\n                  \"Async Capable\": false,\n                  \"Relation Name\": \"posts\",\n                  \"Alias\": \"posts\",\n                  \"Startup Cost\": 0.00,\n                  \"Total Cost\": 7083.33,\n                  \"Plan Rows\": 41980,\n                  \"Plan Width\": 228,\n                  \"Filter\": \"published\"\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  }\n]"
+ },
+ "server": "17.11",
+ "tables": {
+  "posts": {
+   "rows": 200000,
+   "indexes": [
+    {
+     "name": "posts_pkey",
+     "unique": true,
+     "primary": true,
+     "columns": [
+      "id"
+     ],
+     "def": "CREATE UNIQUE INDEX posts_pkey ON public.posts USING btree (id)"
+    }
+   ],
+   "columns": {
+    "id": "bigint",
+    "user_id": "bigint",
+    "title": "character varying(255)",
+    "body": "text",
+    "published": "boolean",
+    "created_at": "timestamp without time zone",
+    "updated_at": "timestamp without time zone"
+   }
+  }
+ }
+}

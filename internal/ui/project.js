@@ -3116,6 +3116,10 @@
       fileExc: [], phpExc: [], logs: [], unseen: 0, open: new Set(), paintT: 0, mail: null, mailT: 0,
       f: { status: '', method: '', q: '', noStatic: prefGet('watch.noStatic', true), issuesOnly: false, level: '' },
       showSettings: false, mailAll: false,
+      // EXPLAIN: results per query shape + bindings (ex), auto-explain
+      // badges per shape (exNorm), shapes already queued (exAuto).
+      qSeq: 0, ex: new Map(), exNorm: new Map(), exAuto: new Set(), exQueue: [], exBusy: false,
+      autoExplain: !!prefGet('watch.autoExplain', false),
     };
   }
   const watchOn = () => !!(info && info.watch && info.watch.enabled);
@@ -3135,7 +3139,8 @@
     es.addEventListener('start', ev => {
       if (ws.es !== es) return;
       // A reconnect replays the backlog: start from a clean slate.
-      const keep = { info: ws.info, sub: ws.sub, f: ws.f, paused: ws.paused, showSettings: ws.showSettings, mail: ws.mail, mailAll: ws.mailAll, open: ws.open };
+      const keep = { info: ws.info, sub: ws.sub, f: ws.f, paused: ws.paused, showSettings: ws.showSettings, mail: ws.mail, mailAll: ws.mailAll, open: ws.open,
+        qSeq: ws.qSeq, ex: ws.ex, exNorm: ws.exNorm, exAuto: ws.exAuto, exQueue: ws.exQueue, exBusy: ws.exBusy, autoExplain: ws.autoExplain };
       Object.assign(ws, watchFresh(), keep, { es });
       ws.status = 'live';
       // Only the Watch tab owns the panel (and only once its settings loaded).
@@ -3199,7 +3204,7 @@
       else if (t === 'job') {
         wPush(wList('jobs'), it, W_CAP.def);
         if (it.op === 'processed' || it.op === 'failed') wPush(wList('units'), it, W_CAP.def);
-      } else if (t === 'query') wPush(wList('queries'), it, W_CAP.query);
+      } else if (t === 'query') { it._q = ++ws.qSeq; wPush(wList('queries'), it, W_CAP.query); wAutoExplain(it); }
       else if (t === 'cache') wPush(wList('cache'), it, W_CAP.def);
       else if (t === 'event') wPush(wList('events'), it, W_CAP.def);
       else if (t === 'view') wPush(wList('views'), it, W_CAP.def);
@@ -3666,7 +3671,7 @@
   }
   function wEventText(e) {
     switch (e.type) {
-      case 'query': return `<code class="sql">${highlightSQL(e.sql)}</code> <span class="mp-sub">${wMs(e.ms)}</span> ${wQueryFlags(e)} ${wLoc(e.file, e.line)}`;
+      case 'query': return `<code class="sql">${highlightSQL(e.sql)}</code> <span class="mp-sub">${wMs(e.ms)}</span> ${wQueryFlags(e)}${wExplainBits(e)} ${wLoc(e.file, e.line)}`;
       case 'cache': return `<span class="mp-w-badge c-${esc(e.op)}">${esc(e.op)}</span> <span class="mono">${esc(e.key)}</span>`;
       case 'view': return `<span class="mono">${esc(e.name)}</span> ${wLoc(e.file, 0)}`;
       case 'event': return `<span class="mono">${esc(e.name)}</span>`;
@@ -3687,11 +3692,208 @@
     let qs = wList('queries').filter(q => wMatch(q.sql));
     if (f.issuesOnly) qs = qs.filter(q => wQueryFlags(q) !== '');
     qs = newestFirst(qs, 400);
-    const extra = `<label class="toggle"><span class="switch"><input type="checkbox" data-wf="issuesOnly" ${f.issuesOnly ? 'checked' : ''}><i></i></span>Only slow / N+1 / duplicates</label>`;
+    const extra = `<label class="toggle"><span class="switch"><input type="checkbox" data-wf="issuesOnly" ${f.issuesOnly ? 'checked' : ''}><i></i></span>Only slow / N+1 / duplicates</label>
+      <label class="toggle" title="Run EXPLAIN once for each distinct slow query and badge its rows with what's wrong (full scan, filesort, no index…). Only reads plans — it never runs the queries."><span class="switch"><input type="checkbox" data-wf="autoExplain" ${ws.autoExplain ? 'checked' : ''}><i></i></span>Auto-explain slow queries</label>`;
     if (!qs.length) return wSearch('Filter SQL…', extra) + wEmpty('No queries' + (f.q || f.issuesOnly ? ' match' : ' yet'), 'Database queries show here with their time, the line that ran them, and N+1 / duplicate / slow flags.');
     return wSearch('Filter SQL…', extra) + `<div class="mp-w-list">` + qs.map(q => `<div class="mp-w-q">
-      <div class="mp-w-qh"><span class="mp-w-time">${wTime(q.t)}</span><span class="mp-w-ms${q.ms >= ws.info.settings.slowQueryMs ? ' slow' : ''}">${wMs(q.ms)}</span>${wQueryFlags(q)}<span class="spacer"></span><span class="mp-sub">${esc(q.conn || '')}</span>${wLoc(q.file, q.line)}</div>
+      <div class="mp-w-qh"><span class="mp-w-time">${wTime(q.t)}</span><span class="mp-w-ms${q.ms >= ws.info.settings.slowQueryMs ? ' slow' : ''}">${wMs(q.ms)}</span>${wQueryFlags(q)}${wExplainBits(q)}<span class="spacer"></span><span class="mp-sub">${esc(q.conn || '')}</span>${wLoc(q.file, q.line)}</div>
       <code class="sql">${highlightSQL(q.sql)}</code>${wBindings(q.bindings)}</div>`).join('') + '</div>';
+  }
+
+
+  /* ── EXPLAIN (internal/watch/explain) ──
+     Every query row gets an Explain button (prominent on slow / N+1 /
+     duplicate ones). The server runs the database's plain EXPLAIN
+     through the site's PHP and diagnoses it; Analyze runs the query
+     (SELECT only, in a read-only transaction). Results are cached for the
+     session per query shape + bindings + connection. */
+  const W_EXPLAINABLE = /^[\s(]*(select|with|update|delete)\b|^[\s(]*(insert|replace)\b[\s\S]*\bselect\b/i;
+  const wExplainKey = (q, analyze) => (analyze ? 'A\u0000' : '') + (q.norm || q.sql) + '\u0000' + JSON.stringify(q.bindings || []) + '\u0000' + (q.conn || '');
+  function wFindQuery(id) {
+    const ws = watchState;
+    for (const q of wList('queries')) if (q._q === id) return q;
+    for (const evs of ws.byRid.values()) for (const e of evs) if (e._q === id) return e;
+    return null;
+  }
+  function wNPlus1Of(q) {
+    const a = watchState.analysis.get(q.rid);
+    const is = a && a.issues && a.issues.find(i => i.kind === 'n+1' && i.sql === q.norm && i.file === (q.file || '') && i.line === (q.line || 0));
+    return is ? is.count : 0;
+  }
+  function wExplainBits(q) {
+    if (!q._q || !W_EXPLAINABLE.test(q.sql || '')) return '';
+    const ws = watchState, st = ws.info.settings;
+    const hot = q.ms >= st.slowQueryMs || wNPlus1Of(q) > 0 || wQueryFlags(q).includes('dup');
+    let badges = '';
+    const done = ws.ex.get(wExplainKey(q, false));
+    const res = done && done.res ? done.res : null;
+    const auto = !res && ws.exNorm.get(q.norm);
+    const list = res ? res.badges : auto && auto.badges;
+    if (list) badges = list.length ? list.map(b => `<span class="mp-w-badge xb" title="from EXPLAIN — click Explain for why and how to fix it">${esc(b)}</span>`).join('') : '<span class="mp-w-badge ok" title="EXPLAIN found nothing slow in the plan">plan ok</span>';
+    else if (auto && auto.err) badges = `<span class="mp-w-badge" title="${esc(auto.err)}">explain failed</span>`;
+    else if (auto && auto.pending) badges = '<span class="mp-w-badge">explaining…</span>';
+    return `${badges}<button class="sm mp-w-xbtn${hot ? ' hot' : ''}" data-explain="${q._q}" title="Show the query plan — why it's slow and how to fix it">Explain</button>`;
+  }
+  function wExplainFetch(q, analyze) {
+    const ws = watchState, key = wExplainKey(q, analyze);
+    const have = ws.ex.get(key);
+    if (have && (have.res || have.p)) return have.p || Promise.resolve(have.res);
+    const site = cur;
+    const p = call('/api/project/watch/explain', { site, sql: q.sql, bindings: q.bindings || [], conn: q.conn || '', analyze: !!analyze, nPlusOne: wNPlus1Of(q) })
+      .then(res => { if (watchState === ws) ws.ex.set(key, { res }); return res; })
+      .catch(err => { ws.ex.delete(key); throw err; });
+    ws.ex.set(key, { p });
+    if (ws.ex.size > 400) ws.ex.delete(ws.ex.keys().next().value);
+    return p;
+  }
+  // wAutoExplain queues one explain per distinct slow query shape.
+  function wAutoExplain(q) {
+    const ws = watchState;
+    if (!ws.autoExplain || !ws.info || !ws.info.settings || q.ms < ws.info.settings.slowQueryMs) return;
+    if (!q.norm || ws.exAuto.has(q.norm) || !W_EXPLAINABLE.test(q.sql || '')) return;
+    ws.exAuto.add(q.norm);
+    ws.exNorm.set(q.norm, { pending: true });
+    ws.exQueue.push(q);
+    wAutoPump();
+  }
+  async function wAutoPump() {
+    const ws = watchState;
+    if (ws.exBusy) return;
+    ws.exBusy = true;
+    try {
+      while (ws.exQueue.length && ws.autoExplain && watchState === ws && !destroyed) {
+        const q = ws.exQueue.shift();
+        try { const res = await wExplainFetch(q, false); ws.exNorm.set(q.norm, { badges: res.badges || [] }); }
+        catch (e) { ws.exNorm.set(q.norm, { err: e.message }); }
+        wSchedule();
+      }
+    } finally { ws.exBusy = false; }
+  }
+  // Findings use `code` spans in their text.
+  const wMd = s => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>');
+  function wInlineSQL(q) {
+    // A display copy with the bindings filled in (the server's copy,
+    // quoted by the driver, replaces it once the explain is back).
+    let i = 0;
+    const b = q.bindings || [];
+    return String(q.sql).replace(/('(?:[^'\\]|\\.|'')*'|"[^"]*"|`[^`]*`)|\?/g, (m, quoted) => {
+      if (quoted) return m;
+      const v = b[i++];
+      if (v === undefined) return '?';
+      if (v === null) return 'NULL';
+      if (typeof v === 'number' || typeof v === 'boolean') return String(v === true ? 1 : v === false ? 0 : v);
+      return "'" + String(v).replace(/'/g, "''") + "'";
+    });
+  }
+  function wExplainOpen(q) {
+    const ws = watchState;
+    const stateOf = { analyze: false, raw: false, confirm: false };
+    mpModal({ title: 'Explain', wide: true }, (body, close, card) => {
+      card.classList.add('mp-x-card');
+      const paint = (res, err, loading) => {
+        let html = '';
+        if (loading) html = `<div class="mp-x-load"><span class="mp-spin"></span>${stateOf.analyze ? 'Running the query to measure it…' : 'Reading the plan…'}</div>`;
+        else if (err) html = `<div class="mp-warn">${esc(err)}</div>`;
+        else html = wExplainHTML(res, stateOf);
+        const canAnalyze = res && res.canAnalyze && !res.plan.analyzed;
+        body.innerHTML = `<code class="sql mp-x-sql">${highlightSQL(res ? res.boundSql || q.sql : wInlineSQL(q))}</code>${html}
+          <div class="mp-x-actions">
+            <button class="sm" data-x="copy">Copy SQL with bindings</button>
+            ${canAnalyze ? (stateOf.confirm
+              ? `<span class="mp-x-confirm">Analyze <b>runs</b> this query on your database (in a read-only transaction that is rolled back) to measure real row counts and time.</span><button class="sm danger" data-x="analyze-go">Run it</button><button class="sm" data-x="analyze-no">Cancel</button>`
+              : '<button class="sm" data-x="analyze" title="Runs the query to measure real rows and time (SELECT only)">Analyze (runs the query)</button>') : ''}
+            ${res && res.plan && res.plan.raw ? `<button class="sm" data-x="raw">${stateOf.raw ? 'Hide' : 'Show'} raw ${esc((res.plan.rawKind || 'json').toUpperCase())}</button>` : ''}
+            <span class="spacer"></span><button class="sm primary" data-x="close">Close</button>
+          </div>`;
+        const $ = k => body.querySelector(`[data-x="${k}"]`);
+        $('close').onclick = () => close(null);
+        $('copy').onclick = async () => say(await copyText(res ? res.boundSql || wInlineSQL(q) : wInlineSQL(q)) ? 'SQL copied' : 'Could not copy');
+        if ($('raw')) $('raw').onclick = () => { stateOf.raw = !stateOf.raw; paint(res); };
+        if ($('analyze')) $('analyze').onclick = () => { stateOf.confirm = true; paint(res); };
+        if ($('analyze-no')) $('analyze-no').onclick = () => { stateOf.confirm = false; paint(res); };
+        if ($('analyze-go')) $('analyze-go').onclick = () => { stateOf.confirm = false; stateOf.analyze = true; load(); };
+        body.querySelectorAll('[data-xcopy]').forEach(b => b.onclick = async () => {
+          const v = b.closest('[data-xval]');
+          say(await copyText(v ? v.dataset.xval : '') ? 'Copied' : 'Could not copy');
+        });
+      };
+      const load = () => {
+        paint(null, '', true);
+        wExplainFetch(q, stateOf.analyze).then(res => { paint(res); if (!stateOf.analyze) wSchedule(); }).catch(e => paint(null, e.message));
+      };
+      load();
+    });
+  }
+  const W_SEV = { high: 'High', medium: 'Medium', low: 'Low', info: 'Info' };
+  function wExplainHTML(res, st) {
+    let h = `<div class="mp-sub mp-x-meta">${esc(res.conn)} · ${esc(res.engine)} ${esc(res.server || '')}${res.via ? ' · ' + esc(res.via) : ''}${res.plan.analyzed ? ' · <span class="mp-w-badge slow">analyzed — the query ran' + (res.plan.timeMs ? ' (' + wMs(res.plan.timeMs) + ')' : '') + '</span>' : ''}</div>`;
+    for (const n of res.notes || []) h += `<div class="mp-note mp-x-note">${wMd(n)}</div>`;
+    h += '<h4>Findings</h4>';
+    if (!res.findings.length) h += '<div class="mp-x-f sev-ok"><div class="t"><span class="mp-x-sev">OK</span><b>Nothing in the plan looks slow</b></div><div class="why">The database finds the rows through an index and doesn\'t sort or scan more than it needs. If the query is still slow, look at how often it runs (N+1) or how many rows it returns.</div></div>';
+    for (const f of res.findings) {
+      h += `<div class="mp-x-f sev-${esc(f.severity)}"><div class="t"><span class="mp-x-sev">${W_SEV[f.severity] || esc(f.severity)}</span><b>${wMd(f.title)}</b></div>
+        <div class="why">${wMd(f.why)}</div>${f.fix ? `<div class="fix"><span class="lbl">Fix</span> ${wMd(f.fix)}</div>` : ''}
+        ${f.code ? `<div class="mp-x-code" data-xval="${esc(f.code)}"><pre>${esc(f.code)}</pre><button class="sm" data-xcopy>Copy</button></div>` : ''}</div>`;
+    }
+    if (res.suggestions.length) {
+      h += '<h4>Suggested indexes</h4>';
+      for (const s of res.suggestions) {
+        h += `<div class="mp-x-sugg"><div class="mp-sub">${s.source === 'server' ? '<span class="mp-w-badge q">SQL Server\'s own hint</span> ' : ''}${wMd(s.reason)}${s.extends ? ` It makes <code>${esc(s.extends)}</code> redundant.` : ''}</div>
+          <div class="mp-x-code" data-xval="${esc(s.sql)}"><pre>${esc(s.sql)}</pre><button class="sm" data-xcopy>Copy SQL</button></div>
+          <div class="mp-x-code" data-xval="${esc(s.migration)}"><pre>${esc(s.migration)}</pre><button class="sm" data-xcopy>Copy migration</button></div></div>`;
+      }
+    }
+    h += `<h4>Plan${res.plan.cost ? ` <span class="mp-sub">cost ${esc(res.plan.cost.toFixed(1))}</span>` : ''}</h4>`;
+    const tab = res.plan.tabular || [];
+    if (tab.length) {
+      const cols = ['id', 'select_type', 'table', 'type', 'possible_keys', 'key', 'rows', 'filtered', 'Extra'];
+      h += `<div class="mp-x-tab"><table><thead><tr>${cols.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${tab.map(r => `<tr>${cols.map(c => {
+        const v = r[c] == null ? 'NULL' : String(r[c]);
+        const bad = (c === 'type' && v === 'ALL') || (c === 'key' && v === 'NULL' && r.table) || (c === 'Extra' && /filesort|temporary/i.test(v));
+        return `<td class="${bad ? 'bad' : ''}${v === 'NULL' ? ' nul' : ''}">${esc(v)}</td>`;
+      }).join('')}</tr>`).join('')}</tbody></table></div>`;
+    }
+    const tree = tab.length ? (res.plan.nodes || []).filter(n => n.op === 'EXPLAIN ANALYZE').flatMap(n => n.children || []) : (res.plan.nodes || []);
+    if (tree.length) h += `<div class="mp-x-tree">${wPlanTree(tree, 0)}</div>`;
+    const tables = Object.keys(res.tables || {});
+    if (tables.length) {
+      h += '<h4>Indexes</h4><div class="mp-x-idx">';
+      for (const t of tables) {
+        const ti = res.tables[t];
+        h += `<div><b class="mono">${esc(t)}</b> <span class="mp-sub">${ti.rows != null ? '~' + fmtNum(ti.rows) + ' rows' : ''}</span>${ti.error ? ` <span class="mp-w-err">${esc(ti.error)}</span>` : ''}
+          ${(ti.indexes || []).length ? `<ul>${ti.indexes.map(ix => `<li><span class="mono">${esc(ix.name)}</span> <span class="mono mp-sub">(${esc((ix.columns || []).join(', '))}${ix.include && ix.include.length ? ') INCLUDE (' + esc(ix.include.join(', ')) : ''})</span>${ix.primary ? ' <span class="mp-w-badge">primary</span>' : ix.unique ? ' <span class="mp-w-badge">unique</span>' : ''}</li>`).join('')}</ul>` : '<div class="mp-sub">no indexes</div>'}</div>`;
+      }
+      h += '</div>';
+    }
+    if (st.raw) {
+      let raw = res.plan.raw || '';
+      if (res.plan.rawKind === 'json') { try { raw = JSON.stringify(JSON.parse(raw), null, 2); } catch {} }
+      h += `<h4>Raw plan</h4><pre class="mp-term mp-x-raw">${esc(raw)}</pre>`;
+      if (res.plan.rawAnalyze) h += `<h4>EXPLAIN ANALYZE</h4><pre class="mp-term mp-x-raw">${esc(res.plan.rawAnalyze)}</pre>`;
+    }
+    return h;
+  }
+  function wPlanTree(nodes, depth) {
+    return nodes.map(n => {
+      const flags = [];
+      if (n.fullScan) flags.push('<span class="mp-w-badge n1">full scan</span>');
+      if (n.indexScan) flags.push('<span class="mp-w-badge slow">index scan</span>');
+      if (n.filesort) flags.push('<span class="mp-w-badge slow">sort</span>');
+      if (n.diskSort || n.diskHash) flags.push('<span class="mp-w-badge n1">on disk</span>');
+      if (n.temporary) flags.push('<span class="mp-w-badge slow">temporary</span>');
+      if (n.dependent) flags.push('<span class="mp-w-badge slow">per row</span>');
+      if (n.lookup) flags.push('<span class="mp-w-badge">lookup</span>');
+      if (n.autoIndex) flags.push('<span class="mp-w-badge n1">auto index</span>');
+      const nums = [];
+      if (n.rows) nums.push('rows ≈ ' + fmtNum(n.rows));
+      if (n.actualRows >= 0) nums.push('actual ' + fmtNum(n.actualRows) + (n.loops > 1 ? ' × ' + fmtNum(n.loops) + ' loops' : ''));
+      if (n.removed) nums.push(fmtNum(n.removed) + ' removed by filter');
+      if (n.cost) nums.push('cost ' + n.cost.toFixed(1));
+      if (n.timeMs) nums.push(wMs(n.timeMs));
+      const on = n.table && !String(n.op).includes(n.table) ? ` on <b class="mono">${esc(n.table)}</b>${n.alias ? ' <span class="mp-sub">' + esc(n.alias) + '</span>' : ''}` : '';
+      const ix = n.index && !String(n.op).includes(n.index) ? ` using <span class="mono">${esc(n.index)}</span>` : '';
+      return `<div class="mp-x-node" style="--d:${depth}"><div class="op"><span class="mono">${esc(n.op)}</span>${on}${ix} ${flags.join('')}<span class="mp-sub mono">${esc(nums.join(' · '))}</span></div>${n.detail ? `<div class="mp-sub mono det">${esc(n.detail)}</div>` : ''}</div>` + (n.children && n.children.length ? wPlanTree(n.children, depth + 1) : '');
+    }).join('');
   }
 
   /* ── simple lists ── */
@@ -3819,6 +4021,19 @@
     if (ns) ns.onchange = () => { ws.f.noStatic = ns.checked; prefSet('watch.noStatic', ns.checked); wPaintBody(true); };
     const io = body.querySelector('[data-wf="issuesOnly"]');
     if (io) io.onchange = () => { ws.f.issuesOnly = io.checked; wPaintBody(true); };
+    const ae = body.querySelector('[data-wf="autoExplain"]');
+    if (ae) ae.onchange = () => {
+      ws.autoExplain = ae.checked;
+      prefSet('watch.autoExplain', ae.checked);
+      if (ae.checked) for (const q of wList('queries')) wAutoExplain(q);
+      wPaintBody();
+    };
+    body.querySelectorAll('[data-explain]').forEach(b => b.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      const q = wFindQuery(+b.dataset.explain);
+      if (q) wExplainOpen(q); else say('That query is no longer in the list');
+    });
     const ma = body.querySelector('[data-wf="mailAll"]');
     if (ma) ma.onchange = () => { ws.mailAll = ma.checked; wPaintSubs(); wPaintBody(true); };
     const mp = body.querySelector('[data-id="mp-w-mailpage"]');

@@ -2,6 +2,42 @@
 
 All notable changes to Mullion. Versions follow [semantic versioning](https://semver.org).
 
+## Unreleased
+
+### Added
+
+- **EXPLAIN in the Watch tab: why a query is slow, and how to fix it.**
+  Every query row (in Queries and in a request's timeline) has an
+  **Explain** button — prominent on slow, N+1 and duplicate ones. It
+  reads the database's plan with the site's own PHP, using the
+  project's `.env` connection (MySQL, MariaDB, PostgreSQL, SQLite, SQL
+  Server), and turns it into plain-language findings with a severity, the
+  why and a concrete fix: full table scans, no usable index or an index
+  the planner skips, low selectivity, rows read ≫ rows returned,
+  filesort / temporary tables / sorts and hashes spilling to disk,
+  `LIKE '%x'`, functions around indexed columns (`whereDate`,
+  `LOWER(email)`), `OR` across columns, string columns compared with
+  numbers, `SELECT *` on wide tables, `ORDER BY RAND()`, deep `OFFSET`
+  pagination, correlated subqueries, and N+1 with a guess at the relation
+  to eager-load (`->with('posts')`). Where an index helps it suggests one
+  (equality columns, then a range, then ORDER BY) as `CREATE INDEX` and a
+  Laravel migration, both copyable — unless an existing index already
+  covers it; on SQL Server the optimizer's own missing-index hint is
+  used. The panel shows the plan (MySQL's classic table, PostgreSQL's
+  node tree with costs, SQL Server's operators), the tables' indexes and
+  the raw JSON/XML. Only plans are read: **Analyze** (SELECT only, on
+  request) runs the query in a read-only transaction that is rolled back
+  to measure real rows and time. **Auto-explain slow queries** (off by
+  default) explains each distinct slow query once and badges its rows
+  ("full scan", "filesort", "no index"…). Also
+  `mullion watch <site> explain "<sql>" [--bindings '[...]'] [--analyze]`.
+
+### Fixed
+
+- **"Invalid Host header" on webpack-dev-server projects** (Vue CLI /
+  Vue 2, Create React App, Angular, plain webpack): Mullion's proxy now
+  sends them a `localhost` Host, as it already did for Vite.
+
 ## 2.3.1 — 2026-10-26
 
 ### Fixed

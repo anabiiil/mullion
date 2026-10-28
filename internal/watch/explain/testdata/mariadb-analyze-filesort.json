@@ -1,0 +1,60 @@
+{
+ "ok": true,
+ "driver": "mariadb",
+ "via": "pdo_mysql",
+ "server": "11.4.3-MariaDB",
+ "sql": "select * from `orders` where `customer_email` = 'a@b.test' order by `created_at` desc",
+ "explain": {
+  "tabular": [
+   {
+    "id": 1,
+    "select_type": "SIMPLE",
+    "table": "orders",
+    "type": "ALL",
+    "possible_keys": null,
+    "key": null,
+    "key_len": null,
+    "ref": null,
+    "rows": 98412,
+    "filtered": 100.0,
+    "Extra": "Using where; Using filesort"
+   }
+  ],
+  "warnings": [],
+  "json": "{\n  \"query_block\": {\n    \"select_id\": 1,\n    \"cost\": 15.8754,\n    \"nested_loop\": [\n      {\n        \"read_sorted_file\": {\n          \"filesort\": {\n            \"sort_key\": \"orders.created_at desc\",\n            \"table\": {\n              \"table_name\": \"orders\",\n              \"access_type\": \"ALL\",\n              \"loops\": 1,\n              \"rows\": 98412,\n              \"cost\": 15.8743,\n              \"filtered\": 100,\n              \"attached_condition\": \"orders.customer_email = 'a@b.test'\"\n            }\n          }\n        }\n      }\n    ]\n  }\n}",
+  "analyze": "{\n  \"query_optimization\": {\n    \"r_total_time_ms\": 0.0912\n  },\n  \"query_block\": {\n    \"select_id\": 1,\n    \"cost\": 15.8754,\n    \"r_loops\": 1,\n    \"r_total_time_ms\": 61.214,\n    \"nested_loop\": [\n      {\n        \"read_sorted_file\": {\n          \"r_rows\": 3,\n          \"filesort\": {\n            \"sort_key\": \"orders.created_at desc\",\n            \"r_loops\": 1,\n            \"r_total_time_ms\": 60.937,\n            \"r_used_priority_queue\": false,\n            \"r_output_rows\": 3,\n            \"r_buffer_size\": \"2047Kb\",\n            \"r_sort_mode\": \"sort_key,addon_fields\",\n            \"table\": {\n              \"table_name\": \"orders\",\n              \"access_type\": \"ALL\",\n              \"loops\": 1,\n              \"r_loops\": 1,\n              \"rows\": 98412,\n              \"r_rows\": 100000,\n              \"cost\": 15.8743,\n              \"r_table_time_ms\": 41.302,\n              \"r_other_time_ms\": 19.611,\n              \"r_engine_stats\": {\n                \"pages_accessed\": 1210\n              },\n              \"filtered\": 100,\n              \"r_filtered\": 0.003,\n              \"attached_condition\": \"orders.customer_email = 'a@b.test'\"\n            }\n          }\n        }\n      }\n    ]\n  }\n}"
+ },
+ "tables": {
+  "orders": {
+   "rows": 98412,
+   "indexes": [
+    {
+     "name": "PRIMARY",
+     "unique": true,
+     "primary": true,
+     "columns": [
+      "id"
+     ],
+     "cardinality": 98412
+    },
+    {
+     "name": "orders_status_index",
+     "unique": false,
+     "primary": false,
+     "columns": [
+      "status"
+     ],
+     "cardinality": 4
+    }
+   ],
+   "columns": {
+    "id": "bigint",
+    "customer_email": "varchar",
+    "total": "decimal",
+    "status": "varchar",
+    "created_at": "timestamp",
+    "updated_at": "timestamp"
+   }
+  }
+ }
+}

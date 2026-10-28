@@ -22,10 +22,12 @@ var (
 	watchJSON                             bool
 	watchBacklog                          int
 	watchClearLogs                        bool
+	watchBindings, watchConn              string
+	watchAnalyze                          bool
 )
 
 var watchCmd = &cobra.Command{
-	Use:   "watch <site> [on|off|status|tail|clear]",
+	Use:   "watch <site> [on|off|status|tail|clear|explain \"<sql>\"]",
 	Short: "Watch a site live: requests, logs, dumps, queries, jobs… (the project page's Watch tab)",
 	Long: `The live watcher shows what a site does while you use it. Everything stays
 on this computer; it is off until you turn it on.
@@ -48,8 +50,18 @@ workers (and php-cgi on Windows) restart when it is turned on or off.
   mullion watch blog on --basic    # requests & logs only
   mullion watch blog tail --type queries,exceptions
   mullion watch blog clear          # forget what was recorded so far
-  mullion watch blog clear --logs   # …and empty storage/logs/*.log too`,
-	Args: cobra.RangeArgs(1, 2),
+  mullion watch blog clear --logs   # …and empty storage/logs/*.log too
+
+EXPLAIN shows why a query is slow and how to fix it — full scans, missing
+indexes, sorts, leading-wildcard LIKEs, functions on indexed columns,
+deep OFFSETs, correlated subqueries — with the CREATE INDEX and the
+Laravel migration line to add. It connects with the project's .env
+(DB_*) through the site's own PHP, and only reads plans: --analyze
+(SELECT only) runs the query, in a read-only transaction rolled back.
+
+  mullion watch blog explain "select * from posts where user_id = ?" --bindings '[42]'
+  mullion watch blog explain "select * from users where email like '%@x.test'" --analyze`,
+	Args: cobra.RangeArgs(1, 3),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		a := mustApp()
 		site := a.State.FindSite(slugify(args[0]))
@@ -57,10 +69,18 @@ workers (and php-cgi on Windows) restart when it is turned on or off.
 			return fmt.Errorf("no site named %q", args[0])
 		}
 		action := "status"
-		if len(args) == 2 {
+		if len(args) >= 2 {
 			action = args[1]
 		}
+		if len(args) == 3 && action != "explain" {
+			return fmt.Errorf("unexpected argument %q", args[2])
+		}
 		switch action {
+		case "explain":
+			if len(args) < 3 {
+				return fmt.Errorf("usage: mullion watch %s explain \"<sql>\" [--bindings '[...]'] [--analyze]", site.Name)
+			}
+			return watchExplain(cmd, a, site.Name, args[2])
 		case "status":
 			return watchStatus(a, site.Name)
 		case "on":
@@ -100,7 +120,7 @@ workers (and php-cgi on Windows) restart when it is turned on or off.
 		case "tail":
 			return watchTail(a, site.Name)
 		}
-		return fmt.Errorf("unknown action %q — use on, off, status, tail or clear", action)
+		return fmt.Errorf("unknown action %q — use on, off, status, tail, clear or explain", action)
 	},
 }
 
@@ -283,8 +303,11 @@ func init() {
 	watchCmd.Flags().BoolVar(&watchNoDumps, "no-dumps", false, "on: leave dump() in the page")
 	watchCmd.Flags().BoolVar(&watchNoDeep, "no-deep", false, "on: skip the deep watcher (queries, jobs, cache…)")
 	watchCmd.Flags().StringVar(&watchTypes, "type", "", "tail: only these types, comma-separated (requests, queries, logs, exceptions, jobs, dumps, cache, events, views, http, mail)")
-	watchCmd.Flags().BoolVar(&watchJSON, "json", false, "tail: print raw JSON lines")
+	watchCmd.Flags().BoolVar(&watchJSON, "json", false, "tail: print raw JSON lines; explain: print the result as JSON")
 	watchCmd.Flags().IntVar(&watchBacklog, "backlog", 20, "tail: recent items to show first (per source)")
 	watchCmd.Flags().BoolVar(&watchClearLogs, "logs", false, "clear: also empty the project's storage/logs/*.log files")
+	watchCmd.Flags().StringVar(&watchBindings, "bindings", "", "explain: the query's bindings, a JSON array (e.g. '[42, \"a@b.test\"]')")
+	watchCmd.Flags().BoolVar(&watchAnalyze, "analyze", false, "explain: run the query to measure real rows (SELECT only; in a read-only transaction)")
+	watchCmd.Flags().StringVar(&watchConn, "conn", "", "explain: the Laravel connection name (default: DB_CONNECTION)")
 	rootCmd.AddCommand(watchCmd)
 }

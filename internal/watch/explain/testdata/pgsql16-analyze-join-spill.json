@@ -1,0 +1,60 @@
+{
+ "ok": true,
+ "driver": "pgsql",
+ "via": "pdo_pgsql",
+ "server": "16.4",
+ "sql": "select o.*, c.name from orders o inner join customers c on c.id = o.customer_id where o.status = 'paid' order by o.total desc",
+ "explain": {
+  "json": "[\n  {\n    \"Plan\": {\n      \"Node Type\": \"Sort\",\n      \"Parallel Aware\": false,\n      \"Async Capable\": false,\n      \"Startup Cost\": 152034.12,\n      \"Total Cost\": 152659.12,\n      \"Plan Rows\": 250000,\n      \"Plan Width\": 72,\n      \"Actual Startup Time\": 912.4,\n      \"Actual Total Time\": 988.1,\n      \"Actual Rows\": 250000,\n      \"Actual Loops\": 1,\n      \"Sort Key\": [\n        \"o.total DESC\"\n      ],\n      \"Sort Method\": \"external merge\",\n      \"Sort Space Used\": 18432,\n      \"Sort Space Type\": \"Disk\",\n      \"Shared Hit Blocks\": 312,\n      \"Shared Read Blocks\": 10240,\n      \"Temp Read Blocks\": 2304,\n      \"Temp Written Blocks\": 2310,\n      \"Plans\": [\n        {\n          \"Node Type\": \"Hash Join\",\n          \"Parent Relationship\": \"Outer\",\n          \"Parallel Aware\": false,\n          \"Join Type\": \"Inner\",\n          \"Startup Cost\": 7143.0,\n          \"Total Cost\": 41210.0,\n          \"Plan Rows\": 250000,\n          \"Plan Width\": 72,\n          \"Actual Startup Time\": 78.2,\n          \"Actual Total Time\": 640.9,\n          \"Actual Rows\": 250000,\n          \"Actual Loops\": 1,\n          \"Inner Unique\": true,\n          \"Hash Cond\": \"(o.customer_id = c.id)\",\n          \"Plans\": [\n            {\n              \"Node Type\": \"Seq Scan\",\n              \"Parent Relationship\": \"Outer\",\n              \"Parallel Aware\": false,\n              \"Relation Name\": \"orders\",\n              \"Alias\": \"o\",\n              \"Startup Cost\": 0.0,\n              \"Total Cost\": 20834.0,\n              \"Plan Rows\": 249100,\n              \"Plan Width\": 56,\n              \"Actual Startup Time\": 0.02,\n              \"Actual Total Time\": 301.7,\n              \"Actual Rows\": 250000,\n              \"Actual Loops\": 1,\n              \"Filter\": \"((status)::text = 'paid'::text)\",\n              \"Rows Removed by Filter\": 750000\n            },\n            {\n              \"Node Type\": \"Hash\",\n              \"Parent Relationship\": \"Inner\",\n              \"Parallel Aware\": false,\n              \"Startup Cost\": 3670.0,\n              \"Total Cost\": 3670.0,\n              \"Plan Rows\": 200000,\n              \"Plan Width\": 24,\n              \"Actual Startup Time\": 77.9,\n              \"Actual Total Time\": 77.9,\n              \"Actual Rows\": 200000,\n              \"Actual Loops\": 1,\n              \"Hash Buckets\": 131072,\n              \"Original Hash Buckets\": 131072,\n              \"Hash Batches\": 4,\n              \"Original Hash Batches\": 1,\n              \"Peak Memory Usage\": 3653,\n              \"Plans\": [\n                {\n                  \"Node Type\": \"Seq Scan\",\n                  \"Parent Relationship\": \"Outer\",\n                  \"Parallel Aware\": false,\n                  \"Relation Name\": \"customers\",\n                  \"Alias\": \"c\",\n                  \"Startup Cost\": 0.0,\n                  \"Total Cost\": 3670.0,\n                  \"Plan Rows\": 200000,\n                  \"Plan Width\": 24,\n                  \"Actual Startup Time\": 0.01,\n                  \"Actual Total Time\": 30.4,\n                  \"Actual Rows\": 200000,\n                  \"Actual Loops\": 1\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    },\n    \"Planning\": {\n      \"Shared Hit Blocks\": 12\n    },\n    \"Planning Time\": 0.412,\n    \"Triggers\": [],\n    \"Execution Time\": 1003.77\n  }\n]"
+ },
+ "tables": {
+  "orders": {
+   "rows": 1000000,
+   "indexes": [
+    {
+     "name": "orders_pkey",
+     "unique": true,
+     "primary": true,
+     "columns": [
+      "id"
+     ],
+     "def": "CREATE UNIQUE INDEX orders_pkey ON public.orders USING btree (id)"
+    },
+    {
+     "name": "orders_customer_id_index",
+     "unique": false,
+     "primary": false,
+     "columns": [
+      "customer_id"
+     ],
+     "def": "CREATE INDEX orders_customer_id_index ON public.orders USING btree (customer_id)"
+    }
+   ],
+   "columns": {
+    "id": "bigint",
+    "customer_id": "bigint",
+    "status": "character varying(20)",
+    "total": "numeric(10,2)",
+    "created_at": "timestamp without time zone"
+   }
+  },
+  "customers": {
+   "rows": 200000,
+   "indexes": [
+    {
+     "name": "customers_pkey",
+     "unique": true,
+     "primary": true,
+     "columns": [
+      "id"
+     ]
+    }
+   ],
+   "columns": {
+    "id": "bigint",
+    "name": "character varying(255)",
+    "email": "character varying(255)"
+   }
+  }
+ }
+}

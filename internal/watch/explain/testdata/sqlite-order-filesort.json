@@ -1,0 +1,46 @@
+{
+ "ok": true,
+ "driver": "sqlite",
+ "via": "sqlite3",
+ "sql": "select * from \"posts\" where \"published\" = 1 order by \"created_at\" desc limit 20",
+ "explain": {
+  "rows": [
+   {
+    "id": 4,
+    "parent": 0,
+    "notused": 0,
+    "detail": "SCAN posts"
+   },
+   {
+    "id": 22,
+    "parent": 0,
+    "notused": 0,
+    "detail": "USE TEMP B-TREE FOR ORDER BY"
+   }
+  ]
+ },
+ "server": "3.45.2",
+ "tables": {
+  "posts": {
+   "rows": 20000,
+   "indexes": [
+    {
+     "name": "PRIMARY",
+     "unique": true,
+     "primary": true,
+     "columns": [
+      "id"
+     ]
+    }
+   ],
+   "columns": {
+    "id": "INTEGER",
+    "user_id": "INTEGER",
+    "title": "varchar",
+    "body": "TEXT",
+    "published": "tinyint",
+    "created_at": "datetime"
+   }
+  }
+ }
+}

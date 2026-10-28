@@ -93,6 +93,19 @@ func registerWatch(api apiRegistrar) {
 		}
 		return a.WatchMail(r.Context(), in.Site)
 	})
+	// explain: a recorded query's plan, diagnosed (the panel caches the
+	// result per query shape + bindings for the session). analyze runs
+	// the query (SELECT only — refused otherwise).
+	api("/api/project/watch/explain", func(a *app.App, r *http.Request) (any, error) {
+		var in struct {
+			Site string `json:"site"`
+			app.WatchExplainInput
+		}
+		if err := decodeBody(r, &in); err != nil {
+			return nil, err
+		}
+		return a.WatchExplain(r.Context(), in.Site, in.WatchExplainInput)
+	})
 }
 
 // Live streams: a few at once (each polls a handful of files).

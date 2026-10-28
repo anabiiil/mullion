@@ -1,0 +1,35 @@
+{
+ "ok": true,
+ "driver": "pgsql",
+ "via": "pgsql",
+ "sql": "select * from \"posts\" where \"posts\".\"user_id\" = 42 and \"posts\".\"user_id\" is not null",
+ "explain": {
+  "json": "[\n  {\n    \"Plan\": {\n      \"Node Type\": \"Gather\",\n      \"Parallel Aware\": false,\n      \"Async Capable\": false,\n      \"Startup Cost\": 1000.00,\n      \"Total Cost\": 8292.07,\n      \"Plan Rows\": 4,\n      \"Plan Width\": 228,\n      \"Workers Planned\": 2,\n      \"Single Copy\": false,\n      \"Plans\": [\n        {\n          \"Node Type\": \"Seq Scan\",\n          \"Parent Relationship\": \"Outer\",\n          \"Parallel Aware\": true,\n          \"Async Capable\": false,\n          \"Relation Name\": \"posts\",\n          \"Alias\": \"posts\",\n          \"Startup Cost\": 0.00,\n          \"Total Cost\": 7291.67,\n          \"Plan Rows\": 2,\n          \"Plan Width\": 228,\n          \"Filter\": \"(user_id = 42)\"\n        }\n      ]\n    }\n  }\n]"
+ },
+ "server": "17.11",
+ "tables": {
+  "posts": {
+   "rows": 200000,
+   "indexes": [
+    {
+     "name": "posts_pkey",
+     "unique": true,
+     "primary": true,
+     "columns": [
+      "id"
+     ],
+     "def": "CREATE UNIQUE INDEX posts_pkey ON public.posts USING btree (id)"
+    }
+   ],
+   "columns": {
+    "id": "bigint",
+    "user_id": "bigint",
+    "title": "character varying(255)",
+    "body": "text",
+    "published": "boolean",
+    "created_at": "timestamp without time zone",
+    "updated_at": "timestamp without time zone"
+   }
+  }
+ }
+}

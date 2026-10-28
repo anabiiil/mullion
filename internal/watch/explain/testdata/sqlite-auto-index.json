@@ -1,0 +1,61 @@
+{
+ "ok": true,
+ "driver": "sqlite",
+ "via": "pdo_sqlite",
+ "server": "3.46.1",
+ "sql": "select * from \"posts\" inner join \"comments\" on \"comments\".\"post_id\" = \"posts\".\"id\" where \"posts\".\"published\" = 1",
+ "explain": {
+  "rows": [
+   {
+    "id": 3,
+    "parent": 0,
+    "notused": 0,
+    "detail": "SCAN posts"
+   },
+   {
+    "id": 9,
+    "parent": 0,
+    "notused": 0,
+    "detail": "SEARCH comments USING AUTOMATIC COVERING INDEX (post_id=?)"
+   }
+  ]
+ },
+ "tables": {
+  "posts": {
+   "rows": 5000,
+   "indexes": [
+    {
+     "name": "PRIMARY",
+     "unique": true,
+     "primary": true,
+     "columns": [
+      "id"
+     ]
+    }
+   ],
+   "columns": {
+    "id": "INTEGER",
+    "published": "tinyint(1)",
+    "title": "varchar"
+   }
+  },
+  "comments": {
+   "rows": 40000,
+   "indexes": [
+    {
+     "name": "PRIMARY",
+     "unique": true,
+     "primary": true,
+     "columns": [
+      "id"
+     ]
+    }
+   ],
+   "columns": {
+    "id": "INTEGER",
+    "post_id": "INTEGER",
+    "body": "TEXT"
+   }
+  }
+ }
+}

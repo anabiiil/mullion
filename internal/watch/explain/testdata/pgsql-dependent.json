@@ -1,0 +1,77 @@
+{
+ "ok": true,
+ "driver": "pgsql",
+ "via": "pgsql",
+ "sql": "select \"users\".*, (select count(*) from \"posts\" where \"users\".\"id\" = \"posts\".\"user_id\") as \"posts_count\" from \"users\" where \"status\" = 'banned' limit 50",
+ "explain": {
+  "json": "[\n  {\n    \"Plan\": {\n      \"Node Type\": \"Limit\",\n      \"Parallel Aware\": false,\n      \"Async Capable\": false,\n      \"Startup Cost\": 0.00,\n      \"Total Cost\": 437518.46,\n      \"Plan Rows\": 50,\n      \"Plan Width\": 160,\n      \"Plans\": [\n        {\n          \"Node Type\": \"Seq Scan\",\n          \"Parent Relationship\": \"Outer\",\n          \"Parallel Aware\": false,\n          \"Async Capable\": false,\n          \"Relation Name\": \"users\",\n          \"Alias\": \"users\",\n          \"Startup Cost\": 0.00,\n          \"Total Cost\": 43288075.94,\n          \"Plan Rows\": 4947,\n          \"Plan Width\": 160,\n          \"Filter\": \"((status)::text = 'banned'::text)\",\n          \"Plans\": [\n            {\n              \"Node Type\": \"Aggregate\",\n              \"Strategy\": \"Plain\",\n              \"Partial Mode\": \"Simple\",\n              \"Parent Relationship\": \"SubPlan\",\n              \"Subplan Name\": \"SubPlan 1\",\n              \"Parallel Aware\": false,\n              \"Async Capable\": false,\n              \"Startup Cost\": 8750.01,\n              \"Total Cost\": 8750.02,\n              \"Plan Rows\": 1,\n              \"Plan Width\": 8,\n              \"Plans\": [\n                {\n                  \"Node Type\": \"Seq Scan\",\n                  \"Parent Relationship\": \"Outer\",\n                  \"Parallel Aware\": false,\n                  \"Async Capable\": false,\n                  \"Relation Name\": \"posts\",\n                  \"Alias\": \"posts\",\n                  \"Startup Cost\": 0.00,\n                  \"Total Cost\": 8750.00,\n                  \"Plan Rows\": 4,\n                  \"Plan Width\": 0,\n                  \"Filter\": \"(users.id = user_id)\"\n                }\n              ]\n            }\n          ]\n        }\n      ]\n    }\n  }\n]"
+ },
+ "server": "17.11",
+ "tables": {
+  "posts": {
+   "rows": 200000,
+   "indexes": [
+    {
+     "name": "posts_pkey",
+     "unique": true,
+     "primary": true,
+     "columns": [
+      "id"
+     ],
+     "def": "CREATE UNIQUE INDEX posts_pkey ON public.posts USING btree (id)"
+    }
+   ],
+   "columns": {
+    "id": "bigint",
+    "user_id": "bigint",
+    "title": "character varying(255)",
+    "body": "text",
+    "published": "boolean",
+    "created_at": "timestamp without time zone",
+    "updated_at": "timestamp without time zone"
+   }
+  },
+  "users": {
+   "rows": 50000,
+   "indexes": [
+    {
+     "name": "users_email_key",
+     "unique": true,
+     "primary": false,
+     "columns": [
+      "email"
+     ],
+     "def": "CREATE UNIQUE INDEX users_email_key ON public.users USING btree (email)"
+    },
+    {
+     "name": "users_pkey",
+     "unique": true,
+     "primary": true,
+     "columns": [
+      "id"
+     ],
+     "def": "CREATE UNIQUE INDEX users_pkey ON public.users USING btree (id)"
+    },
+    {
+     "name": "users_status_index",
+     "unique": false,
+     "primary": false,
+     "columns": [
+      "status"
+     ],
+     "def": "CREATE INDEX users_status_index ON public.users USING btree (status)"
+    }
+   ],
+   "columns": {
+    "id": "bigint",
+    "name": "character varying(255)",
+    "email": "character varying(255)",
+    "status": "character varying(20)",
+    "phone": "character varying(30)",
+    "bio": "text",
+    "created_at": "timestamp without time zone",
+    "updated_at": "timestamp without time zone"
+   }
+  }
+ }
+}

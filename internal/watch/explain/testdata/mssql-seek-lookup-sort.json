@@ -1,0 +1,41 @@
+{
+ "ok": true,
+ "driver": "sqlsrv",
+ "via": "pdo_dblib",
+ "server": "16.0.4135.4",
+ "sql": "select * from [orders] where [status] = N'paid' order by [created_at] desc",
+ "explain": {
+  "xml": "<ShowPlanXML xmlns=\"http://schemas.microsoft.com/sqlserver/2004/07/showplan\" Version=\"1.564\" Build=\"16.0.4135.4\">\n  <BatchSequence><Batch><Statements>\n    <StmtSimple StatementId=\"1\" StatementCompId=\"1\" StatementEstRows=\"18000\" StatementSubTreeCost=\"4.512\" StatementText=\"select * from [orders] where [status] = N'paid' order by [created_at] desc\" StatementType=\"SELECT\">\n      <QueryPlan CachedPlanSize=\"40\" CompileTime=\"3\" CompileCPU=\"3\" CompileMemory=\"400\">\n        <MemoryGrantInfo SerialRequiredMemory=\"512\" SerialDesiredMemory=\"9800\" GrantedMemory=\"1024\" />\n        <RelOp NodeId=\"0\" PhysicalOp=\"Sort\" LogicalOp=\"Sort\" EstimateRows=\"18000\" EstimatedTotalSubtreeCost=\"4.512\" AvgRowSize=\"210\" Parallel=\"false\">\n          <OutputList />\n          <Warnings>\n            <SpillToTempDb SpillLevel=\"1\" SpilledThreadCount=\"1\" />\n          </Warnings>\n          <MemoryFractions Input=\"1\" Output=\"1\" />\n          <Sort Distinct=\"false\">\n            <OrderBy>\n              <OrderByColumn Ascending=\"false\"><ColumnReference Database=\"[app]\" Schema=\"[dbo]\" Table=\"[orders]\" Column=\"created_at\" /></OrderByColumn>\n            </OrderBy>\n            <RelOp NodeId=\"1\" PhysicalOp=\"Nested Loops\" LogicalOp=\"Inner Join\" EstimateRows=\"18000\" EstimatedTotalSubtreeCost=\"3.9\" AvgRowSize=\"210\" Parallel=\"false\">\n              <OutputList />\n              <NestedLoops Optimized=\"false\">\n                <RelOp NodeId=\"2\" PhysicalOp=\"Index Seek\" LogicalOp=\"Index Seek\" EstimateRows=\"18000\" EstimatedTotalSubtreeCost=\"0.06\" AvgRowSize=\"15\" Parallel=\"false\">\n                  <OutputList />\n                  <IndexScan Ordered=\"true\" ScanDirection=\"FORWARD\" ForcedIndex=\"false\" ForceSeek=\"false\" ForceScan=\"false\" NoExpandHint=\"false\" Storage=\"RowStore\">\n                    <DefinedValues />\n                    <Object Database=\"[app]\" Schema=\"[dbo]\" Table=\"[orders]\" Index=\"[IX_orders_status]\" IndexKind=\"NonClustered\" Storage=\"RowStore\" />\n                    <SeekPredicates>\n                      <SeekPredicateNew><SeekKeys><Prefix ScanType=\"EQ\"><RangeColumns><ColumnReference Database=\"[app]\" Schema=\"[dbo]\" Table=\"[orders]\" Column=\"status\" /></RangeColumns>\n                        <RangeExpressions><ScalarOperator ScalarString=\"N'paid'\"><Const ConstValue=\"N'paid'\" /></ScalarOperator></RangeExpressions></Prefix></SeekKeys></SeekPredicateNew>\n                    </SeekPredicates>\n                  </IndexScan>\n                </RelOp>\n                <RelOp NodeId=\"3\" PhysicalOp=\"Key Lookup\" LogicalOp=\"Key Lookup\" EstimateRows=\"1\" EstimateRebinds=\"17999\" EstimatedTotalSubtreeCost=\"3.8\" AvgRowSize=\"200\" Parallel=\"false\">\n                  <OutputList />\n                  <IndexScan Lookup=\"true\" Ordered=\"true\" ScanDirection=\"FORWARD\" ForcedIndex=\"false\" ForceSeek=\"false\" ForceScan=\"false\" NoExpandHint=\"false\" Storage=\"RowStore\">\n                    <DefinedValues />\n                    <Object Database=\"[app]\" Schema=\"[dbo]\" Table=\"[orders]\" Index=\"[PK_orders]\" TableReferenceId=\"-1\" IndexKind=\"Clustered\" Storage=\"RowStore\" />\n                  </IndexScan>\n                </RelOp>\n              </NestedLoops>\n            </RelOp>\n          </Sort>\n        </RelOp>\n      </QueryPlan>\n    </StmtSimple>\n  </Statements></Batch></BatchSequence>\n</ShowPlanXML>\n"
+ },
+ "tables": {
+  "orders": {
+   "rows": 90000,
+   "indexes": [
+    {
+     "name": "PK_orders",
+     "unique": true,
+     "primary": true,
+     "columns": [
+      "id"
+     ],
+     "include": []
+    },
+    {
+     "name": "IX_orders_status",
+     "unique": false,
+     "primary": false,
+     "columns": [
+      "status"
+     ],
+     "include": []
+    }
+   ],
+   "columns": {
+    "id": "bigint",
+    "status": "nvarchar",
+    "total": "decimal",
+    "created_at": "datetime2"
+   }
+  }
+ }
+}

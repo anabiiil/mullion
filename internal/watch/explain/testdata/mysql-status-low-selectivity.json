@@ -1,0 +1,71 @@
+{
+ "ok": true,
+ "driver": "mysql",
+ "via": "pdo_mysql",
+ "sql": "select * from `users` where `status` = 'active'",
+ "explain": {
+  "tabular": [
+   {
+    "id": 1,
+    "select_type": "SIMPLE",
+    "table": "users",
+    "partitions": null,
+    "type": "ref",
+    "possible_keys": "users_status_index",
+    "key": "users_status_index",
+    "key_len": "82",
+    "ref": "const",
+    "rows": 24776,
+    "filtered": 100,
+    "Extra": null
+   }
+  ],
+  "warnings": [],
+  "json": "{\n  \"query_block\": {\n    \"select_id\": 1,\n    \"cost_info\": {\n      \"query_cost\": \"2886.35\"\n    },\n    \"table\": {\n      \"table_name\": \"users\",\n      \"access_type\": \"ref\",\n      \"possible_keys\": [\n        \"users_status_index\"\n      ],\n      \"key\": \"users_status_index\",\n      \"used_key_parts\": [\n        \"status\"\n      ],\n      \"key_length\": \"82\",\n      \"ref\": [\n        \"const\"\n      ],\n      \"rows_examined_per_scan\": 24776,\n      \"rows_produced_per_join\": 24776,\n      \"filtered\": \"100.00\",\n      \"cost_info\": {\n        \"read_cost\": \"408.75\",\n        \"eval_cost\": \"2477.60\",\n        \"prefix_cost\": \"2886.35\",\n        \"data_read_per_join\": \"53M\"\n      },\n      \"used_columns\": [\n        \"id\",\n        \"name\",\n        \"email\",\n        \"status\",\n        \"phone\",\n        \"bio\",\n        \"created_at\",\n        \"updated_at\"\n      ]\n    }\n  }\n}"
+ },
+ "server": "8.4.11",
+ "tables": {
+  "users": {
+   "rows": 49580,
+   "indexes": [
+    {
+     "name": "PRIMARY",
+     "unique": true,
+     "primary": true,
+     "columns": [
+      "id"
+     ],
+     "cardinality": 49580
+    },
+    {
+     "name": "users_email_unique",
+     "unique": true,
+     "primary": false,
+     "columns": [
+      "email"
+     ],
+     "cardinality": 47383
+    },
+    {
+     "name": "users_status_index",
+     "unique": false,
+     "primary": false,
+     "columns": [
+      "status"
+     ],
+     "cardinality": 1
+    }
+   ],
+   "columns": {
+    "id": "bigint",
+    "name": "varchar",
+    "email": "varchar",
+    "status": "varchar",
+    "phone": "varchar",
+    "bio": "text",
+    "created_at": "timestamp",
+    "updated_at": "timestamp"
+   }
+  }
+ }
+}

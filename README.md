@@ -331,6 +331,53 @@ mullion watch blog tail --type queries,exceptions
 mullion watch blog off
 ```
 
+#### Explaining slow queries
+
+Every query in the Watch tab has an **Explain** button (highlighted on
+slow, N+1 and duplicate queries). It shows why the query is slow and
+what to change:
+
+- **Findings**, most serious first, each with the why and a fix — full
+  table scans, a missing or unused index, low selectivity, rows read
+  versus rows returned, filesort and temporary tables, sorts or hashes
+  spilling to disk, `LIKE '%term'`, functions around a column
+  (`whereDate`, `LOWER(email)`), `OR` across different columns, a string
+  column compared with a number, `SELECT *` on wide tables,
+  `ORDER BY RAND()`, deep `OFFSET`s, correlated subqueries, and N+1 with
+  the relation to eager-load.
+- **Suggested indexes** as `CREATE INDEX` and as a Laravel migration
+  (`$table->index([...])`), built from the WHERE's equality columns, then
+  one range column, then the ORDER BY. No suggestion when an existing
+  index already starts with those columns. On SQL Server the optimizer's
+  own missing-index hint is used.
+- **The plan** (MySQL/MariaDB's classic table, PostgreSQL's node tree,
+  SQLite's query plan, SQL Server's operators), the indexes of the
+  tables involved, and the raw JSON or XML.
+
+Mullion connects with the project's `.env` (`DB_CONNECTION`, `DB_HOST`,
+`DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, `DB_URL`) and runs
+the explain through the site's own PHP, so every driver and its quoting
+work as in the app. A query recorded on another connection name is
+explained with those same settings, and the panel says so. It only reads
+plans: plain `EXPLAIN`, `EXPLAIN QUERY PLAN` and SQL Server's
+`SHOWPLAN_XML` don't run the statement, and only `SELECT`, `UPDATE`,
+`DELETE` and `INSERT … SELECT` are accepted. **Analyze (runs the query)**
+is there for `SELECT`s only (MySQL 8.0.18+ `EXPLAIN ANALYZE`, MariaDB
+`ANALYZE FORMAT=JSON`, PostgreSQL `EXPLAIN (ANALYZE, BUFFERS)`); it runs
+in a read-only transaction that is rolled back, with a 15-second limit.
+Bindings redacted when recorded are replaced with a neutral value, and
+the panel notes the plan may differ slightly.
+
+Turn on **Auto-explain slow queries** in the Queries tab to explain each
+distinct slow query once per session and badge its rows with what's
+wrong.
+
+```sh
+mullion watch blog explain "select * from posts where user_id = ?" --bindings '[42]'
+mullion watch blog explain "select * from users order by created_at desc limit 20" --analyze
+mullion watch blog explain "…" --json      # the whole result, for scripts
+```
+
 ### Frontend dev servers
 
 Link a project that has a `dev` script and Mullion runs it for you with

@@ -1,0 +1,52 @@
+{
+ "ok": true,
+ "driver": "mysql",
+ "via": "pdo_mysql",
+ "sql": "update `posts` set `title` = 'x' where `user_id` = 3",
+ "explain": {
+  "tabular": [
+   {
+    "id": 1,
+    "select_type": "UPDATE",
+    "table": "posts",
+    "partitions": null,
+    "type": "index",
+    "possible_keys": null,
+    "key": "PRIMARY",
+    "key_len": "8",
+    "ref": null,
+    "rows": 196977,
+    "filtered": 100,
+    "Extra": "Using where"
+   }
+  ],
+  "warnings": [],
+  "json": "{\n  \"query_block\": {\n    \"select_id\": 1,\n    \"table\": {\n      \"update\": true,\n      \"table_name\": \"posts\",\n      \"access_type\": \"index\",\n      \"key\": \"PRIMARY\",\n      \"used_key_parts\": [\n        \"id\"\n      ],\n      \"key_length\": \"8\",\n      \"rows_examined_per_scan\": 196977,\n      \"filtered\": \"100.00\",\n      \"attached_condition\": \"(`app`.`posts`.`user_id` = 3)\"\n    }\n  }\n}"
+ },
+ "server": "8.4.11",
+ "tables": {
+  "posts": {
+   "rows": 196977,
+   "indexes": [
+    {
+     "name": "PRIMARY",
+     "unique": true,
+     "primary": true,
+     "columns": [
+      "id"
+     ],
+     "cardinality": 196977
+    }
+   ],
+   "columns": {
+    "id": "bigint",
+    "user_id": "bigint",
+    "title": "varchar",
+    "body": "text",
+    "published": "tinyint",
+    "created_at": "timestamp",
+    "updated_at": "timestamp"
+   }
+  }
+ }
+}

@@ -1,0 +1,40 @@
+{
+ "ok": true,
+ "driver": "sqlite",
+ "via": "sqlite3",
+ "sql": "select * from \"posts\" where \"posts\".\"user_id\" = 42 and \"posts\".\"user_id\" is not null",
+ "explain": {
+  "rows": [
+   {
+    "id": 3,
+    "parent": 0,
+    "notused": 0,
+    "detail": "SCAN posts"
+   }
+  ]
+ },
+ "server": "3.45.2",
+ "tables": {
+  "posts": {
+   "rows": 20000,
+   "indexes": [
+    {
+     "name": "PRIMARY",
+     "unique": true,
+     "primary": true,
+     "columns": [
+      "id"
+     ]
+    }
+   ],
+   "columns": {
+    "id": "INTEGER",
+    "user_id": "INTEGER",
+    "title": "varchar",
+    "body": "TEXT",
+    "published": "tinyint",
+    "created_at": "datetime"
+   }
+  }
+ }
+}

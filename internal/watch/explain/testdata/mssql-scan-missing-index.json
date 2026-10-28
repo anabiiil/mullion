@@ -1,0 +1,33 @@
+{
+ "ok": true,
+ "driver": "sqlsrv",
+ "via": "pdo_dblib",
+ "server": "16.0.4135.4",
+ "sql": "select * from [users] where [email] = N'a@b.test' and [phone] = 5551234",
+ "explain": {
+  "xml": "<?xml version=\"1.0\" encoding=\"utf-16\"?>\n<ShowPlanXML xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\" Version=\"1.564\" Build=\"16.0.4135.4\" xmlns=\"http://schemas.microsoft.com/sqlserver/2004/07/showplan\">\n  <BatchSequence>\n    <Batch>\n      <Statements>\n        <StmtSimple StatementCompId=\"1\" StatementEstRows=\"1\" StatementId=\"1\" StatementOptmLevel=\"FULL\" CardinalityEstimationModelVersion=\"160\" StatementSubTreeCost=\"1.23456\" StatementText=\"select * from [users] where [email] = N'a@b.test' and [phone] = 5551234\" StatementType=\"SELECT\" QueryHash=\"0x8B3A1B0F5E2C4D11\" QueryPlanHash=\"0x3C2B1A0F9E8D7C6B\" RetrievedFromCache=\"false\">\n          <StatementSetOptions ANSI_NULLS=\"true\" ANSI_PADDING=\"true\" ANSI_WARNINGS=\"true\" ARITHABORT=\"true\" CONCAT_NULL_YIELDS_NULL=\"true\" NUMERIC_ROUNDABORT=\"false\" QUOTED_IDENTIFIER=\"true\" />\n          <QueryPlan CachedPlanSize=\"32\" CompileTime=\"2\" CompileCPU=\"2\" CompileMemory=\"280\">\n            <MissingIndexes>\n              <MissingIndexGroup Impact=\"98.7012\">\n                <MissingIndex Database=\"[app]\" Schema=\"[dbo]\" Table=\"[users]\">\n                  <ColumnGroup Usage=\"EQUALITY\">\n                    <Column Name=\"[email]\" ColumnId=\"3\" />\n                  </ColumnGroup>\n                  <ColumnGroup Usage=\"INCLUDE\">\n                    <Column Name=\"[name]\" ColumnId=\"2\" />\n                    <Column Name=\"[phone]\" ColumnId=\"4\" />\n                  </ColumnGroup>\n                </MissingIndex>\n              </MissingIndexGroup>\n            </MissingIndexes>\n            <Warnings>\n              <PlanAffectingConvert ConvertIssue=\"Seek Plan\" Expression=\"CONVERT_IMPLICIT(int,[app].[dbo].[users].[phone],0)=(5551234)\" />\n            </Warnings>\n            <OptimizerHardwareDependentProperties EstimatedAvailableMemoryGrant=\"104857\" EstimatedPagesCached=\"26214\" EstimatedAvailableDegreeOfParallelism=\"4\" MaxCompileMemory=\"1442352\" />\n            <RelOp AvgRowSize=\"1061\" EstimateCPU=\"0.132157\" EstimateIO=\"1.10239\" EstimateRebinds=\"0\" EstimateRewinds=\"0\" EstimatedExecutionMode=\"Row\" EstimateRows=\"1\" EstimatedRowsRead=\"120000\" LogicalOp=\"Clustered Index Scan\" NodeId=\"0\" Parallel=\"false\" PhysicalOp=\"Clustered Index Scan\" EstimatedTotalSubtreeCost=\"1.23456\" TableCardinality=\"120000\">\n              <OutputList>\n                <ColumnReference Database=\"[app]\" Schema=\"[dbo]\" Table=\"[users]\" Column=\"id\" />\n                <ColumnReference Database=\"[app]\" Schema=\"[dbo]\" Table=\"[users]\" Column=\"name\" />\n              </OutputList>\n              <IndexScan Ordered=\"false\" ForcedIndex=\"false\" ForceScan=\"false\" NoExpandHint=\"false\" Storage=\"RowStore\">\n                <DefinedValues>\n                  <DefinedValue><ColumnReference Database=\"[app]\" Schema=\"[dbo]\" Table=\"[users]\" Column=\"id\" /></DefinedValue>\n                </DefinedValues>\n                <Object Database=\"[app]\" Schema=\"[dbo]\" Table=\"[users]\" Index=\"[PK_users]\" IndexKind=\"Clustered\" Storage=\"RowStore\" />\n                <Predicate>\n                  <ScalarOperator ScalarString=\"[app].[dbo].[users].[email]=N'a@b.test' AND CONVERT_IMPLICIT(int,[app].[dbo].[users].[phone],0)=(5551234)\">\n                    <Logical Operation=\"AND\" />\n                  </ScalarOperator>\n                </Predicate>\n              </IndexScan>\n            </RelOp>\n          </QueryPlan>\n        </StmtSimple>\n      </Statements>\n    </Batch>\n  </BatchSequence>\n</ShowPlanXML>\n"
+ },
+ "tables": {
+  "users": {
+   "rows": 120000,
+   "indexes": [
+    {
+     "name": "PK_users",
+     "unique": true,
+     "primary": true,
+     "columns": [
+      "id"
+     ],
+     "include": []
+    }
+   ],
+   "columns": {
+    "id": "bigint",
+    "name": "nvarchar",
+    "email": "nvarchar",
+    "phone": "nvarchar",
+    "created_at": "datetime2"
+   }
+  }
+ }
+}

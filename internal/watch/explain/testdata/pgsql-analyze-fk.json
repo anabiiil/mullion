@@ -1,0 +1,35 @@
+{
+ "ok": true,
+ "driver": "pgsql",
+ "via": "pgsql",
+ "sql": "select * from \"posts\" where \"user_id\" = 42",
+ "explain": {
+  "json": "[\n  {\n    \"Plan\": {\n      \"Node Type\": \"Gather\",\n      \"Parallel Aware\": false,\n      \"Async Capable\": false,\n      \"Startup Cost\": 1000.00,\n      \"Total Cost\": 8292.07,\n      \"Plan Rows\": 4,\n      \"Plan Width\": 228,\n      \"Actual Startup Time\": 1.612,\n      \"Actual Total Time\": 6.125,\n      \"Actual Rows\": 4,\n      \"Actual Loops\": 1,\n      \"Workers Planned\": 2,\n      \"Workers Launched\": 2,\n      \"Single Copy\": false,\n      \"Shared Hit Blocks\": 6250,\n      \"Shared Read Blocks\": 0,\n      \"Shared Dirtied Blocks\": 0,\n      \"Shared Written Blocks\": 0,\n      \"Local Hit Blocks\": 0,\n      \"Local Read Blocks\": 0,\n      \"Local Dirtied Blocks\": 0,\n      \"Local Written Blocks\": 0,\n      \"Temp Read Blocks\": 0,\n      \"Temp Written Blocks\": 0,\n      \"Plans\": [\n        {\n          \"Node Type\": \"Seq Scan\",\n          \"Parent Relationship\": \"Outer\",\n          \"Parallel Aware\": true,\n          \"Async Capable\": false,\n          \"Relation Name\": \"posts\",\n          \"Alias\": \"posts\",\n          \"Startup Cost\": 0.00,\n          \"Total Cost\": 7291.67,\n          \"Plan Rows\": 2,\n          \"Plan Width\": 228,\n          \"Actual Startup Time\": 1.486,\n          \"Actual Total Time\": 4.093,\n          \"Actual Rows\": 1,\n          \"Actual Loops\": 3,\n          \"Filter\": \"(user_id = 42)\",\n          \"Rows Removed by Filter\": 66665,\n          \"Shared Hit Blocks\": 6250,\n          \"Shared Read Blocks\": 0,\n          \"Shared Dirtied Blocks\": 0,\n          \"Shared Written Blocks\": 0,\n          \"Local Hit Blocks\": 0,\n          \"Local Read Blocks\": 0,\n          \"Local Dirtied Blocks\": 0,\n          \"Local Written Blocks\": 0,\n          \"Temp Read Blocks\": 0,\n          \"Temp Written Blocks\": 0,\n          \"Workers\": [\n          ]\n        }\n      ]\n    },\n    \"Planning\": {\n      \"Shared Hit Blocks\": 75,\n      \"Shared Read Blocks\": 0,\n      \"Shared Dirtied Blocks\": 0,\n      \"Shared Written Blocks\": 0,\n      \"Local Hit Blocks\": 0,\n      \"Local Read Blocks\": 0,\n      \"Local Dirtied Blocks\": 0,\n      \"Local Written Blocks\": 0,\n      \"Temp Read Blocks\": 0,\n      \"Temp Written Blocks\": 0\n    },\n    \"Planning Time\": 0.122,\n    \"Triggers\": [\n    ],\n    \"Execution Time\": 6.143\n  }\n]"
+ },
+ "server": "17.11",
+ "tables": {
+  "posts": {
+   "rows": 200000,
+   "indexes": [
+    {
+     "name": "posts_pkey",
+     "unique": true,
+     "primary": true,
+     "columns": [
+      "id"
+     ],
+     "def": "CREATE UNIQUE INDEX posts_pkey ON public.posts USING btree (id)"
+    }
+   ],
+   "columns": {
+    "id": "bigint",
+    "user_id": "bigint",
+    "title": "character varying(255)",
+    "body": "text",
+    "published": "boolean",
+    "created_at": "timestamp without time zone",
+    "updated_at": "timestamp without time zone"
+   }
+  }
+ }
+}
