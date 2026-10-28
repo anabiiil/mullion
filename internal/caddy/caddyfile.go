@@ -20,8 +20,8 @@ type SiteConf struct {
 	// RewriteHost makes the proxy send "localhost:<port>" as the Host
 	// header — Vite-family dev servers block unknown hosts (and old
 	// versions ignore the allow-list env var), but always accept
-	// localhost. Only set for Vite projects: others (Next.js) rely on
-	// the original Host for origin checks.
+	// localhost. Only set for Vite and webpack-dev-server projects:
+	// others (Next.js) rely on the original Host for origin checks.
 	RewriteHost bool
 	// AgentPort receives requests while the dev server is down: the
 	// agent shows a "starting…" page and wakes the server, so opening

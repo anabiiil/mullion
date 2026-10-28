@@ -141,7 +141,7 @@ func (a *App) WriteCaddyfile(devPorts map[string]int) error {
 				break
 			}
 			conf.ProxyPort = devPorts[s.Name]
-			conf.RewriteHost = usesVite(s.Path)
+			conf.RewriteHost = needsHostRewrite(s.Path)
 			conf.AgentPort = agent.Port
 		case "static":
 			conf.Root = filepath.Join(s.Path, s.BuildDir)
@@ -530,6 +530,23 @@ func ResolveBuildDir(dir, override string) (string, error) {
 
 // usesVite reports whether a project runs on Vite (directly or through
 // a Vite-based framework — node_modules/vite covers both).
+// needsHostRewrite reports dev servers that reject a Host they don't
+// know: Vite, and webpack-dev-server (Vue CLI / Vue 2, Create React App,
+// Angular, plain webpack) — whose "Invalid Host header" check ignores
+// every env var on Vue CLI. Both always accept localhost, so the proxy
+// sends that instead.
+func needsHostRewrite(dir string) bool {
+	if usesVite(dir) {
+		return true
+	}
+	for _, m := range []string{"webpack-dev-server", filepath.Join("@vue", "cli-service"), "react-scripts", filepath.Join("@angular-devkit", "build-angular")} {
+		if _, err := os.Stat(filepath.Join(dir, "node_modules", m)); err == nil {
+			return true
+		}
+	}
+	return false
+}
+
 func usesVite(dir string) bool {
 	if _, err := os.Stat(filepath.Join(dir, "node_modules", "vite")); err == nil {
 		return true
