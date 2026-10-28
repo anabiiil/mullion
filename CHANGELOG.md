@@ -2,7 +2,7 @@
 
 All notable changes to Mullion. Versions follow [semantic versioning](https://semver.org).
 
-## Unreleased
+## 2.4.0 — 2026-10-28
 
 ### Added
 
@@ -31,6 +31,12 @@ All notable changes to Mullion. Versions follow [semantic versioning](https://se
   default) explains each distinct slow query once and badges its rows
   ("full scan", "filesort", "no index"…). Also
   `mullion watch <site> explain "<sql>" [--bindings '[...]'] [--analyze]`.
+
+### Changed
+
+- **The project page's tab bar is one row** that scrolls sideways (mouse
+  wheel too) instead of wrapping onto two lines, and Packages and Git
+  now sit next to Settings at the end.
 
 ### Fixed
 
