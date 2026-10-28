@@ -105,7 +105,15 @@ final class MxDb
                 break;
             case 'sqlsrv':
                 if (extension_loaded('pdo_sqlsrv')) {
-                    $this->pdo = new PDO('sqlsrv:Server=' . $host . ($port ? ',' . $port : '') . ';Database=' . $db . ';LoginTimeout=5;TrustServerCertificate=1', $user, $pass, $opts);
+                    // pdo_sqlsrv rejects PDO::ATTR_TIMEOUT ("An unsupported
+                    // attribute was designated"): the login timeout goes in
+                    // the DSN and the query timeout has its own attribute.
+                    $sqlsrvOpts = $opts;
+                    unset($sqlsrvOpts[PDO::ATTR_TIMEOUT]);
+                    if (defined('PDO::SQLSRV_ATTR_QUERY_TIMEOUT')) {
+                        $sqlsrvOpts[PDO::SQLSRV_ATTR_QUERY_TIMEOUT] = 15;
+                    }
+                    $this->pdo = new PDO('sqlsrv:Server=' . $host . ($port ? ',' . $port : '') . ';Database=' . $db . ';LoginTimeout=5;TrustServerCertificate=1', $user, $pass, $sqlsrvOpts);
                     $this->via = 'pdo_sqlsrv';
                 } elseif (extension_loaded('pdo_dblib')) {
                     $this->pdo = new PDO('dblib:host=' . $host . ($port ? ':' . $port : '') . ';dbname=' . $db . ';charset=UTF-8', $user, $pass, $opts);
