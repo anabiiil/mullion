@@ -11,8 +11,8 @@ import (
 )
 
 func processAlive(pid int) bool {
-	out, err := proc.Quiet("tasklist", "/FI", fmt.Sprintf("PID eq %d", pid), "/NH").Output()
-	return err == nil && strings.Contains(string(out), strconv.Itoa(pid))
+	out, err := proc.Quiet("tasklist", "/FI", fmt.Sprintf("PID eq %d", pid), "/FO", "CSV", "/NH").Output()
+	return err == nil && proc.TasklistHasPID(out, pid)
 }
 
 // killTree terminates the process and its whole child tree.

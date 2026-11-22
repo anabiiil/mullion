@@ -16,3 +16,11 @@ func killTree(pid int) {
 		_ = syscall.Kill(pid, syscall.SIGTERM)
 	}
 }
+
+// forceKillTree SIGKILLs the process group: the last resort when it
+// ignored killTree's SIGTERM.
+func forceKillTree(pid int) {
+	if err := syscall.Kill(-pid, syscall.SIGKILL); err != nil {
+		_ = syscall.Kill(pid, syscall.SIGKILL)
+	}
+}

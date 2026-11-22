@@ -23,6 +23,7 @@ const fakeFranken = `#!/bin/sh
 echo "args: $*"
 echo "PHPRC=${PHPRC-unset} PHP_INI_SCAN_DIR=${PHP_INI_SCAN_DIR-unset} APP_ENV=${APP_ENV-unset}"
 echo "PATH=$PATH"
+echo "XDG_DATA_HOME=${XDG_DATA_HOME-unset} XDG_CONFIG_HOME=${XDG_CONFIG_HOME-unset}"
 echo "PWD=$(pwd)"
 port=""
 if [ "$1" = "run" ]; then
@@ -118,6 +119,8 @@ func TestEnsureStartsAndReportsPort(t *testing.T) {
 		"mullion starting",
 		"args: run --config " + filepath.Join(paths.FrankenDir(), "sites", "blog", "Caddyfile") + " --adapter caddyfile",
 		"PHPRC=unset PHP_INI_SCAN_DIR=unset",
+		"XDG_DATA_HOME=" + filepath.Join(paths.FrankenDir(), "sites", "blog", "data") +
+			" XDG_CONFIG_HOME=" + filepath.Join(paths.FrankenDir(), "sites", "blog", "config"),
 	} {
 		if !strings.Contains(log, want) {
 			t.Errorf("log lacks %q:\n%s", want, log)
@@ -142,6 +145,12 @@ func TestEnsureRestartsOnlyOnChange(t *testing.T) {
 	r.Site.Env = map[string]string{"APP_ENV": "production"}
 	if _, err := Ensure(r); err != nil {
 		t.Fatal(err)
+	}
+	// Classic mode: Env reaches PHP through the Caddyfile's php_server
+	// env lines, which is what changes the hash.
+	conf, _ := os.ReadFile(filepath.Join(paths.FrankenDir(), "sites", "blog", "Caddyfile"))
+	if !strings.Contains(string(conf), `env APP_ENV "production"`) {
+		t.Errorf("Env not in the classic-mode Caddyfile:\n%s", conf)
 	}
 	second := pidOf(t, paths, "blog")
 	if second == first {
@@ -177,6 +186,8 @@ func TestEnsureWorkerMode(t *testing.T) {
 		"PHPRC=unset PHP_INI_SCAN_DIR=unset APP_ENV=production",
 		"PATH=" + filepath.Dir(r.Bin) + string(os.PathListSeparator),
 		"PWD=" + realProject,
+		"XDG_DATA_HOME=" + filepath.Join(paths.FrankenDir(), "sites", "blog", "data") +
+			" XDG_CONFIG_HOME=" + filepath.Join(paths.FrankenDir(), "sites", "blog", "config"),
 	} {
 		if !strings.Contains(log, w) {
 			t.Errorf("log lacks %q:\n%s", w, log)
@@ -234,5 +245,26 @@ func TestAssignPort(t *testing.T) {
 	}
 	if got := AssignPort(map[int]bool{44001: true, 44002: true, 44004: true}); got != 44003 {
 		t.Errorf("AssignPort = %d, want 44003", got)
+	}
+}
+
+// A server that ignores SIGTERM is killed outright once the grace period
+// runs out, before its pid file goes.
+func TestStopEscalatesToSIGKILL(t *testing.T) {
+	old := stopGrace
+	stopGrace = 500 * time.Millisecond
+	t.Cleanup(func() { stopGrace = old })
+	stubborn := strings.Replace(fakeFranken, "#!/bin/sh\n", "#!/bin/sh\ntrap '' TERM\n", 1)
+	paths, r := setup(t, stubborn)
+	if _, err := Ensure(r); err != nil {
+		t.Fatal(err)
+	}
+	pid := pidOf(t, paths, "blog")
+	Stop(paths, "blog")
+	if processAlive(pid) {
+		t.Errorf("pid %d survived Stop", pid)
+	}
+	if accepts(r.Site.Port) {
+		t.Error("port still accepts connections after Stop")
 	}
 }

@@ -46,6 +46,10 @@ func caddyfilePath(paths pmdir.Paths, site string) string {
 // readyTimeout is how long a fresh server gets to open its port.
 const readyTimeout = 30 * time.Second
 
+// stopGrace is how long Stop waits after the polite kill before forcing
+// it. A variable so tests can shorten it.
+var stopGrace = 10 * time.Second
+
 // Running reports whether the site's FrankenPHP server process is alive.
 func Running(paths pmdir.Paths, site string) bool {
 	pid := readInt(pidFile(paths, site))
@@ -102,6 +106,12 @@ func ensure(r Run) (int, error) {
 
 	var argv []string
 	env := withoutPHPIni(os.Environ())
+	// Caddy reads XDG_* first on every OS: give each site its own data
+	// and config folders, so this server never touches the main Caddy's
+	// (its local CA, autosave.json) or another site's.
+	siteDir := filepath.Dir(confPath)
+	env = withVar(env, "XDG_DATA_HOME", filepath.Join(siteDir, "data"))
+	env = withVar(env, "XDG_CONFIG_HOME", filepath.Join(siteDir, "config"))
 	if r.Worker {
 		cli := r.PHPCLI
 		if len(cli) == 0 {
@@ -210,12 +220,26 @@ func configHash(conf string, worker bool, bin string) string {
 func Stop(paths pmdir.Paths, site string) {
 	if pid := readInt(pidFile(paths, site)); pid > 0 && processAlive(pid) {
 		killTree(pid)
-		for deadline := time.Now().Add(10 * time.Second); processAlive(pid) && time.Now().Before(deadline); {
-			time.Sleep(100 * time.Millisecond)
+		if !waitGone(pid, stopGrace) {
+			// It ignored the polite kill: force it, so the pid file never
+			// goes while the server still holds the port.
+			forceKillTree(pid)
+			waitGone(pid, 5*time.Second)
 		}
 	}
 	_ = os.Remove(pidFile(paths, site))
 	_ = os.Remove(hashFile(paths, site))
+}
+
+// waitGone waits up to timeout for pid to exit and reports whether it did.
+func waitGone(pid int, timeout time.Duration) bool {
+	for deadline := time.Now().Add(timeout); processAlive(pid); {
+		if time.Now().After(deadline) {
+			return false
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	return true
 }
 
 // StopAll terminates every managed FrankenPHP server.
@@ -239,6 +263,17 @@ func AssignPort(used map[int]bool) int {
 			return p
 		}
 	}
+}
+
+// withVar sets key=val in env, replacing any existing value.
+func withVar(env []string, key, val string) []string {
+	out := make([]string, 0, len(env)+1)
+	for _, kv := range env {
+		if k, _, _ := strings.Cut(kv, "="); !strings.EqualFold(k, key) {
+			out = append(out, kv)
+		}
+	}
+	return append(out, key+"="+val)
 }
 
 // withPathPrefix puts dir first on PATH (matched case-insensitively:
