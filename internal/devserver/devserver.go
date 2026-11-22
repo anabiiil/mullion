@@ -5,10 +5,12 @@
 package devserver
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -78,6 +80,10 @@ func Ensure(paths pmdir.Paths, site config.Site, host, nodeDir string) (int, err
 		// works on both.
 		"__VITE_ADDITIONAL_SERVER_ALLOWED_HOSTS=."+host,
 		"DANGEROUSLY_DISABLE_HOST_CHECK=true",
+		// yarn/pnpm run through corepack, which may download the
+		// package manager first — never let it wait on a [Y/n] prompt
+		// nobody can see.
+		"COREPACK_ENABLE_DOWNLOAD_PROMPT=0",
 	)
 	// Let server-side code in the dev server (SSR, a Nitro/Vite proxy
 	// rule) trust Caddy's local CA when it calls another https://*.test
@@ -104,6 +110,17 @@ func Ensure(paths pmdir.Paths, site config.Site, host, nodeDir string) (int, err
 		}
 	}
 
+	// yarn/pnpm come from corepack, which fetches the package manager on
+	// first use: run `<pm> --version` once up front so a download or
+	// version problem lands in the log as a clear message, instead of a
+	// dev server that dies before printing anything.
+	if pm != "npm" {
+		if err := preflightPM(nodeDir, pm, site.Path, env, logFile); err != nil {
+			return 0, fmt.Errorf("%s for %s: %w — last log lines:\n%s(full log: %s)", pm, site.Name, err,
+				logTail(logFilePath(paths, site.Name)), logFilePath(paths, site.Name))
+		}
+	}
+
 	cmd := proc.Quiet(nodever.Tool(nodeDir, pm), "run", script)
 	cmd.Dir = site.Path
 	cmd.Env = env
@@ -117,7 +134,20 @@ func Ensure(paths pmdir.Paths, site config.Site, host, nodeDir string) (int, err
 		return 0, fmt.Errorf("starting `%s run %s` for %s: %w", pm, script, site.Name, err)
 	}
 	pid := cmd.Process.Pid
-	_ = cmd.Process.Release()
+	// Reap it in the background and record how it ended: a dev server
+	// that dies without a word otherwise leaves only the header line.
+	logPath := logFilePath(paths, site.Name)
+	go func() {
+		err := cmd.Wait()
+		how := "exited (status 0)"
+		if err != nil {
+			how = err.Error()
+		}
+		if f, ferr := os.OpenFile(logPath, os.O_WRONLY|os.O_APPEND, 0o644); ferr == nil {
+			fmt.Fprintf(f, "---- %s: `%s run %s` %s ----\n", time.Now().Format(time.RFC3339), pm, script, how)
+			f.Close()
+		}
+	}()
 	if err := os.WriteFile(pidFile(paths, site.Name), []byte(strconv.Itoa(pid)), 0o644); err != nil {
 		return 0, err
 	}
@@ -260,6 +290,26 @@ func portListening(port int) bool {
 		}
 	}
 	return false
+}
+
+// preflightPM runs `<pm> --version` in the project (so corepack resolves
+// the version the project pins), logging what it says, with a time limit.
+func preflightPM(nodeDir, pm, dir string, env []string, log *os.File) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	defer cancel()
+	c := exec.CommandContext(ctx, nodever.Tool(nodeDir, pm), "--version")
+	proc.HideConsole(c)
+	c.Dir = dir
+	c.Env = env
+	out, err := c.CombinedOutput()
+	fmt.Fprintf(log, "%s --version: %s\n", pm, strings.TrimSpace(string(out)))
+	if ctx.Err() != nil {
+		return fmt.Errorf("`%s --version` didn't answer within 3 minutes (corepack may be stuck downloading %s — check your network or proxy)", pm, pm)
+	}
+	if err != nil {
+		return fmt.Errorf("`%s --version` failed: %v", pm, err)
+	}
+	return nil
 }
 
 // ensurePM makes the project's package manager runnable: pnpm/yarn ship
