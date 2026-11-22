@@ -53,6 +53,7 @@ func (p Paths) MysqlIni() string                { return filepath.Join(p.MysqlDi
 func (p Paths) PhpMyAdminDir() string           { return filepath.Join(p.Home, "phpmyadmin") }
 func (p Paths) AdminerDir() string              { return filepath.Join(p.Home, "adminer") }
 func (p Paths) MssqlDir() string                { return filepath.Join(p.Home, "mssql") }
+func (p Paths) FrankenDir() string              { return filepath.Join(p.Home, "frankenphp") }
 func (p Paths) MailpitDir() string              { return filepath.Join(p.Home, "mailpit") }
 func (p Paths) RedisDir() string                { return filepath.Join(p.Home, "redis") }
 func (p Paths) RedisAdminDir() string           { return filepath.Join(p.Home, "phpredisadmin") }
