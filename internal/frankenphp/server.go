@@ -77,7 +77,9 @@ func ensure(r Run) (int, error) {
 	}
 	conf := Caddyfile(r.Site)
 	hash := configHash(conf, r.Worker, r.Bin)
-	if Running(paths, site) && readString(hashFile(paths, site)) == hash {
+	// The port check guards against a recycled pid (after a reboot) that
+	// merely looks alive.
+	if Running(paths, site) && readString(hashFile(paths, site)) == hash && portListening(port) {
 		return port, nil
 	}
 	Stop(paths, site) // the old config, or a half-dead leftover
