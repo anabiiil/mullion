@@ -2,6 +2,31 @@
 
 All notable changes to Mullion. Versions follow [semantic versioning](https://semver.org).
 
+## Unreleased
+
+### Added
+
+- **Run a PHP site on FrankenPHP.** Pick the server per site in the
+  project page's Settings → Server, or with `mullion server <site>
+  frankenphp`: the site gets its own FrankenPHP process (installed on
+  first use; `mullion frankenphp update` moves every site to the latest
+  release) and Mullion's Caddy proxies to it. Worker mode for Laravel
+  Octane keeps the app booted between requests
+  (`mullion server <site> frankenphp --worker`; needs
+  `laravel/octane` in the project). The PHP version is the one built
+  into the FrankenPHP binary, not one of your installed versions, and
+  its extensions are the ones that binary ships with.
+
+### Fixed
+
+- **yarn/pnpm dev servers whose package manager can't start**: when the
+  dependencies are installed, Mullion now runs the script with npm
+  instead of failing, and the `<pm> --version` preflight can no longer
+  hang on Windows.
+- **Why a dev server failed to start** is now written to its log and
+  shown in the project page's panel, instead of only on the agent's
+  console.
+
 ## 2.5.1 — 2026-11-22
 
 ### Fixed
