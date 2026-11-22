@@ -70,8 +70,9 @@ func ensure(paths pmdir.Paths, site config.Site, host, nodeDir string) (int, err
 	if err != nil {
 		return 0, err
 	}
-	if err := ensurePM(nodeDir, pm); err != nil {
-		return 0, err
+	pmErr := ensurePM(nodeDir, pm)
+	if pmErr != nil && !canRunWithNpm(site.Path) {
+		return 0, pmErr
 	}
 
 	logFile, err := os.OpenFile(logFilePath(paths, site.Name),
@@ -129,10 +130,22 @@ func ensure(paths pmdir.Paths, site config.Site, host, nodeDir string) (int, err
 	// first use: run `<pm> --version` once up front so a download or
 	// version problem lands in the log as a clear message, instead of a
 	// dev server that dies before printing anything.
+	if pmErr != nil {
+		fmt.Fprintf(logFile, "mullion: %v — running the script with npm instead\n", pmErr)
+		pm = "npm"
+	}
 	if pm != "npm" {
 		if err := preflightPM(nodeDir, pm, site.Path, env, logFile); err != nil {
-			return 0, fmt.Errorf("%s for %s: %w — last log lines:\n%s(full log: %s)", pm, site.Name, err,
-				logTail(logFilePath(paths, site.Name)), logFilePath(paths, site.Name))
+			// The dependencies are already installed, and running a
+			// package.json script doesn't need yarn/pnpm themselves:
+			// npm runs it the same way. Only Yarn PnP (no node_modules)
+			// truly needs yarn.
+			if !canRunWithNpm(site.Path) {
+				return 0, fmt.Errorf("%s for %s: %w — last log lines:\n%s(full log: %s)", pm, site.Name, err,
+					logTail(logFilePath(paths, site.Name)), logFilePath(paths, site.Name))
+			}
+			fmt.Fprintf(logFile, "mullion: %v — running the script with npm instead\n", err)
+			pm = "npm"
 		}
 	}
 
@@ -310,21 +323,34 @@ func portListening(port int) bool {
 // preflightPM runs `<pm> --version` in the project (so corepack resolves
 // the version the project pins), logging what it says, with a time limit.
 func preflightPM(nodeDir, pm, dir string, env []string, log *os.File) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 	c := exec.CommandContext(ctx, nodever.Tool(nodeDir, pm), "--version")
 	proc.HideConsole(c)
+	// On Windows the kill only reaches the .cmd's cmd.exe; node keeps
+	// the output pipe open, and without this the wait never returns.
+	c.WaitDelay = 5 * time.Second
 	c.Dir = dir
 	c.Env = env
 	out, err := c.CombinedOutput()
 	fmt.Fprintf(log, "%s --version: %s\n", pm, strings.TrimSpace(string(out)))
 	if ctx.Err() != nil {
-		return fmt.Errorf("`%s --version` didn't answer within 3 minutes (corepack may be stuck downloading %s — check your network or proxy)", pm, pm)
+		return fmt.Errorf("`%s --version` didn't answer within a minute (corepack may be stuck downloading %s — check your network or proxy)", pm, pm)
 	}
 	if err != nil {
 		return fmt.Errorf("`%s --version` failed: %v", pm, err)
 	}
 	return nil
+}
+
+// canRunWithNpm: the project's dependencies are installed into
+// node_modules (not Yarn Plug'n'Play), so `npm run` can run its scripts.
+func canRunWithNpm(dir string) bool {
+	if _, err := os.Stat(filepath.Join(dir, ".pnp.cjs")); err == nil {
+		return false
+	}
+	st, err := os.Stat(filepath.Join(dir, "node_modules", ".bin"))
+	return err == nil && st.IsDir()
 }
 
 // ensurePM makes the project's package manager runnable: pnpm/yarn ship
