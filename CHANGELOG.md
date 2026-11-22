@@ -2,6 +2,16 @@
 
 All notable changes to Mullion. Versions follow [semantic versioning](https://semver.org).
 
+## 2.5.1 — 2026-11-22
+
+### Fixed
+
+- **yarn/pnpm dev servers that died silently** (seen on Windows): corepack
+  can no longer wait on a hidden download prompt, Mullion runs
+  `<pm> --version` before starting the dev server so a download or
+  version problem shows as a clear error, and the dev-server log now
+  records how the server exited.
+
 ## 2.5.0 — 2026-10-28
 
 ### Added
