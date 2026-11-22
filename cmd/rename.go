@@ -35,13 +35,14 @@ first names the site to rename.`,
 		if site.Kind == "node" {
 			devserver.Stop(a.Paths, site.Name)
 		}
-		// Its FrankenPHP server's files are keyed by name too: Apply
-		// starts it again under the new one.
-		if site.OnFranken() {
-			frankenphp.Stop(a.Paths, site.Name)
-		}
+		onFranken, siteName := site.OnFranken(), site.Name
 		if err := a.State.RenameSite(oldName, newName); err != nil {
 			return err
+		}
+		// Its FrankenPHP server's files are keyed by name too: stop it
+		// under the old one; Apply starts it again under the new one.
+		if onFranken {
+			frankenphp.Stop(a.Paths, siteName)
 		}
 		if err := a.Apply(); err != nil {
 			return err

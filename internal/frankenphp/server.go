@@ -30,13 +30,16 @@ type Run struct {
 	PHPCLI []string
 }
 
-func pidFile(paths pmdir.Paths, site string) string {
+// PidPath is the pid file of a site's FrankenPHP server.
+func PidPath(paths pmdir.Paths, site string) string {
 	return filepath.Join(paths.PidsDir(), "franken-"+site+".pid")
 }
 func hashFile(paths pmdir.Paths, site string) string {
 	return filepath.Join(paths.PidsDir(), "franken-"+site+".hash")
 }
-func logFilePath(paths pmdir.Paths, site string) string {
+
+// LogPath is the log file of a site's FrankenPHP server.
+func LogPath(paths pmdir.Paths, site string) string {
 	return filepath.Join(paths.LogsDir(), "franken-"+site+".log")
 }
 func caddyfilePath(paths pmdir.Paths, site string) string {
@@ -52,7 +55,7 @@ var stopGrace = 10 * time.Second
 
 // Running reports whether the site's FrankenPHP server process is alive.
 func Running(paths pmdir.Paths, site string) bool {
-	pid := readInt(pidFile(paths, site))
+	pid := readInt(PidPath(paths, site))
 	return pid > 0 && processAlive(pid)
 }
 
@@ -66,7 +69,7 @@ func Ensure(r Run) (int, error) {
 		// the log tail — so the reason itself must land in the log.
 		reason := strings.SplitN(err.Error(), "\n", 2)[0]
 		reason = strings.TrimSuffix(reason, " — last log lines:")
-		if f, ferr := os.OpenFile(logFilePath(r.Paths, r.Site.Name), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644); ferr == nil {
+		if f, ferr := os.OpenFile(LogPath(r.Paths, r.Site.Name), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644); ferr == nil {
 			fmt.Fprintf(f, "---- %s: mullion: %s ----\n", time.Now().Format(time.RFC3339), reason)
 			f.Close()
 		}
@@ -138,7 +141,7 @@ func ensure(r Run) (int, error) {
 		argv = []string{r.Bin, "run", "--config", confPath, "--adapter", "caddyfile"}
 	}
 
-	logPath := logFilePath(paths, site)
+	logPath := LogPath(paths, site)
 	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 	if err != nil {
 		return 0, err
@@ -179,7 +182,7 @@ func ensure(r Run) (int, error) {
 		}
 		close(exited)
 	}()
-	if err := os.WriteFile(pidFile(paths, site), []byte(strconv.Itoa(pid)), 0o644); err != nil {
+	if err := os.WriteFile(PidPath(paths, site), []byte(strconv.Itoa(pid)), 0o644); err != nil {
 		killTree(pid)
 		return 0, err
 	}
@@ -188,7 +191,7 @@ func ensure(r Run) (int, error) {
 	for time.Now().Before(deadline) {
 		select {
 		case <-exited:
-			_ = os.Remove(pidFile(paths, site))
+			_ = os.Remove(PidPath(paths, site))
 			return 0, fmt.Errorf("%s's FrankenPHP server exited — last log lines:\n%s(full log: %s)",
 				site, logTail(logPath), logPath)
 		default:
@@ -218,7 +221,7 @@ func configHash(conf string, worker bool, bin string) string {
 // Stop terminates one site's FrankenPHP server (no-op when not running)
 // and waits briefly for it to go.
 func Stop(paths pmdir.Paths, site string) {
-	if pid := readInt(pidFile(paths, site)); pid > 0 && processAlive(pid) {
+	if pid := readInt(PidPath(paths, site)); pid > 0 && processAlive(pid) {
 		killTree(pid)
 		if !waitGone(pid, stopGrace) {
 			// It ignored the polite kill: force it, so the pid file never
@@ -227,7 +230,7 @@ func Stop(paths pmdir.Paths, site string) {
 			waitGone(pid, 5*time.Second)
 		}
 	}
-	_ = os.Remove(pidFile(paths, site))
+	_ = os.Remove(PidPath(paths, site))
 	_ = os.Remove(hashFile(paths, site))
 }
 
@@ -244,16 +247,26 @@ func waitGone(pid int, timeout time.Duration) bool {
 
 // StopAll terminates every managed FrankenPHP server.
 func StopAll(paths pmdir.Paths) {
+	for _, site := range Sites(paths) {
+		Stop(paths, site)
+	}
+}
+
+// Sites lists the sites that have a FrankenPHP pid file (running, or
+// left over from a server that died).
+func Sites(paths pmdir.Paths) []string {
 	entries, err := os.ReadDir(paths.PidsDir())
 	if err != nil {
-		return
+		return nil
 	}
+	var out []string
 	for _, e := range entries {
 		name := e.Name()
 		if strings.HasPrefix(name, "franken-") && strings.HasSuffix(name, ".pid") {
-			Stop(paths, strings.TrimSuffix(strings.TrimPrefix(name, "franken-"), ".pid"))
+			out = append(out, strings.TrimSuffix(strings.TrimPrefix(name, "franken-"), ".pid"))
 		}
 	}
+	return out
 }
 
 // AssignPort returns the first FrankenPHP port from 44001 not in used.

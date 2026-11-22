@@ -11,7 +11,6 @@ import (
 	"pm/internal/caddy"
 	"pm/internal/config"
 	"pm/internal/frankenphp"
-	"pm/internal/phpver"
 	"pm/internal/pmdir"
 )
 
@@ -106,9 +105,6 @@ func TestSwitchBackToFpm(t *testing.T) {
 	if len(*stopped) == 0 || (*stopped)[0] != "shop" {
 		t.Errorf("stopped = %v", *stopped)
 	}
-	if _, err := phpver.FcgiPort("8.3.26"); err != nil {
-		t.Skip("no fcgi port for the test PHP:", err)
-	}
 	if out := frankenCaddyfile(t, a); !strings.Contains(out, "php_fastcgi") {
 		t.Errorf("no php_fastcgi after switching back:\n%s", out)
 	}
@@ -151,12 +147,39 @@ func TestFrankenPortsAvoidCollisions(t *testing.T) {
 	a.State.AddSite(config.Site{Name: "web", Path: t.TempDir(), Kind: "node", DevPort: 44001})
 	a.State.AddSite(config.Site{Name: "old", Path: t.TempDir(), Server: "frankenphp",
 		Franken: &config.Franken{Tag: "v1.14.0", Port: 44002}})
+	a.State.AddSite(config.Site{Name: "octane", Path: t.TempDir(), Server: "frankenphp",
+		Franken: &config.Franken{Tag: "v1.14.0", Port: 43003, Worker: true}})
 	addLaravelSite(t, a, "shop", "")
 	if err := a.SetSiteServer(context.Background(), "shop", "frankenphp", false, nil); err != nil {
 		t.Fatal(err)
 	}
-	if p := a.State.FindSite("shop").Franken.Port; p == 44001 || p == 44002 || p < 44001 {
-		t.Errorf("port = %d", p)
+	// 44001 is a dev port, 44002 another FrankenPHP site's port and
+	// 44003 the admin port of a worker on 43003 (+1000).
+	if p := a.State.FindSite("shop").Franken.Port; p != 44004 {
+		t.Errorf("port = %d, want 44004", p)
+	}
+	// A new port whose own admin port (+1000) is taken is skipped too.
+	a.State.AddSite(config.Site{Name: "dev2", Path: t.TempDir(), Kind: "node", DevPort: 45005})
+	addLaravelSite(t, a, "blog", "")
+	if err := a.SetSiteServer(context.Background(), "blog", "frankenphp", false, nil); err != nil {
+		t.Fatal(err)
+	}
+	if p := a.State.FindSite("blog").Franken.Port; p != 44006 {
+		t.Errorf("port = %d, want 44006 (44005's admin port 45005 is taken)", p)
+	}
+}
+
+// TestPlainPHPSiteUnchanged: a PHP site that never chose a server still
+// goes through php_fastcgi, with nothing FrankenPHP in its block.
+func TestPlainPHPSiteUnchanged(t *testing.T) {
+	a, _ := frankenTestApp(t)
+	addLaravelSite(t, a, "shop", "")
+	out := frankenCaddyfile(t, a)
+	if !strings.Contains(out, "php_fastcgi 127.0.0.1:") {
+		t.Errorf("no php_fastcgi:\n%s", out)
+	}
+	if strings.Contains(out, "reverse_proxy") || strings.Contains(strings.ToLower(out), "franken") {
+		t.Errorf("FrankenPHP leaked into a plain PHP site:\n%s", out)
 	}
 }
 

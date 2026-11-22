@@ -79,13 +79,26 @@ func (a *App) SetSiteServer(ctx context.Context, name, server string, worker boo
 	site.Franken = &config.Franken{
 		Tag:    installed[0],
 		Worker: worker,
-		Port:   frankenphp.AssignPort(a.usedFrankenPorts(site.Name)),
+		Port:   a.assignFrankenPort(site.Name),
 	}
 	return a.applyIfEnabled()
 }
 
+// assignFrankenPort picks a free FrankenPHP port for a site. Worker mode
+// also binds port+1000 (Octane's admin port), so both must be free.
+func (a *App) assignFrankenPort(name string) int {
+	used := a.usedFrankenPorts(name)
+	for {
+		p := frankenphp.AssignPort(used)
+		if !used[p+1000] {
+			return p
+		}
+		used[p] = true
+	}
+}
+
 // usedFrankenPorts is every port another site holds: dev-server ports
-// and other FrankenPHP servers' ports.
+// and other FrankenPHP servers' ports and worker admin ports (+1000).
 func (a *App) usedFrankenPorts(except string) map[int]bool {
 	used := map[int]bool{}
 	for _, s := range a.State.Sites {
@@ -94,6 +107,7 @@ func (a *App) usedFrankenPorts(except string) map[int]bool {
 		}
 		if s.Franken != nil && s.Franken.Port > 0 && !strings.EqualFold(s.Name, except) {
 			used[s.Franken.Port] = true
+			used[s.Franken.Port+1000] = true
 		}
 	}
 	return used
@@ -169,7 +183,7 @@ func (a *App) EnsureFrankenServers() map[string]int {
 			keep[strings.ToLower(s.Name)] = true
 		}
 	}
-	for _, name := range frankenPidSites(a) {
+	for _, name := range frankenphp.Sites(a.Paths) {
 		if !keep[strings.ToLower(name)] {
 			stopFranken(a.Paths, name)
 		}
@@ -204,23 +218,6 @@ func (a *App) EnsureFrankenServers() map[string]int {
 		ports[s.Name] = port
 	}
 	return ports
-}
-
-// frankenPidSites lists the sites that have a FrankenPHP pid file
-// (frankenphp keeps them as <PidsDir>/franken-<site>.pid).
-func frankenPidSites(a *App) []string {
-	entries, err := os.ReadDir(a.Paths.PidsDir())
-	if err != nil {
-		return nil
-	}
-	var out []string
-	for _, e := range entries {
-		n := e.Name()
-		if strings.HasPrefix(n, "franken-") && strings.HasSuffix(n, ".pid") {
-			out = append(out, strings.TrimSuffix(strings.TrimPrefix(n, "franken-"), ".pid"))
-		}
-	}
-	return out
 }
 
 // octaneInstalled reports whether the project's composer.lock lists
@@ -279,7 +276,7 @@ func (a *App) FrankenInfo(name string) (FrankenInfo, error) {
 	}
 	info.Server = frankenServer
 	info.Running = frankenphp.Running(a.Paths, site.Name)
-	info.Log = filepath.Join(a.Paths.LogsDir(), "franken-"+site.Name+".log")
+	info.Log = frankenphp.LogPath(a.Paths, site.Name)
 	if f := site.Franken; f != nil {
 		info.Worker, info.Tag, info.Port = f.Worker, f.Tag, f.Port
 		if f.Tag != "" {

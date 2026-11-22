@@ -77,7 +77,7 @@ func accepts(port int) bool {
 
 func pidOf(t *testing.T, paths pmdir.Paths, site string) int {
 	t.Helper()
-	pid := readInt(pidFile(paths, site))
+	pid := readInt(PidPath(paths, site))
 	if pid <= 0 {
 		t.Fatalf("no pid file for %s", site)
 	}
@@ -85,7 +85,7 @@ func pidOf(t *testing.T, paths pmdir.Paths, site string) int {
 }
 
 func readLog(paths pmdir.Paths, site string) string {
-	b, _ := os.ReadFile(logFilePath(paths, site))
+	b, _ := os.ReadFile(LogPath(paths, site))
 	return string(b)
 }
 
@@ -211,7 +211,7 @@ func TestStopKillsServer(t *testing.T) {
 	if processAlive(pid) {
 		t.Error("process still alive after Stop")
 	}
-	for _, f := range []string{pidFile(paths, "blog"), hashFile(paths, "blog")} {
+	for _, f := range []string{PidPath(paths, "blog"), hashFile(paths, "blog")} {
 		if _, err := os.Stat(f); !os.IsNotExist(err) {
 			t.Errorf("%s still exists", f)
 		}
