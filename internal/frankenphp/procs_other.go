@@ -2,7 +2,13 @@
 
 package frankenphp
 
-import "syscall"
+import (
+	"strconv"
+	"strings"
+	"syscall"
+
+	"pm/internal/proc"
+)
 
 func processAlive(pid int) bool {
 	return syscall.Kill(pid, 0) == nil
@@ -23,4 +29,14 @@ func forceKillTree(pid int) {
 	if err := syscall.Kill(-pid, syscall.SIGKILL); err != nil {
 		_ = syscall.Kill(pid, syscall.SIGKILL)
 	}
+}
+
+// processName is the command name of pid (`ps -o comm=`, the executable
+// path on macOS), or "" when it can't be read.
+func processName(pid int) string {
+	out, err := proc.Quiet("ps", "-p", strconv.Itoa(pid), "-o", "comm=").Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
 }

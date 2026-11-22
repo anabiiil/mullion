@@ -22,8 +22,8 @@ type Run struct {
 	Bin        string // the frankenphp executable
 	Site       SiteConf
 	ProjectDir string // the project root (worker mode runs artisan there)
-	// Worker runs Laravel Octane's own `octane:frankenphp` instead of
-	// `frankenphp run` with our Caddyfile.
+	// Worker runs Laravel Octane's `octane:frankenphp` (handing it our
+	// WorkerCaddyfile) instead of `frankenphp run` with our Caddyfile.
 	Worker bool
 	// PHPCLI is the argv prefix that runs artisan in worker mode:
 	// [<bin>, "php-cli"].
@@ -82,21 +82,31 @@ func ensure(r Run) (int, error) {
 	if site == "" || port <= 0 {
 		return 0, fmt.Errorf("FrankenPHP server needs a site name and a port (got %q, %d)", site, port)
 	}
+	// Held across the check, the stop and the start: two Mullion
+	// processes applying at once would otherwise both start a server and
+	// lose track of one.
+	lock, err := lockSite(paths, site)
+	if err != nil {
+		return 0, err
+	}
+	defer lock.unlock()
+
 	conf := Caddyfile(r.Site)
+	if r.Worker {
+		conf = WorkerCaddyfile(r.Site)
+	}
 	hash := configHash(conf, r.Worker, r.Bin)
 	// The port check guards against a recycled pid (after a reboot) that
 	// merely looks alive.
 	if Running(paths, site) && readString(hashFile(paths, site)) == hash && portListening(port) {
 		return port, nil
 	}
-	Stop(paths, site) // the old config, or a half-dead leftover
+	stop(paths, site) // the old config, or a half-dead leftover
 
 	confPath := caddyfilePath(paths, site)
 	if err := os.MkdirAll(filepath.Dir(confPath), 0o755); err != nil {
 		return 0, err
 	}
-	// Worker mode doesn't read it (Octane writes its own), but it is
-	// still the record of what this site is configured with.
 	if err := os.WriteFile(confPath, []byte(conf), 0o644); err != nil {
 		return 0, err
 	}
@@ -121,8 +131,12 @@ func ensure(r Run) (int, error) {
 			cli = []string{r.Bin, "php-cli"}
 		}
 		argv = append(append([]string{}, cli...), "artisan", "octane:frankenphp",
+			// Our Caddyfile, not Octane's stub: that one listens on every
+			// interface and drops the scheme, watcher and prod settings.
+			"--caddyfile="+confPath,
 			"--host=127.0.0.1",
 			"--port="+strconv.Itoa(port),
+			"--admin-host=127.0.0.1",
 			"--admin-port="+strconv.Itoa(port+1000),
 			// Octane may offer to install or download things; nobody
 			// can answer that prompt.
@@ -191,7 +205,7 @@ func ensure(r Run) (int, error) {
 	for time.Now().Before(deadline) {
 		select {
 		case <-exited:
-			_ = os.Remove(PidPath(paths, site))
+			removePidFile(paths, site, pid)
 			return 0, fmt.Errorf("%s's FrankenPHP server exited — last log lines:\n%s(full log: %s)",
 				site, logTail(logPath), logPath)
 		default:
@@ -206,7 +220,12 @@ func ensure(r Run) (int, error) {
 		}
 		time.Sleep(200 * time.Millisecond)
 	}
-	Stop(paths, site)
+	killTree(pid)
+	if !waitGone(pid, stopGrace) {
+		forceKillTree(pid)
+		waitGone(pid, 5*time.Second)
+	}
+	removePidFile(paths, site, pid)
 	return 0, fmt.Errorf("%s's FrankenPHP server did not open port %d within %s — last log lines:\n%s(full log: %s)",
 		site, port, readyTimeout, logTail(logPath), logPath)
 }
@@ -218,10 +237,46 @@ func configHash(conf string, worker bool, bin string) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
+// removePidFile removes the site's pid file only while it still holds
+// pid, so a failed start never forgets a server someone else started.
+func removePidFile(paths pmdir.Paths, site string, pid int) {
+	if readInt(PidPath(paths, site)) == pid {
+		_ = os.Remove(PidPath(paths, site))
+	}
+}
+
 // Stop terminates one site's FrankenPHP server (no-op when not running)
 // and waits briefly for it to go.
 func Stop(paths pmdir.Paths, site string) {
-	if pid := readInt(PidPath(paths, site)); pid > 0 && processAlive(pid) {
+	lock, err := lockSite(paths, site)
+	if err == nil {
+		defer lock.unlock()
+	}
+	// Without the lock (a holder that hangs) stopping anyway beats
+	// leaving the server up.
+	stop(paths, site)
+}
+
+// isFrankenPID reports whether pid is a FrankenPHP process. A variable
+// so tests with a fake (shell script) server can accept theirs.
+var isFrankenPID = func(pid int) bool { return isFrankenName(processName(pid)) }
+
+// isFrankenName reports whether a process name (`ps -o comm=` on unix,
+// tasklist's image name on Windows) is a frankenphp executable. Only the
+// base name counts: the binary lives in a folder that is also called
+// frankenphp. Worker mode's root process is `frankenphp php-cli`, too.
+func isFrankenName(name string) bool {
+	name = strings.TrimSpace(name)
+	if i := strings.LastIndexAny(name, `/\`); i >= 0 {
+		name = name[i+1:]
+	}
+	return strings.Contains(strings.ToLower(name), "frankenphp")
+}
+
+func stop(paths pmdir.Paths, site string) {
+	// A pid file that outlived a reboot can name an unrelated process
+	// that now has the same pid: only a frankenphp one is killed.
+	if pid := readInt(PidPath(paths, site)); pid > 0 && processAlive(pid) && isFrankenPID(pid) {
 		killTree(pid)
 		if !waitGone(pid, stopGrace) {
 			// It ignored the polite kill: force it, so the pid file never

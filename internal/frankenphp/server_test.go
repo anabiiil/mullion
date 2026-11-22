@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -25,6 +26,7 @@ echo "PHPRC=${PHPRC-unset} PHP_INI_SCAN_DIR=${PHP_INI_SCAN_DIR-unset} APP_ENV=${
 echo "PATH=$PATH"
 echo "XDG_DATA_HOME=${XDG_DATA_HOME-unset} XDG_CONFIG_HOME=${XDG_CONFIG_HOME-unset}"
 echo "PWD=$(pwd)"
+[ -n "$FAKE_PIDLOG" ] && echo $$ >> "$FAKE_PIDLOG"
 port=""
 if [ "$1" = "run" ]; then
   port=$(sed -n 's/^http:\/\/:\([0-9]*\).*/\1/p' "$3")
@@ -53,7 +55,13 @@ func setup(t *testing.T, script string) (pmdir.Paths, Run) {
 		ProjectDir: project,
 		Site:       SiteConf{Name: "blog", Root: filepath.Join(project, "public"), Port: freePort(t)},
 	}
-	t.Cleanup(func() { StopAll(paths) })
+	// The fake server's processes are sh and python3, not frankenphp.
+	oldIs := isFrankenPID
+	isFrankenPID = func(int) bool { return true }
+	t.Cleanup(func() {
+		StopAll(paths)
+		isFrankenPID = oldIs
+	})
 	return paths, r
 }
 
@@ -179,7 +187,8 @@ func TestEnsureWorkerMode(t *testing.T) {
 		t.Error("nothing is listening on the port")
 	}
 	log := readLog(paths, "blog")
-	want := fmt.Sprintf("args: php-cli artisan octane:frankenphp --host=127.0.0.1 --port=%d --admin-port=%d --no-interaction", port, port+1000)
+	confPath := filepath.Join(paths.FrankenDir(), "sites", "blog", "Caddyfile")
+	want := fmt.Sprintf("args: php-cli artisan octane:frankenphp --caddyfile=%s --host=127.0.0.1 --port=%d --admin-host=127.0.0.1 --admin-port=%d --no-interaction", confPath, port, port+1000)
 	realProject, _ := filepath.EvalSymlinks(r.ProjectDir)
 	for _, w := range []string{
 		want,
@@ -193,8 +202,9 @@ func TestEnsureWorkerMode(t *testing.T) {
 			t.Errorf("log lacks %q:\n%s", w, log)
 		}
 	}
-	if _, err := os.Stat(filepath.Join(paths.FrankenDir(), "sites", "blog", "Caddyfile")); err != nil {
-		t.Errorf("worker mode should still write the Caddyfile: %v", err)
+	// Octane is handed our worker Caddyfile, not its own stub.
+	if conf, err := os.ReadFile(confPath); err != nil || string(conf) != WorkerCaddyfile(r.Site) {
+		t.Errorf("worker Caddyfile not written as rendered: %v\n%s", err, conf)
 	}
 }
 
@@ -266,5 +276,118 @@ func TestStopEscalatesToSIGKILL(t *testing.T) {
 	}
 	if accepts(r.Site.Port) {
 		t.Error("port still accepts connections after Stop")
+	}
+}
+
+// Two Mullion processes applying at once (goroutines here: the lock is a
+// file) must leave exactly one server, the one in the pid file.
+func TestConcurrentEnsureLeavesOneServer(t *testing.T) {
+	pidlog := filepath.Join(t.TempDir(), "pids")
+	t.Setenv("FAKE_PIDLOG", pidlog)
+	paths, r := setup(t, fakeFranken)
+	if _, err := Ensure(r); err != nil {
+		t.Fatal(err)
+	}
+	r.Site.Env = map[string]string{"APP_ENV": "production"}
+
+	errs := make(chan error, 2)
+	for range 2 {
+		go func() {
+			_, err := Ensure(r)
+			errs <- err
+		}()
+	}
+	for range 2 {
+		if err := <-errs; err != nil {
+			t.Errorf("Ensure: %v", err)
+		}
+	}
+
+	live := pidOf(t, paths, "blog")
+	if !processAlive(live) || !accepts(r.Site.Port) {
+		t.Fatalf("pid file's server %d is not up", live)
+	}
+	data, _ := os.ReadFile(pidlog)
+	started := strings.Fields(string(data))
+	// The first server, then one restart for the changed config.
+	if len(started) != 2 {
+		t.Errorf("servers started = %v, want 2", started)
+	}
+	for _, f := range started {
+		pid, _ := strconv.Atoi(f)
+		if pid != live && processAlive(pid) {
+			t.Errorf("orphan server pid %d still alive (pid file holds %d)", pid, live)
+		}
+	}
+	if _, err := os.Stat(lockPath(paths, "blog")); !os.IsNotExist(err) {
+		t.Errorf("lock file left behind: %v", err)
+	}
+}
+
+func TestLockBreaksStale(t *testing.T) {
+	paths := pmdir.Paths{Home: t.TempDir()}
+	if err := paths.EnsureLayout(); err != nil {
+		t.Fatal(err)
+	}
+	path := lockPath(paths, "blog")
+
+	// Held by a live process (us) and fresh: not taken.
+	held, err := lockSite(paths, "blog")
+	if err != nil {
+		t.Fatal(err)
+	}
+	breakStaleLock(path)
+	if readString(path) != held.token {
+		t.Fatal("a fresh lock held by a live process was broken")
+	}
+	held.unlock()
+
+	// Owner dead: broken at once.
+	dead := exec.Command("true")
+	if err := dead.Run(); err != nil {
+		t.Fatal(err)
+	}
+	os.WriteFile(path, []byte(strconv.Itoa(dead.Process.Pid)+" abc"), 0o644)
+	start := time.Now()
+	l, err := lockSite(paths, "blog")
+	if err != nil || time.Since(start) > 5*time.Second {
+		t.Fatalf("dead owner's lock not broken: %v", err)
+	}
+	l.unlock()
+
+	// Owner alive but too old: broken.
+	os.WriteFile(path, []byte(strconv.Itoa(os.Getpid())+" abc"), 0o644)
+	old := time.Now().Add(-lockStale - time.Minute)
+	os.Chtimes(path, old, old)
+	if l, err = lockSite(paths, "blog"); err != nil {
+		t.Fatal(err)
+	}
+	l.unlock()
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Error("unlock left the lock file")
+	}
+}
+
+// A pid file that outlived a reboot may name an unrelated process: Stop
+// leaves it alone and only drops the pid file.
+func TestStopSparesForeignProcess(t *testing.T) {
+	paths := pmdir.Paths{Home: t.TempDir()}
+	if err := paths.EnsureLayout(); err != nil {
+		t.Fatal(err)
+	}
+	other := exec.Command("sleep", "30")
+	if err := other.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { other.Process.Kill(); other.Wait() })
+	pid := other.Process.Pid
+	os.WriteFile(PidPath(paths, "blog"), []byte(strconv.Itoa(pid)), 0o644)
+
+	Stop(paths, "blog")
+	if !processAlive(pid) {
+		t.Error("Stop killed a process that is not frankenphp")
+	}
+	if _, err := os.Stat(PidPath(paths, "blog")); !os.IsNotExist(err) {
+		t.Error("pid file not removed")
 	}
 }
