@@ -183,7 +183,7 @@ func TestGenerateFrankenSite(t *testing.T) {
 		"\nblog.test {\n\ttls internal\n\treverse_proxy 127.0.0.1:44001 {\n",
 		"\t\theader_up X-Mullion-Rid {http.request.uuid}\n",
 		"\t\tflush_interval -1\n",
-		"\tlog {\n\t\toutput file \"/logs/blog.test.log\"\n\t}\n",
+		"\tlog {\n\t\toutput file " + quote(filepath.Join("/logs", "blog.test.log")) + "\n\t}\n",
 	} {
 		if !strings.Contains(out, w) {
 			t.Errorf("missing %q in:\n%s", w, out)

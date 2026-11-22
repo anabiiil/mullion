@@ -35,7 +35,8 @@ else
     case "$a" in --port=*) port="${a#--port=}" ;; esac
   done
 fi
-exec python3 -m http.server "$port" --bind 127.0.0.1
+echo "port=$port"
+FAKE_FRANKEN_SERVE="$port" exec "$FAKE_SERVER_BIN"
 `
 
 func setup(t *testing.T, script string) (pmdir.Paths, Run) {
@@ -55,7 +56,7 @@ func setup(t *testing.T, script string) (pmdir.Paths, Run) {
 		ProjectDir: project,
 		Site:       SiteConf{Name: "blog", Root: filepath.Join(project, "public"), Port: freePort(t)},
 	}
-	// The fake server's processes are sh and python3, not frankenphp.
+	// The fake server's processes are sh and the test binary, not frankenphp.
 	oldIs := isFrankenPID
 	isFrankenPID = func(int) bool { return true }
 	t.Cleanup(func() {
