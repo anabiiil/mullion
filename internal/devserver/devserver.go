@@ -46,6 +46,21 @@ func Running(paths pmdir.Paths, site string) int {
 // Ensure starts the site's dev server if needed and returns the port
 // Caddy should proxy to.
 func Ensure(paths pmdir.Paths, site config.Site, host, nodeDir string) (int, error) {
+	port, err := ensure(paths, site, host, nodeDir)
+	if err != nil {
+		// Callers only print this to the agent's stdout, and the UI shows
+		// the log tail — so the reason itself must land in the log.
+		reason := strings.SplitN(err.Error(), "\n", 2)[0]
+		reason = strings.TrimSuffix(reason, " — last log lines:")
+		if f, ferr := os.OpenFile(logFilePath(paths, site.Name), os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644); ferr == nil {
+			fmt.Fprintf(f, "---- %s: mullion: %s ----\n", time.Now().Format(time.RFC3339), reason)
+			f.Close()
+		}
+	}
+	return port, err
+}
+
+func ensure(paths pmdir.Paths, site config.Site, host, nodeDir string) (int, error) {
 	if port := Running(paths, site.Name); port > 0 {
 		return port, nil
 	}
