@@ -122,8 +122,9 @@ func (a *App) Hostnames() []string {
 
 // WriteCaddyfile regenerates ~/.mullion/Caddyfile from the current
 // state. devPorts maps node site names to their running dev-server port
-// (0 = down, which renders a friendly 503).
-func (a *App) WriteCaddyfile(devPorts map[string]int) error {
+// and frankenPorts PHP sites on FrankenPHP to their server's port (0 =
+// down, which renders a friendly 503).
+func (a *App) WriteCaddyfile(devPorts, frankenPorts map[string]int) error {
 	var confs []caddy.SiteConf
 	for _, s := range a.State.Sites {
 		conf := caddy.SiteConf{
@@ -148,6 +149,13 @@ func (a *App) WriteCaddyfile(devPorts map[string]int) error {
 			conf.Root = filepath.Join(s.Path, s.BuildDir)
 			conf.Prod = a.prodCaddyConf(s)
 		default: // php
+			if s.OnFranken() {
+				// The watcher and production-like mode live in the
+				// site's own FrankenPHP Caddyfile (frankenSiteConf).
+				conf.Kind = "franken"
+				conf.FrankenPort = frankenPorts[s.Name]
+				break
+			}
 			version := a.SiteVersion(s)
 			if version == "" {
 				return fmt.Errorf("no PHP version set: run `mullion use <version>` first")
@@ -301,7 +309,8 @@ func (a *App) Apply() error {
 		return err
 	}
 	devPorts := a.EnsureDevServers()
-	if err := a.WriteCaddyfile(devPorts); err != nil {
+	frankenPorts := a.EnsureFrankenServers()
+	if err := a.WriteCaddyfile(devPorts, frankenPorts); err != nil {
 		return err
 	}
 	// The remaining steps are independent: one failing (a declined

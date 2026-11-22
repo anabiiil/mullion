@@ -21,6 +21,7 @@ import (
 	"pm/internal/devserver"
 	"pm/internal/dnsd"
 	"pm/internal/fcgi"
+	"pm/internal/frankenphp"
 	"pm/internal/mongodb"
 	"pm/internal/mssql"
 	"pm/internal/mysql"
@@ -153,6 +154,7 @@ func (a *App) RestartStack(ctx context.Context) error {
 		return err
 	}
 	devserver.StopAll(a.Paths)
+	frankenphp.StopAll(a.Paths)
 	agent.Stop(a.Paths)
 	if v := a.State.Config.MySQL; v != "" {
 		if err := mysql.Stop(a.Paths, v); err != nil {

@@ -154,7 +154,7 @@ func TestCatchPHPMailNeedsMail(t *testing.T) {
 func TestMailCaddySiteAndHosts(t *testing.T) {
 	a := mailTestApp(t, nil)
 	mailpit.UIPort = 28025
-	if err := a.WriteCaddyfile(nil); err != nil {
+	if err := a.WriteCaddyfile(nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	b, _ := os.ReadFile(a.Paths.Caddyfile())
@@ -170,7 +170,7 @@ func TestMailCaddySiteAndHosts(t *testing.T) {
 	if a.mailSiteActive() {
 		t.Error("the user's own mail site must win")
 	}
-	if err := a.WriteCaddyfile(nil); err != nil {
+	if err := a.WriteCaddyfile(nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	b, _ = os.ReadFile(a.Paths.Caddyfile())

@@ -195,7 +195,29 @@ type Site struct {
 	// Perf is the project page's Performance tab: budgets, ignored
 	// readiness findings and production-like mode (nil = defaults, off).
 	Perf *Perf `json:"perf,omitempty"`
+	// Server is what runs a PHP site's code: "" (php-fpm / php-cgi
+	// behind php_fastcgi) or "frankenphp" (the site's own FrankenPHP
+	// server behind a reverse proxy).
+	Server string `json:"server,omitempty"`
+	// Franken is the site's FrankenPHP server (set while Server is
+	// "frankenphp").
+	Franken *Franken `json:"franken,omitempty"`
 }
+
+// Franken configures a site's own FrankenPHP server.
+type Franken struct {
+	// Tag is the installed FrankenPHP release the site runs on, pinned
+	// at switch time; only `mullion frankenphp update` moves it.
+	Tag string `json:"tag"`
+	// Worker runs Laravel Octane's FrankenPHP worker mode.
+	Worker bool `json:"worker,omitempty"`
+	// Port is the stable loopback port of the site's server.
+	Port int `json:"port"`
+}
+
+// OnFranken reports whether the PHP site runs on its own FrankenPHP
+// server instead of the shared php-fpm.
+func (s Site) OnFranken() bool { return s.IsPHP() && s.Server == "frankenphp" }
 
 // Perf configures a site's Performance tab.
 type Perf struct {

@@ -11,6 +11,7 @@ import (
 	"pm/internal/caddy"
 	"pm/internal/devserver"
 	"pm/internal/fcgi"
+	"pm/internal/frankenphp"
 	"pm/internal/mailpit"
 	"pm/internal/mongodb"
 	"pm/internal/mssql"
@@ -96,6 +97,7 @@ var stopCmd = &cobra.Command{
 			return err
 		}
 		devserver.StopAll(a.Paths)
+		frankenphp.StopAll(a.Paths)
 		agent.Stop(a.Paths)
 		// A whole-stack stop, same as MySQL above: this does NOT set the
 		// user's stopped flags, so a plain `mullion start` afterwards

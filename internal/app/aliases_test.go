@@ -117,7 +117,7 @@ func TestSetSiteAliasesAndHostnames(t *testing.T) {
 		t.Fatal("unknown site must be rejected")
 	}
 
-	if err := a.WriteCaddyfile(nil); err != nil {
+	if err := a.WriteCaddyfile(nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	data, _ := os.ReadFile(a.Paths.Caddyfile())

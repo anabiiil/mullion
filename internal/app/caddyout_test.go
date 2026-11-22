@@ -33,7 +33,7 @@ func TestWriteCaddyfileModes(t *testing.T) {
 		{Name: "p", Path: proj, Kind: "node", DevPaused: true, DevPort: 42002},
 		{Name: "r", Path: proj, Kind: "node", DevPort: 42003},
 	}
-	if err := a.WriteCaddyfile(map[string]int{"r": 5173}); err != nil {
+	if err := a.WriteCaddyfile(map[string]int{"r": 5173}, nil); err != nil {
 		t.Fatal(err)
 	}
 	data, _ := os.ReadFile(paths.Caddyfile())

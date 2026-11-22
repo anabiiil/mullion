@@ -109,7 +109,7 @@ func TestPerfE2E(t *testing.T) {
 	fcgiRe := regexp.MustCompile(`127\.0\.0\.1:\d+`)
 	startCaddy := func() {
 		stop(cad)
-		if err := a.WriteCaddyfile(nil); err != nil {
+		if err := a.WriteCaddyfile(nil, nil); err != nil {
 			t.Fatal(err)
 		}
 		b, _ := os.ReadFile(a.Paths.Caddyfile())

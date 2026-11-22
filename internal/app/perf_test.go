@@ -16,7 +16,7 @@ func TestProdModeCaddyfile(t *testing.T) {
 	a.State.AddSite(config.Site{Name: "blog", Path: t.TempDir()})
 	a.State.AddSite(config.Site{Name: "shop", Path: t.TempDir()})
 	caddyfile := func() string {
-		if err := a.WriteCaddyfile(nil); err != nil {
+		if err := a.WriteCaddyfile(nil, nil); err != nil {
 			t.Fatal(err)
 		}
 		b, _ := os.ReadFile(a.Paths.Caddyfile())

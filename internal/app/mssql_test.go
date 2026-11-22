@@ -126,7 +126,7 @@ func TestAdminerSiteInCaddyfile(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(adminer.Dir(a.Paths), "index.php")); err != nil {
 		t.Error("index.php wrapper missing")
 	}
-	if err := a.WriteCaddyfile(nil); err != nil {
+	if err := a.WriteCaddyfile(nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	b, _ := os.ReadFile(a.Paths.Caddyfile())

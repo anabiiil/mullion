@@ -26,7 +26,7 @@ func TestSetWatchCaddyfileAndEnv(t *testing.T) {
 		return m
 	}
 	caddyfile := func() string {
-		if err := a.WriteCaddyfile(nil); err != nil {
+		if err := a.WriteCaddyfile(nil, nil); err != nil {
 			t.Fatal(err)
 		}
 		b, _ := os.ReadFile(a.Paths.Caddyfile())

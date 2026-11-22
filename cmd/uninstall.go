@@ -19,6 +19,7 @@ import (
 	"pm/internal/devserver"
 	"pm/internal/elevate"
 	"pm/internal/fcgi"
+	"pm/internal/frankenphp"
 	"pm/internal/hosts"
 	"pm/internal/mailpit"
 	"pm/internal/mongodb"
@@ -168,6 +169,7 @@ func doUninstall(a *app.App, wantBackup bool) error {
 	_ = caddy.Stop(a.Paths)
 	_ = fcgi.StopAll(a.Paths)
 	devserver.StopAll(a.Paths)
+	frankenphp.StopAll(a.Paths)
 	agent.Stop(a.Paths)
 	if v := a.State.Config.MySQL; v != "" && len(processesUnder(a.Paths.Home, pmdir.ExeName("mysqld"))) > 0 {
 		_ = mysql.Stop(a.Paths, v)

@@ -11,6 +11,7 @@ import (
 	"pm/internal/app"
 	"pm/internal/config"
 	"pm/internal/devserver"
+	"pm/internal/frankenphp"
 	"pm/internal/nodever"
 )
 
@@ -140,6 +141,7 @@ var unlinkCmd = &cobra.Command{
 			return fmt.Errorf("no site named %q", name)
 		}
 		devserver.Stop(a.Paths, name)
+		frankenphp.Stop(a.Paths, name)
 		if err := a.Apply(); err != nil {
 			return err
 		}

@@ -6,6 +6,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"pm/internal/devserver"
+	"pm/internal/frankenphp"
 )
 
 var renameCmd = &cobra.Command{
@@ -33,6 +34,11 @@ first names the site to rename.`,
 		}
 		if site.Kind == "node" {
 			devserver.Stop(a.Paths, site.Name)
+		}
+		// Its FrankenPHP server's files are keyed by name too: Apply
+		// starts it again under the new one.
+		if site.OnFranken() {
+			frankenphp.Stop(a.Paths, site.Name)
 		}
 		if err := a.State.RenameSite(oldName, newName); err != nil {
 			return err
