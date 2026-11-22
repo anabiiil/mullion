@@ -25,8 +25,11 @@ func wantNone(t *testing.T, out string, nots ...string) {
 
 func TestFrankenCaddyfileClassic(t *testing.T) {
 	out := Caddyfile(SiteConf{Name: "blog", Port: 44001, Root: "/p/public"})
-	wantAll(t, out, "admin off", "auto_https off", "http://127.0.0.1:44001", `root * "/p/public"`, "php_server")
+	wantAll(t, out, "admin off", "auto_https off", "http://:44001 {\n\tbind 127.0.0.1\n", `root * "/p/public"`, "php_server")
 	wantNone(t, out, "frankenphp {", "env ")
+	// The address must not carry a host (it would become a Host matcher
+	// and reject the forwarded blog.test).
+	wantNone(t, out, "http://127.0.0.1")
 }
 
 func TestFrankenCaddyfileForwardsHostAndScheme(t *testing.T) {

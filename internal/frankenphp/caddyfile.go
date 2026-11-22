@@ -49,7 +49,11 @@ func Caddyfile(c SiteConf) string {
 	}
 	b.WriteString("}\n\n")
 
-	b.WriteString(fmt.Sprintf("http://127.0.0.1:%d {\n", c.Port))
+	// "http://:PORT", not "http://127.0.0.1:PORT": a host in the address is
+	// also a Host matcher, and main Caddy forwards the site's own Host
+	// (blog.test), which would match nothing and get an empty 200. bind
+	// keeps the listener on loopback, so the LAN can't reach it.
+	b.WriteString(fmt.Sprintf("http://:%d {\n\tbind 127.0.0.1\n", c.Port))
 	b.WriteString("\troot * " + quote(c.Root) + "\n")
 
 	var env []string

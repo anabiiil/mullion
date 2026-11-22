@@ -152,7 +152,9 @@ func Generate(sites []SiteConf, logsDir string) string {
 			// The site's own FrankenPHP server (plain HTTP on loopback).
 			// Host is passed through untouched; the request UUID goes
 			// along so PHP's watcher links its records to the access log
-			// row (MULLION_RID); flush_interval -1 streams responses.
+			// row (MULLION_RID); header_up always sets it, so a client
+			// can't spoof the id through Caddy. flush_interval -1 streams
+			// responses.
 			if s.FrankenPort > 0 {
 				b.WriteString(fmt.Sprintf("\treverse_proxy 127.0.0.1:%d {\n\t\theader_up X-Mullion-Rid {http.request.uuid}\n\t\tflush_interval -1\n\t}\n", s.FrankenPort))
 				if w := s.Watch; w != nil && w.RequestID {
