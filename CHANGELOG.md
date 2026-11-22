@@ -2,7 +2,7 @@
 
 All notable changes to Mullion. Versions follow [semantic versioning](https://semver.org).
 
-## Unreleased
+## 2.6.0 — 2026-11-22
 
 ### Added
 
