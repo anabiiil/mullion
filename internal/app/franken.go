@@ -52,7 +52,7 @@ func (a *App) SetSiteServer(ctx context.Context, name, server string, worker boo
 		return a.applyIfEnabled()
 	case frankenServer:
 	default:
-		return fmt.Errorf("unknown server %q: use fpm or frankenphp", server)
+		return errors.New("server must be fpm or frankenphp")
 	}
 	if worker && !octaneInstalled(site.Path) {
 		return errOctaneMissing

@@ -29,6 +29,7 @@ import (
 	"pm/internal/detect"
 	"pm/internal/devserver"
 	"pm/internal/fcgi"
+	"pm/internal/frankenphp"
 	"pm/internal/gitops"
 	"pm/internal/heidisql"
 	"pm/internal/mongodb"
@@ -249,6 +250,7 @@ func newMux(token string) *http.ServeMux {
 	registerRedis(api)
 	registerOpcache(api)
 	registerPHPUpdate(api)
+	registerFranken(api)
 	registerRedisMonitor(mux, token)
 	registerWatch(api)
 	registerWatchStream(mux, token)
@@ -616,9 +618,17 @@ func newMux(token string) *http.ServeMux {
 		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
 			return nil, err
 		}
-		if !a.State.RemoveSite(in.Name) {
+		site := a.State.FindSite(in.Name)
+		if site == nil {
 			return nil, fmt.Errorf("no site named %q", in.Name)
 		}
+		name := site.Name
+		if !a.State.RemoveSite(name) {
+			return nil, fmt.Errorf("no site named %q", in.Name)
+		}
+		// A FrankenPHP server runs on its own; Apply no longer knows the
+		// site, so stop it here.
+		frankenphp.Stop(a.Paths, name)
 		return nil, a.Apply()
 	})
 	api("/api/node/install", func(a *app.App, r *http.Request) (any, error) {
@@ -663,9 +673,14 @@ func newMux(token string) *http.ServeMux {
 		if site.Kind == "node" {
 			devserver.Stop(a.Paths, site.Name)
 		}
+		oldName := site.Name
 		if err := a.State.RenameSite(in.Name, in.NewName); err != nil {
 			return nil, err
 		}
+		// Same for a FrankenPHP server: its pid/log files are keyed by
+		// name, and the old process still holds the port Apply hands the
+		// renamed site's new server.
+		frankenphp.Stop(a.Paths, oldName)
 		return nil, a.Apply()
 	})
 	api("/api/sites/mode", func(a *app.App, r *http.Request) (any, error) {
@@ -1717,4 +1732,148 @@ func nonNilNodeNpm(s []app.NodeNpm) []app.NodeNpm {
 		return []app.NodeNpm{}
 	}
 	return s
+}
+
+// registerFranken adds the project page's PHP-FPM / FrankenPHP choice.
+func registerFranken(api apiRegistrar) {
+	siteName := func(r *http.Request) (string, error) {
+		var in struct{ Name string }
+		if err := decodeJSON(r, &in); err != nil {
+			return "", err
+		}
+		if in.Name == "" {
+			in.Name = r.URL.Query().Get("name")
+		}
+		return in.Name, nil
+	}
+
+	// server switches a site; the first switch downloads FrankenPHP, so
+	// it runs as an install-class job the page polls.
+	api("/api/sites/server", func(a *app.App, r *http.Request) (any, error) {
+		var in struct {
+			Name   string
+			Server string
+			Worker bool
+		}
+		if err := decodeJSON(r, &in); err != nil {
+			return nil, err
+		}
+		switch strings.ToLower(strings.TrimSpace(in.Server)) {
+		case "", "fpm", "php-fpm", "frankenphp":
+		default:
+			return nil, errors.New("server must be fpm or frankenphp")
+		}
+		if a.State.FindSite(in.Name) == nil {
+			return nil, fmt.Errorf("no site named %q", in.Name)
+		}
+		id, err := jobs.startInstall(func(setStatus func(string)) (any, error) {
+			a2, err := app.New()
+			if err != nil {
+				return nil, err
+			}
+			a2.Progress = setStatus
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+			defer cancel()
+			if err := a2.SetSiteServer(ctx, in.Name, in.Server, in.Worker, setStatus); err != nil {
+				return nil, err
+			}
+			return "ok", nil // a non-empty result tells the page it worked
+		})
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{"job": id}, nil
+	})
+	api("/api/sites/franken", func(a *app.App, r *http.Request) (any, error) {
+		name, err := siteName(r)
+		if err != nil {
+			return nil, err
+		}
+		return a.FrankenInfo(name)
+	})
+	api("/api/sites/franken/log", func(a *app.App, r *http.Request) (any, error) {
+		var in struct {
+			Name  string
+			Lines int
+		}
+		if err := decodeJSON(r, &in); err != nil {
+			return nil, err
+		}
+		if in.Name == "" {
+			in.Name = r.URL.Query().Get("name")
+		}
+		info, err := a.FrankenInfo(in.Name)
+		if err != nil {
+			return nil, err
+		}
+		lines := in.Lines
+		if lines <= 0 {
+			lines = 200
+		}
+		if lines > 2000 {
+			lines = 2000
+		}
+		return map[string]string{"log": tailLines(info.Log, lines)}, nil
+	})
+	// latest is the newest FrankenPHP release (empty when GitHub is not
+	// reachable); the page asks after it has painted.
+	api("/api/frankenphp/latest", func(a *app.App, r *http.Request) (any, error) {
+		ctx, cancel := context.WithTimeout(r.Context(), 8*time.Second)
+		defer cancel()
+		rel, err := frankenphp.Latest(ctx)
+		if err != nil {
+			return map[string]string{"latest": ""}, nil
+		}
+		return map[string]string{"latest": rel.Tag}, nil
+	})
+	api("/api/frankenphp/update", func(a *app.App, r *http.Request) (any, error) {
+		id, err := jobs.startInstall(func(setStatus func(string)) (any, error) {
+			a2, err := app.New()
+			if err != nil {
+				return nil, err
+			}
+			a2.Progress = setStatus
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+			defer cancel()
+			return a2.UpdateFranken(ctx, setStatus)
+		})
+		if err != nil {
+			return nil, err
+		}
+		return map[string]string{"job": id}, nil
+	})
+}
+
+// tailLines returns the last n lines of a text file ("" when it is
+// missing); only the end of a large file is read.
+func tailLines(path string, n int) string {
+	f, err := os.Open(path)
+	if err != nil {
+		return ""
+	}
+	defer f.Close()
+	const window = 512 << 10
+	st, err := f.Stat()
+	if err != nil {
+		return ""
+	}
+	off := st.Size() - window
+	if off < 0 {
+		off = 0
+	}
+	data, err := io.ReadAll(io.NewSectionReader(f, off, st.Size()-off))
+	if err != nil {
+		return ""
+	}
+	text := strings.TrimRight(string(data), "\r\n")
+	if off > 0 {
+		if i := strings.IndexByte(text, '\n'); i >= 0 {
+			text = text[i+1:] // the first line is probably cut
+		}
+	}
+	lines := strings.Split(text, "\n")
+	if len(lines) > n {
+		lines = lines[len(lines)-n:]
+	}
+	return strings.Join(lines, "\n")
 }

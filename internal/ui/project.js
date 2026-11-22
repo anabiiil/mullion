@@ -1225,7 +1225,9 @@
 
   let logModal = null;
   function closeLogModal() { if (logModal) { logModal(); logModal = null; } }
-  function openLogModal(w) {
+  // openLogModal shows a log tail: a worker's, or — with fetchLog(lines)
+  // returning the text — any other (w supplies name and command/path).
+  function openLogModal(w, fetchLog) {
     closeLogModal();
     const g = gen;
     let timer = 0, auto = true;
@@ -1244,7 +1246,8 @@
       let text = '';
       const load = async () => {
         try {
-          const d = await call('/api/project/workers/log', { site: cur, id: w.id, lines: +body.querySelector('[data-id="mpl-lines"]').value });
+          const n = +body.querySelector('[data-id="mpl-lines"]').value;
+          const d = fetchLog ? { log: await fetchLog(n) } : await call('/api/project/workers/log', { site: cur, id: w.id, lines: n });
           if (!live(g)) { close(null); return; }
           text = d.log || '';
           paintTerm(out, { log: text }, 'No output yet.');
@@ -4351,7 +4354,16 @@
   /* ── profiler (profiler.js) ── */
   function pfProfiler(body) {
     body.innerHTML = '<div data-id="mp-pf-prof"></div>';
-    const host = body.firstChild;
+    const host = body.firstChild, g = gen;
+    // On FrankenPHP the profiler (a php-fpm extension) is not offered.
+    call('/api/sites/franken', { name: cur }).catch(() => null).then(f => {
+      if (!live(g) || !host.isConnected) return;
+      if (f && f.server === 'frankenphp') {
+        host.innerHTML = `<section class="card"><div class="card-body"><div class="mp-empty"><b>The profiler isn't available on FrankenPHP</b>${esc(frkHint(f))}</div></div></section>`;
+      } else pfProfilerPanel(host);
+    });
+  }
+  function pfProfilerPanel(host) {
     if (typeof window.MullionProfilerPanel === 'function') {
       try { perfState.prof = window.MullionProfilerPanel(host, cur) || null; } catch (e) { host.innerHTML = `<section class="card"><div class="card-body"><div class="mp-warn">${esc(e.message)}</div></div></section>`; }
     } else {
@@ -4727,6 +4739,13 @@
           .concat(info.phpInstalled.map(v => `<option value="${esc(v)}" ${info.phpPinned === v ? 'selected' : ''}>PHP ${esc(v)}</option>`)).join('')}</select>
           <span class="mp-sub">${info.phpPinned ? 'Pinned — it keeps this version when the global one changes.' : 'Follows the global version.'}</span></div>`);
     }
+    if (isPHP()) {
+      rows.push(`<div class="k">Server<small>for this site</small></div>
+        <div><select data-id="mp-set-server" disabled>
+            <option value="fpm" ${frkOn() ? '' : 'selected'}>PHP-FPM (default)</option>
+            <option value="frankenphp" ${frkOn() ? 'selected' : ''}>FrankenPHP</option></select>
+          <div data-id="mp-frk" style="flex-basis:100%"></div></div>`);
+    }
     if (isNode()) {
       rows.push(`<div class="k">Node version<small>runs the dev server & scripts</small></div>
         <div><select data-id="mp-set-node" class="mono">${['<option value="">.nvmrc / default (' + esc(info.globalNode || '—') + ')</option>']
@@ -4778,6 +4797,12 @@
     const p = els.panel;
     const php = p.querySelector('[data-id="mp-set-php"]');
     if (php) php.onchange = () => action('Switching PHP version…', '/api/sites/isolate', { name: cur, version: php.value }, 'PHP version updated');
+    const srv = p.querySelector('[data-id="mp-set-server"]');
+    if (srv) {
+      srv.onchange = () => setServer(srv.value, false);
+      paintFranken(); // what is known already, so a re-render doesn't flicker
+      loadFranken();
+    }
     const node = p.querySelector('[data-id="mp-set-node"]');
     if (node) node.onchange = () => action('Switching Node version…', '/api/sites/node', { name: cur, version: node.value }, 'Node version updated');
     p.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => {
@@ -4812,6 +4837,83 @@
     p.querySelector('[data-id="mp-set-reveal"]').onclick = () => call('/api/open-path', { path: info.path }).catch(e => say('Error: ' + e.message));
     p.querySelector('[data-id="mp-set-rename"]').onclick = rename;
     p.querySelector('[data-id="mp-set-unlink"]').onclick = unlink;
+  }
+
+  /* ── server: PHP-FPM or FrankenPHP ── */
+  let frk = null, frkSite = '', frkLatest = '';
+  const frkOn = () => !!frk && frkSite === cur && frk.server === 'frankenphp';
+  // frkHint is the one sentence the Settings tab and the profiler share.
+  function frkHint(f) {
+    return `FrankenPHP has its own PHP${f && f.phpVersion ? ' (' + f.phpVersion + ')' : ''}. Artisan, workers and Composer still use ${info.php || info.globalPhp ? 'PHP ' + (info.php || info.globalPhp) : "the site's PHP"}. The profiler isn't available on FrankenPHP.`;
+  }
+  // tagNum turns "v1.14.0" into comparable numbers.
+  const tagNum = t => String(t || '').replace(/^v/, '').split('.').map(x => parseInt(x, 10) || 0);
+  function tagNewer(a, b) {
+    const x = tagNum(a), y = tagNum(b);
+    for (let i = 0; i < Math.max(x.length, y.length); i++) {
+      if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0);
+    }
+    return false;
+  }
+  // loadFranken reads the site's server state and paints the Server row.
+  async function loadFranken() {
+    const g = gen, site = cur;
+    try {
+      const d = await call('/api/sites/franken', { name: site });
+      if (!live(g) || site !== cur) return null;
+      frk = d; frkSite = site;
+    } catch (e) {
+      if (live(g) && tab === 'settings') { const box = els.panel.querySelector('[data-id="mp-frk"]'); if (box) box.innerHTML = `<div class="mp-warn">${esc(e.message)}</div>`; }
+      return null;
+    }
+    paintFranken();
+    if (frk.server === 'frankenphp' && !frkLatest) {
+      call('/api/frankenphp/latest', {}).then(r => {
+        if (!live(g) || !r || !r.latest) return;
+        frkLatest = r.latest;
+        paintFranken();
+      }).catch(() => {});
+    }
+    return frk;
+  }
+  function paintFranken() {
+    if (tab !== 'settings' || !els.panel || !frk || frkSite !== cur) return;
+    const sel = els.panel.querySelector('[data-id="mp-set-server"]');
+    const box = els.panel.querySelector('[data-id="mp-frk"]');
+    if (!sel || !box) return;
+    sel.disabled = false;
+    sel.value = frk.server === 'frankenphp' ? 'frankenphp' : 'fpm';
+    if (frk.server !== 'frankenphp') { box.innerHTML = ''; return; }
+    const noOctane = !frk.octaneInstalled && !frk.worker;
+    const newer = frkLatest && frk.tag && tagNewer(frkLatest, frk.tag);
+    box.innerHTML = `<div class="mp-status"><span class="mp-dot ${frk.running ? 'on' : ''}"></span>FrankenPHP <span class="mono">${esc(frk.tag || '—')}</span> · PHP <span class="mono">${esc(frk.phpVersion || '—')}</span> · ${frk.running ? 'running' + (frk.port ? ' on <span class="mono">:' + frk.port + '</span>' : '') : 'stopped'}</div>
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:8px">
+        <label class="toggle" ${noOctane ? 'title="Worker mode needs Laravel Octane — run: composer require laravel/octane"' : ''}><span class="switch"><input type="checkbox" data-id="mp-frk-worker" ${frk.worker ? 'checked' : ''} ${noOctane ? 'disabled' : ''}><i></i></span>Worker mode (Octane)</label>
+        <button class="sm" data-id="mp-frk-log">View log</button>
+        ${newer ? `<button class="sm primary" data-id="mp-frk-update" title="${esc(frkLatest)} is available">Update FrankenPHP</button>` : ''}
+      </div>
+      <div class="mp-sub" style="margin-top:6px">${esc(frkHint(frk))}</div>`;
+    box.querySelector('[data-id="mp-frk-worker"]').onchange = e => setServer('frankenphp', e.target.checked);
+    box.querySelector('[data-id="mp-frk-log"]').onclick = () => openLogModal(
+      { name: 'FrankenPHP — ' + cur, command: frk.log || '' },
+      async n => (await call('/api/sites/franken/log', { name: cur, lines: n })).log);
+    const up = box.querySelector('[data-id="mp-frk-update"]');
+    if (up) up.onclick = updateFranken;
+  }
+  async function setServer(server, worker) {
+    const r = await jobResult(server === 'frankenphp'
+      ? 'Switching to FrankenPHP… (the first switch downloads it)' : 'Switching to PHP-FPM…',
+    '/api/sites/server', { name: cur, server, worker });
+    refreshPanel();
+    if (!destroyed) { reloadInfo(); await loadFranken(); }
+    if (r) say(server === 'frankenphp' ? (worker ? 'Running on FrankenPHP in worker mode' : 'Running on FrankenPHP') : 'Running on PHP-FPM');
+  }
+  async function updateFranken() {
+    const tag = await jobResult('Updating FrankenPHP…', '/api/frankenphp/update', {});
+    frkLatest = '';
+    refreshPanel();
+    if (!destroyed) await loadFranken();
+    if (tag) say('FrankenPHP updated to ' + tag);
   }
 
   async function rename() {
