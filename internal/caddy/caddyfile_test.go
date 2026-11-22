@@ -174,3 +174,29 @@ func TestVersionAtLeast(t *testing.T) {
 		}
 	}
 }
+
+// A "franken" block reverse-proxies to the site's own FrankenPHP server,
+// keeps the original Host, tags requests and streams responses.
+func TestGenerateFrankenSite(t *testing.T) {
+	out := Generate([]SiteConf{{Name: "blog", Host: "blog.test", Kind: "franken", FrankenPort: 44001, Secure: true}}, "/logs")
+	for _, w := range []string{
+		"\nblog.test {\n\ttls internal\n\treverse_proxy 127.0.0.1:44001 {\n",
+		"\t\theader_up X-Mullion-Rid {http.request.uuid}\n",
+		"\t\tflush_interval -1\n",
+		"\tlog {\n\t\toutput file \"/logs/blog.test.log\"\n\t}\n",
+	} {
+		if !strings.Contains(out, w) {
+			t.Errorf("missing %q in:\n%s", w, out)
+		}
+	}
+	for _, n := range []string{"header_up Host", "php_fastcgi", "file_server"} {
+		if strings.Contains(out, n) {
+			t.Errorf("franken block must not contain %q:\n%s", n, out)
+		}
+	}
+	down := Generate([]SiteConf{{Name: "blog", Host: "blog.test", Kind: "franken"}}, "/logs")
+	want := "\trespond \"FrankenPHP for this site is not running — open the Mullion panel or run `mullion start`.\" 503\n"
+	if !strings.Contains(down, want) || strings.Contains(down, "reverse_proxy") {
+		t.Errorf("down franken block:\n%s", down)
+	}
+}

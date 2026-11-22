@@ -14,10 +14,13 @@ import (
 type SiteConf struct {
 	Name      string // site name (the wake key for down dev servers)
 	Host      string // e.g. "blog.test"
-	Kind      string // "php" (default), "node", "static", or "proxy"
+	Kind      string // "php" (default), "node", "static", "proxy", or "franken"
 	Root      string // absolute document root (php and static sites)
 	FcgiPort  int    // FastCGI port for this site's PHP version
 	ProxyPort int    // dev-server port for node sites (0 = down); the upstream of "proxy" ones
+	// FrankenPort is the loopback port of the site's own FrankenPHP
+	// server ("franken" sites); 0 = that server is down.
+	FrankenPort int
 	// RewriteHost makes the proxy send "localhost:<port>" as the Host
 	// header — Vite-family dev servers block unknown hosts (and old
 	// versions ignore the allow-list env var), but always accept
@@ -145,6 +148,19 @@ func Generate(sites []SiteConf, logsDir string) string {
 			// passes websocket upgrades through on its own; flush_interval
 			// -1 streams responses (live updates) instead of buffering.
 			b.WriteString(fmt.Sprintf("\treverse_proxy 127.0.0.1:%d {\n\t\tflush_interval -1\n\t}\n", s.ProxyPort))
+		case "franken":
+			// The site's own FrankenPHP server (plain HTTP on loopback).
+			// Host is passed through untouched; the request UUID goes
+			// along so PHP's watcher links its records to the access log
+			// row (MULLION_RID); flush_interval -1 streams responses.
+			if s.FrankenPort > 0 {
+				b.WriteString(fmt.Sprintf("\treverse_proxy 127.0.0.1:%d {\n\t\theader_up X-Mullion-Rid {http.request.uuid}\n\t\tflush_interval -1\n\t}\n", s.FrankenPort))
+				if w := s.Watch; w != nil && w.RequestID {
+					b.WriteString("\tlog_append mullion_rid {http.request.uuid}\n")
+				}
+			} else {
+				b.WriteString("\trespond \"FrankenPHP for this site is not running — open the Mullion panel or run `mullion start`.\" 503\n")
+			}
 		case "static":
 			b.WriteString("\troot * " + quote(s.Root) + "\n")
 			b.WriteString("\tencode zstd gzip\n")
