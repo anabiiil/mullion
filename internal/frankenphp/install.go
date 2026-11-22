@@ -27,6 +27,10 @@ import (
 // The Windows zip has frankenphp.exe at its root next to the PHP DLLs
 // and ext/ folder, so it is extracted as is. The macOS asset is the bare
 // binary.
+//
+// Callers must stop any running server for the tag before reinstalling
+// it: an existing <tag> folder is replaced, and Windows locks a running
+// frankenphp.exe.
 func Install(ctx context.Context, paths pmdir.Paths, rel Release, progress func(string)) (err error) {
 	if !validTag(rel.Tag) {
 		return fmt.Errorf("unexpected FrankenPHP release tag %q", rel.Tag)

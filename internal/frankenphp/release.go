@@ -42,7 +42,7 @@ func assetName(goos, goarch string) (string, error) {
 	case goos == "darwin" && goarch == "arm64":
 		return "frankenphp-mac-arm64", nil
 	case goos == "darwin":
-		return "", fmt.Errorf("FrankenPHP does not publish a build for Intel Macs (only Apple Silicon)")
+		return "", fmt.Errorf("FrankenPHP has no build for Intel Macs — keep this site on PHP-FPM")
 	case goos == "windows" && goarch == "amd64":
 		return "frankenphp-windows-x86_64.zip", nil
 	}

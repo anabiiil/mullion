@@ -29,15 +29,15 @@ func TestAssetName(t *testing.T) {
 	}{
 		{"darwin", "arm64", "frankenphp-mac-arm64", ""},
 		{"windows", "amd64", "frankenphp-windows-x86_64.zip", ""},
-		{"darwin", "amd64", "", "Intel Macs"},
+		{"darwin", "amd64", "", "FrankenPHP has no build for Intel Macs — keep this site on PHP-FPM"},
 		{"linux", "amd64", "", "not available"},
 		{"windows", "arm64", "", "not available"},
 	}
 	for _, c := range cases {
 		got, err := assetName(c.goos, c.goarch)
 		if c.errHas != "" {
-			if err == nil || !strings.Contains(err.Error(), c.errHas) {
-				t.Errorf("%s/%s: want error containing %q, got %q, %v", c.goos, c.goarch, c.errHas, got, err)
+			if err == nil || (c.goos == "darwin" && err.Error() != c.errHas) || !strings.Contains(err.Error(), c.errHas) {
+				t.Errorf("%s/%s: want error %q, got %q, %v", c.goos, c.goarch, c.errHas, got, err)
 			}
 			continue
 		}
@@ -54,9 +54,9 @@ type fakeAsset struct {
 	Digest string `json:"digest"`
 }
 type fakeRelease struct {
-	Tag        string    `json:"tag_name"`
-	Prerelease bool      `json:"prerelease"`
-	Draft      bool      `json:"draft"`
+	Tag        string      `json:"tag_name"`
+	Prerelease bool        `json:"prerelease"`
+	Draft      bool        `json:"draft"`
 	Assets     []fakeAsset `json:"assets"`
 }
 
