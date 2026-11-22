@@ -99,6 +99,33 @@ func TestLatestSkipsReleasesWithoutAsset(t *testing.T) {
 	}
 }
 
+// GitHub lists by creation date: a patch for an older line can come
+// before the newest release.
+func TestLatestPicksHighestVersion(t *testing.T) {
+	mac := func(tag string) fakeRelease {
+		return fakeRelease{Tag: tag, Assets: []fakeAsset{{Name: "frankenphp-mac-arm64", URL: "/" + tag, Digest: "sha256:aa"}}}
+	}
+	srv := serve(t, func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode([]fakeRelease{
+			mac("v1.13.9"),
+			{Tag: "v1.15.0", Assets: []fakeAsset{{Name: "frankenphp-linux-x86_64", URL: "/linux", Digest: "sha256:cc"}}},
+			mac("v1.14.2"),
+			mac("v1.14.10"),
+			mac("v1.9.0"),
+		})
+	})
+	old := ReleasesAPI
+	ReleasesAPI = srv.URL
+	t.Cleanup(func() { ReleasesAPI = old })
+	rel, err := latest(context.Background(), "darwin", "arm64")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rel.Tag != "v1.14.10" || rel.Asset.URL != "/v1.14.10" {
+		t.Fatalf("got %+v, want v1.14.10", rel)
+	}
+}
+
 func TestLatestReportsHTTPErrors(t *testing.T) {
 	srv := serve(t, func(w http.ResponseWriter, r *http.Request) { http.Error(w, "rate limited", 403) })
 	old := ReleasesAPI
@@ -304,5 +331,62 @@ func TestPHPVersionIgnoresInheritedPHPRC(t *testing.T) {
 	t.Setenv("PHPRC", "/somewhere/else")
 	if got, err := PHPVersion(script); err != nil || got != "8.6.0" {
 		t.Fatalf("PHPVersion = %q, %v", got, err)
+	}
+}
+
+func TestInstallCachesPHPVersion(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses a shell script as the fake binary")
+	}
+	body := []byte("#!/bin/sh\necho 'FrankenPHP v1.14.0 PHP 8.6.0 Caddy v2.11.9'\n")
+	srv := serve(t, func(w http.ResponseWriter, r *http.Request) { w.Write(body) })
+	paths := testPaths(t)
+	rel := Release{Tag: "v1.14.0", Asset: Asset{Name: "frankenphp-mac-arm64", URL: srv.URL + "/bin", Digest: sum(body)}}
+	if err := Install(context.Background(), paths, rel, nil); err != nil {
+		t.Fatal(err)
+	}
+	cache := filepath.Join(paths.FrankenDir(), "v1.14.0", "php-version")
+	if got := readString(cache); got != "8.6.0" {
+		t.Fatalf("php-version = %q, want 8.6.0", got)
+	}
+	// The cache is what's read: the binary is not run again.
+	os.WriteFile(Binary(paths, "v1.14.0"), []byte("#!/bin/sh\nexit 1\n"), 0o755)
+	if v, err := CachedPHPVersion(paths, "v1.14.0"); err != nil || v != "8.6.0" {
+		t.Fatalf("CachedPHPVersion = %q, %v", v, err)
+	}
+}
+
+func TestCachedPHPVersionFallsBackAndWrites(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("uses a shell script as the fake binary")
+	}
+	paths := testPaths(t)
+	bin := Binary(paths, "v1.13.0")
+	os.MkdirAll(filepath.Dir(bin), 0o755)
+	os.WriteFile(bin, []byte("#!/bin/sh\necho 'FrankenPHP v1.13.0 PHP 8.5.1 Caddy v2.10.0'\n"), 0o755)
+	if v, err := CachedPHPVersion(paths, "v1.13.0"); err != nil || v != "8.5.1" {
+		t.Fatalf("CachedPHPVersion = %q, %v", v, err)
+	}
+	if got := readString(filepath.Join(filepath.Dir(bin), "php-version")); got != "8.5.1" {
+		t.Fatalf("cache not written: %q", got)
+	}
+	if _, err := CachedPHPVersion(paths, "../x"); err == nil {
+		t.Fatal("an invalid tag must be refused")
+	}
+}
+
+func TestRemoveTag(t *testing.T) {
+	paths := testPaths(t)
+	bin := Binary(paths, "v1.13.0")
+	os.MkdirAll(filepath.Dir(bin), 0o755)
+	os.WriteFile(bin, []byte("x"), 0o755)
+	if err := Remove(paths, "v1.13.0"); err != nil {
+		t.Fatal(err)
+	}
+	if len(Installed(paths)) != 0 {
+		t.Fatal("tag still installed")
+	}
+	if err := Remove(paths, ".."); err == nil {
+		t.Fatal("an invalid tag must be refused")
 	}
 }

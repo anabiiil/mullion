@@ -114,8 +114,9 @@ func (a *App) usedFrankenPorts(except string) map[int]bool {
 }
 
 // UpdateFranken installs the latest FrankenPHP release and moves every
-// FrankenPHP site onto it (their servers restart on the next Apply).
-// It returns the new tag.
+// FrankenPHP site onto it (their servers restart on the next Apply),
+// then deletes the releases no site uses any more. It returns the new
+// tag.
 func (a *App) UpdateFranken(ctx context.Context, progress func(string)) (string, error) {
 	rel, err := latestFranken(ctx)
 	if err != nil {
@@ -145,7 +146,30 @@ func (a *App) UpdateFranken(ctx context.Context, progress func(string)) (string,
 		stopFranken(a.Paths, s.Name)
 		s.Franken.Tag = rel.Tag
 	}
-	return rel.Tag, a.applyIfEnabled()
+	if err := a.applyIfEnabled(); err != nil {
+		return rel.Tag, err
+	}
+	a.pruneFranken(rel.Tag)
+	return rel.Tag, nil
+}
+
+// pruneFranken deletes installed FrankenPHP releases that no site is
+// pinned to, never keep (the one just installed). Each is about 200 MB.
+func (a *App) pruneFranken(keep string) {
+	used := map[string]bool{keep: true}
+	for _, s := range a.State.Sites {
+		if s.Franken != nil && s.Franken.Tag != "" {
+			used[s.Franken.Tag] = true
+		}
+	}
+	for _, tag := range frankenphp.Installed(a.Paths) {
+		if used[tag] {
+			continue
+		}
+		if err := frankenphp.Remove(a.Paths, tag); err != nil {
+			fmt.Printf("warning: could not delete FrankenPHP %s: %v\n", tag, err)
+		}
+	}
 }
 
 // frankenSiteConf is the site's FrankenPHP server configuration: what
@@ -282,7 +306,8 @@ func (a *App) FrankenInfo(name string) (FrankenInfo, error) {
 		if f.Tag != "" {
 			bin := frankenphp.Binary(a.Paths, f.Tag)
 			if _, err := os.Stat(bin); err == nil {
-				info.PHPVersion, _ = frankenphp.PHPVersion(bin)
+				// Cached at install: a panel load doesn't run the binary.
+				info.PHPVersion, _ = frankenphp.CachedPHPVersion(a.Paths, f.Tag)
 			}
 		}
 	}

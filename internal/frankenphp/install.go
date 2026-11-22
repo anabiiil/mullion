@@ -20,9 +20,11 @@ import (
 )
 
 // Install downloads rel into <FrankenDir>/<tag>, checking the asset's
-// published SHA-256 while it streams. Everything happens in
-// <FrankenDir>/.<tag>.tmp and is renamed into place only once verified,
-// so an interrupted or corrupt download never looks installed.
+// published SHA-256 while it streams. Everything happens in a fresh
+// <FrankenDir>/.<tag>-* folder (one per call, so concurrent installs
+// don't clash) and is renamed into place only once verified, so an
+// interrupted or corrupt download never looks installed. The embedded
+// PHP version is cached next to the binary (see CachedPHPVersion).
 //
 // The Windows zip has frankenphp.exe at its root next to the PHP DLLs
 // and ext/ folder, so it is extracted as is. The macOS asset is the bare
@@ -43,12 +45,16 @@ func Install(ctx context.Context, paths pmdir.Paths, rel Release, progress func(
 		progress = func(string) {}
 	}
 
-	tmp := filepath.Join(paths.FrankenDir(), "."+rel.Tag+".tmp")
 	final := filepath.Join(paths.FrankenDir(), rel.Tag)
-	if err := os.RemoveAll(tmp); err != nil {
+	if err := os.MkdirAll(paths.FrankenDir(), 0o755); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(tmp, 0o755); err != nil {
+	tmp, err := os.MkdirTemp(paths.FrankenDir(), "."+rel.Tag+"-*")
+	if err != nil {
+		return err
+	}
+	if err := os.Chmod(tmp, 0o755); err != nil { // MkdirTemp makes it 0700
+		os.RemoveAll(tmp)
 		return err
 	}
 	defer func() {
@@ -86,6 +92,10 @@ func Install(ctx context.Context, paths pmdir.Paths, rel Release, progress func(
 	}
 	if err := os.Chmod(bin, 0o755); err != nil {
 		return err
+	}
+	// Best effort: without it the version is read on first use instead.
+	if v, verr := PHPVersion(bin); verr == nil {
+		_ = os.WriteFile(filepath.Join(tmp, phpVersionFile), []byte(v+"\n"), 0o644)
 	}
 
 	if err := os.RemoveAll(final); err != nil {
@@ -142,16 +152,7 @@ func Installed(paths pmdir.Paths) []string {
 		}
 		tags = append(tags, e.Name())
 	}
-	sort.Slice(tags, func(i, j int) bool {
-		a, _ := parseTag(tags[i])
-		b, _ := parseTag(tags[j])
-		for k := range a {
-			if a[k] != b[k] {
-				return a[k] > b[k]
-			}
-		}
-		return false
-	})
+	sort.Slice(tags, func(i, j int) bool { return newerTag(tags[i], tags[j]) })
 	return tags
 }
 
@@ -185,6 +186,37 @@ func PHPVersion(bin string) (string, error) {
 		return "", fmt.Errorf("no PHP version in the output of %s -v: %q", bin, strings.TrimSpace(string(out)))
 	}
 	return string(m[1]), nil
+}
+
+// phpVersionFile caches PHPVersion in a tag's folder.
+const phpVersionFile = "php-version"
+
+// CachedPHPVersion is the PHP an installed tag embeds, read from the
+// php-version file Install writes. Without one (an older install) it
+// runs the binary once and writes the file.
+func CachedPHPVersion(paths pmdir.Paths, tag string) (string, error) {
+	if !validTag(tag) {
+		return "", fmt.Errorf("unexpected FrankenPHP release tag %q", tag)
+	}
+	cache := filepath.Join(paths.FrankenDir(), tag, phpVersionFile)
+	if v := readString(cache); v != "" {
+		return v, nil
+	}
+	v, err := PHPVersion(Binary(paths, tag))
+	if err != nil {
+		return "", err
+	}
+	_ = os.WriteFile(cache, []byte(v+"\n"), 0o644)
+	return v, nil
+}
+
+// Remove deletes an installed tag's folder. Callers make sure no server
+// runs it.
+func Remove(paths pmdir.Paths, tag string) error {
+	if !validTag(tag) {
+		return fmt.Errorf("unexpected FrankenPHP release tag %q", tag)
+	}
+	return os.RemoveAll(filepath.Join(paths.FrankenDir(), tag))
 }
 
 func withoutPHPIni(env []string) []string {

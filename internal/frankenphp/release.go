@@ -61,7 +61,7 @@ type ghRelease struct {
 	} `json:"assets"`
 }
 
-// Latest is the newest stable release that has a build for this
+// Latest is the highest stable release that has a build for this
 // platform. A release published before its binaries are attached is
 // skipped, not an error.
 func Latest(ctx context.Context) (Release, error) {
@@ -90,17 +90,39 @@ func latest(ctx context.Context, goos, goarch string) (Release, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&list); err != nil {
 		return Release{}, fmt.Errorf("reading the FrankenPHP releases: %w", err)
 	}
+	// GitHub orders by creation date, so a patch release for an older
+	// line (v1.13.9 after v1.14.0) can come first: take the highest tag.
+	var best Release
 	for _, r := range list {
 		if r.Prerelease || r.Draft || !validTag(r.Tag) {
 			continue
 		}
+		if best.Tag != "" && !newerTag(r.Tag, best.Tag) {
+			continue
+		}
 		for _, a := range r.Assets {
 			if a.Name == want {
-				return Release{Tag: r.Tag, Asset: Asset{Name: a.Name, URL: a.URL, Size: a.Size, Digest: a.Digest}}, nil
+				best = Release{Tag: r.Tag, Asset: Asset{Name: a.Name, URL: a.URL, Size: a.Size, Digest: a.Digest}}
+				break
 			}
 		}
 	}
-	return Release{}, fmt.Errorf("no stable FrankenPHP release has a %s build", want)
+	if best.Tag == "" {
+		return Release{}, fmt.Errorf("no stable FrankenPHP release has a %s build", want)
+	}
+	return best, nil
+}
+
+// newerTag reports whether tag a is a higher version than b (both valid).
+func newerTag(a, b string) bool {
+	va, _ := parseTag(a)
+	vb, _ := parseTag(b)
+	for k := range va {
+		if va[k] != vb[k] {
+			return va[k] > vb[k]
+		}
+	}
+	return false
 }
 
 // validTag accepts only "vX.Y.Z" so a tag can never be a path.

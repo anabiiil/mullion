@@ -262,6 +262,49 @@ func TestUpdateFrankenMovesSites(t *testing.T) {
 	}
 }
 
+// After an update, releases no site uses are deleted; the new one and
+// any still pinned stay.
+func TestUpdateFrankenPrunesUnusedTags(t *testing.T) {
+	a, _ := frankenTestApp(t) // v1.14.0 installed
+	seed := func(tag string) {
+		bin := frankenphp.Binary(a.Paths, tag)
+		os.MkdirAll(filepath.Dir(bin), 0o755)
+		os.WriteFile(bin, []byte("fake"), 0o755)
+	}
+	seed("v1.12.0") // still pinned by "old" below
+	seed("v1.13.0") // used by nobody
+	addLaravelSite(t, a, "shop", "")
+	if err := a.SetSiteServer(context.Background(), "shop", "frankenphp", false, nil); err != nil {
+		t.Fatal(err)
+	}
+	// A site that keeps a pinned tag UpdateFranken doesn't move it off
+	// (it isn't on FrankenPHP): the tag must survive.
+	addLaravelSite(t, a, "old", "")
+	a.State.FindSite("old").Franken = &config.Franken{Tag: "v1.12.0", Port: 44100}
+
+	latestFranken = func(context.Context) (frankenphp.Release, error) {
+		return frankenphp.Release{Tag: "v1.15.0"}, nil
+	}
+	installFranken = func(_ context.Context, p pmdir.Paths, rel frankenphp.Release, _ func(string)) error {
+		seed(rel.Tag)
+		return nil
+	}
+	if _, err := a.UpdateFranken(context.Background(), nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(frankenphp.Installed(a.Paths), ","); got != "v1.15.0,v1.12.0" {
+		t.Fatalf("installed after update = %s, want v1.15.0,v1.12.0", got)
+	}
+
+	// Updating again when the latest is already installed keeps it.
+	if _, err := a.UpdateFranken(context.Background(), nil); err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.Join(frankenphp.Installed(a.Paths), ","); !strings.HasPrefix(got, "v1.15.0") {
+		t.Fatalf("installed = %s", got)
+	}
+}
+
 func TestFrankenInfo(t *testing.T) {
 	a, _ := frankenTestApp(t)
 	addLaravelSite(t, a, "shop", "")
